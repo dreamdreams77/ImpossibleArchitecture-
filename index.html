@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Impossible Architecture</title>
+  <meta name="description" content="A construction game about rooms, portals and passages that do not behave like ordinary space.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='2' y='2' width='12' height='12' fill='none' stroke='%23f0c060' stroke-width='2'/%3E%3Cpath d='M8 2v12' stroke='%23f0c060' stroke-width='1.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">Impossible Architecture</div>
+    <label class="field">Chapter
+      <select id="chapter-select"></select>
+    </label>
+    <div id="progress" class="muted"></div>
+    <div class="spacer"></div>
+    <button id="sound" type="button" aria-pressed="false" title="Short sound cues for steps, plates and the goal">Sound off</button>
+    <input id="volume" type="range" min="0" max="100" step="5" value="100" aria-label="Sound volume" title="Sound volume">
+    <button id="theme" type="button" title="Switch between dark and light page colours">Light</button>
+    <button id="panel-toggle" type="button" aria-controls="controls" aria-expanded="true">Hide controls</button>
+    <button id="keys-btn" type="button" title="Keyboard shortcuts (?)" aria-controls="keys-overlay" aria-expanded="false">Keys</button>
+    <button id="toggle-graph" type="button" title="Show or hide the developer graph view">Graph view</button>
+  </header>
+
+  <main class="layout">
+    <aside class="side" id="controls">
+      <section>
+        <h2 id="chapter-title" aria-live="polite"></h2>
+        <p id="chapter-blurb" class="muted"></p>
+        <p id="stats" class="mono muted"></p>
+      </section>
+
+      <section id="room-section" hidden>
+        <h3>Room</h3>
+        <label class="field">Label <input id="room-label" type="text" maxlength="24" autocomplete="off"></label>
+        <label class="field">Kind
+          <select id="room-kind" aria-label="Kind of room">
+            <option value="chamber">Chamber</option>
+            <option value="corridor">Corridor</option>
+            <option value="atrium">Atrium</option>
+            <option value="cellar">Cellar</option>
+          </select>
+        </label>
+        <label class="field">Size
+          <select id="room-size" aria-label="Size of room">
+            <option value="0.75">Small</option>
+            <option value="1">Standard</option>
+            <option value="1.5">Large</option>
+          </select>
+        </label>
+        <div class="toolrow">
+          <button id="turn-room" type="button" title="Turn the room a quarter-turn in the plan. Its doors keep their faces.">Turn room</button>
+          <button id="duplicate" type="button" title="Copy this room one step away, with its label">Duplicate room</button>
+        </div>
+      </section>
+
+      <section id="notes-section" hidden>
+        <h3>Field notes</h3>
+        <ul id="notes" class="notes"></ul>
+        <button id="copy-notes" type="button">Copy notes</button>
+      </section>
+
+      <section id="sight-section" hidden>
+        <h3>Sightlines</h3>
+        <canvas id="sight" width="300" height="240" aria-label="What each face of the selected room leads to"></canvas>
+      </section>
+
+      <section>
+        <h3>View</h3>
+        <div class="toolrow">
+          <button id="view-plan" type="button" aria-pressed="true">Plan</button>
+          <button id="view-first" type="button" aria-pressed="false">First person</button>
+          <button id="view-model" type="button" aria-pressed="false">3D model</button>
+        </div>
+        <div class="toolrow">
+          <button id="fit" type="button" title="F">Fit view</button>
+          <button id="snap" type="button" aria-pressed="true" title="G">Snap to grid</button>
+          <button id="save-image" type="button" title="Save the current view as a PNG">Save image</button>
+        </div>
+        <p id="fp-live" class="sr-only" aria-live="polite"></p>
+        <div id="fp-controls" class="toolrow" hidden>
+          <p class="muted touch-only">Tap the left or right edge to turn, the middle to walk.</p>
+          <button id="fp-left" type="button" title="Left arrow or Q">Turn left</button>
+          <button id="fp-forward" type="button" title="Up arrow">Forward</button>
+          <button id="fp-right" type="button" title="Right arrow or E">Turn right</button>
+          <button id="fp-reset" type="button">Back to start</button>
+          <button id="fp-play" type="button" disabled title="Walk the last passing route">Play route</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Tools</h3>
+        <div class="toolrow">
+          <button type="button" data-tool="select" aria-pressed="true">Select &amp; move</button>
+          <button type="button" data-tool="add">Add room</button>
+          <button type="button" data-tool="connect">Connect faces</button>
+        </div>
+        <div class="toolrow">
+          <button id="undo" type="button" title="Ctrl/Cmd-Z">Undo</button>
+          <button id="redo" type="button" title="Ctrl/Cmd-Shift-Z">Redo</button>
+          <button id="delete" type="button" title="Delete">Delete</button>
+          <button id="clear" type="button" disabled title="Empty a free construction (undoable)">Clear all</button>
+        </div>
+      </section>
+
+      <section>
+        <details id="symbols">
+          <summary class="sum-h3">Symbols</summary>
+          <dl class="symbols">
+            <dt>numbered circle</dt><dd>a pressure plate; it lights when a walker arrives in its room facing the arrow</dd>
+            <dt>dot on a room edge</dt><dd>a face you can connect</dd>
+            <dt>arc between faces</dt><dd>a portal; in the 3D model, dashed arcs are mirrored and heavier ones are fixed</dd>
+            <dt>arrowhead on a passage</dt><dd>one way: it can be crossed only from its open end</dd>
+            <dt>gate label or bar</dt><dd>a gate, open only when its plate is lit</dd>
+          </dl>
+        </details>
+      </section>
+
+      <section>
+        <h3>Inspector</h3>
+        <pre id="inspector" class="inspector" tabindex="0" role="region" aria-label="Inspector">Nothing selected.</pre>
+        <button id="describe" type="button" title="Copy a plain-language description of the construction">Copy description</button>
+        <button id="copy-route" type="button" disabled title="Copy the passing route as numbered steps">Copy route</button>
+        <div id="portal-actions" class="toolrow" hidden>
+          <button id="rotate" type="button" title="R">Turn ¼</button>
+          <button id="mirror" type="button" title="M">Mirror</button>
+          <button id="move-end" type="button" title="Re-attach the end of this portal">Move end</button>
+          <button id="oneway" type="button" title="O">One way</button>
+          <button id="reverse" type="button" title="Flip the direction of a one-way passage">Reverse</button>
+        </div>
+      </section>
+
+      <section>
+        <button id="test" type="button" class="primary">Test construction</button>
+        <button id="walk" type="button" disabled>Walk the route</button>
+        <label class="field">Speed
+          <select id="speed" aria-label="Walk and playback speed">
+            <option value="0.5">½×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+          </select>
+        </label>
+        <button id="hint" type="button">Show hint</button>
+        <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+        <button id="prev" type="button" hidden>← Previous chapter</button>
+        <button id="next" type="button" hidden>Next chapter →</button>
+        <div id="ending" class="ending" hidden>
+          <strong>The last thing you build is this.</strong>
+          <p>Every chapter is complete. The construction is still yours to keep changing. Free construction remains open.</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>Save &amp; load</h3>
+        <div class="toolrow">
+          <select id="slot-list" aria-label="saved slots"><option value="">saved slots</option></select>
+          <input id="slot-name" type="text" placeholder="slot name" aria-label="save slot name" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+          <button id="save" type="button">Save</button>
+          <button id="load" type="button">Load</button>
+          <button id="delete-slot" type="button" title="Delete the save with this name">Delete</button>
+        </div>
+        <div class="toolrow">
+          <button id="copy-progress" type="button" title="Copy a code holding your chapter progress">Copy progress</button>
+          <input id="progress-code" type="text" placeholder="progress code" aria-label="progress code to restore" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+          <button id="restore-progress" type="button">Restore</button>
+        </div>
+        <div class="toolrow">
+          <button id="export" type="button">Export JSON</button>
+          <label class="filebtn">Import JSON<input id="import" type="file" accept="application/json"></label>
+        </div>
+        <div class="toolrow">
+          <button id="share" type="button" title="Put this construction in a link">Share link</button>
+        </div>
+        <button id="reset" type="button">Restart chapter</button>
+        <button id="reset-progress" type="button" title="Forget completed chapters, discoveries, tests and time">Reset campaign progress</button>
+      </section>
+
+      <section>
+        <details id="credits">
+          <summary>Credits</summary>
+          <p class="muted">The Last Thing You'll Ever Build. Written in plain JavaScript modules with no build step. Every sound is synthesised in the browser, and every graphic is drawn on a canvas, so nothing is licensed from anywhere else.</p>
+        </details>
+      </section>
+
+      <section class="help">
+        <h3>How space works here</h3>
+        <p>A room's position on the plan never decides its connections. Only portals do. Each portal may turn your heading by quarter-turns or reflect it, so you can return to a room facing a new direction, or reach a distant room in one step.</p>
+        <p class="muted">Keys: Delete removes selection · R turns a portal · M mirrors it · Esc clears · Ctrl/Cmd-Z undo.</p>
+      </section>
+    </aside>
+
+    <div id="menu" class="menu" role="dialog" aria-modal="true" aria-label="Menu" hidden>
+      <div class="menu-card">
+        <section id="menu-title" class="menu-view">
+          <h2 class="menu-heading">The Last Thing You'll Ever Build</h2>
+          <p class="muted">Build rooms, join them through space that does not have to match the plan, and walk what you build.</p>
+          <div class="menu-buttons">
+            <button id="menu-continue" type="button" class="primary">Continue</button>
+            <button id="menu-new" type="button">New game</button>
+            <button id="menu-chapters-open" type="button">Chapters</button>
+            <button id="menu-sandbox" type="button">Free construction</button>
+            <button id="menu-settings-open" type="button">Settings</button>
+            <button id="menu-credits-open" type="button">Credits</button>
+          </div>
+        </section>
+
+        <section id="menu-pause" class="menu-view" hidden>
+          <h2 class="menu-heading">Paused</h2>
+          <div class="menu-buttons">
+            <button id="pause-resume" type="button" class="primary">Resume</button>
+            <button id="pause-restart" type="button">Restart chapter</button>
+            <button id="pause-chapters-open" type="button">Chapters</button>
+            <button id="pause-settings-open" type="button">Settings</button>
+            <button id="pause-title" type="button">Title screen</button>
+          </div>
+        </section>
+
+        <section id="menu-chapters" class="menu-view" hidden>
+          <h2 class="menu-heading">Chapters</h2>
+          <div id="menu-chapter-buttons" class="menu-buttons menu-scroll"></div>
+          <div class="menu-buttons">
+            <button id="chapters-sandbox" type="button">Free construction</button>
+            <button id="chapters-back" type="button">Back</button>
+          </div>
+        </section>
+
+        <section id="menu-settings" class="menu-view" hidden>
+          <h2 class="menu-heading">Settings</h2>
+          <div class="menu-buttons">
+            <button id="set-theme" type="button">Theme</button>
+            <button id="set-sound" type="button">Sound</button>
+            <label class="field">Volume <input id="set-volume" type="range" min="0" max="100" step="5" aria-label="Sound volume"></label>
+            <label class="field">Walk speed
+              <select id="set-speed" aria-label="Walk speed">
+                <option value="0.5">½×</option>
+                <option value="1">1×</option>
+                <option value="2">2×</option>
+              </select>
+            </label>
+            <button id="settings-back" type="button">Back</button>
+          </div>
+        </section>
+
+        <section id="menu-credits" class="menu-view" hidden>
+          <h2 class="menu-heading">Credits</h2>
+          <p>The Last Thing You'll Ever Build. Written in plain JavaScript modules with no build step.</p>
+          <p class="muted">Every sound is synthesised in the browser, and every graphic is drawn on a canvas, so nothing is licensed from anywhere else.</p>
+          <div class="menu-buttons">
+            <button id="credits-back" type="button">Back</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="complete" class="menu" role="dialog" aria-modal="true" aria-label="Chapter complete" hidden>
+      <div class="menu-card">
+        <h2 id="complete-heading" class="menu-heading"></h2>
+        <p id="complete-text" class="muted"></p>
+        <div class="menu-buttons">
+          <button id="complete-next" type="button" class="primary">Next chapter</button>
+          <button id="complete-stay" type="button">Stay here</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="keys-overlay" class="keys" role="dialog" aria-label="Keyboard shortcuts" hidden>
+      <h2>Keyboard</h2>
+      <dl>
+        <dt>Delete</dt><dd>remove the selection</dd>
+        <dt>R / M / O</dt><dd>turn, mirror, or set one way on the selected passage</dd>
+        <dt>F</dt><dd>fit the plan to the window</dd>
+        <dt>G</dt><dd>turn snapping to the grid on or off</dd>
+        <dt>Ctrl/Cmd-Z, Shift-Z, Ctrl-Y</dt><dd>undo and redo</dd>
+        <dt>Esc</dt><dd>clear the selection or this panel</dd>
+        <dt>In first person</dt><dd>← → or Q E turn · ↑ or W forward</dd>
+        <dt>[ / ]</dt><dd>select the previous or next room</dd>
+        <dt>In first person</dt><dd>click the left or right third to turn, the middle to walk</dd>
+        <dt>Room selected in plan</dt><dd>arrow keys nudge it one grid step, each step undoable</dd>
+        <dt>Connecting, room selected</dt><dd>N E S W pick that face</dd>
+        <dt>+ / −</dt><dd>zoom the plan, or the 3D model</dd>
+        <dt>Plan, nothing selected</dt><dd>arrow keys pan the plan</dd>
+        <dt>A</dt><dd>add a room at the middle of the plan</dd>
+        <dt>F2</dt><dd>rename the selected room</dd>
+        <dt>T / H</dt><dd>test the construction, show the next hint</dd>
+        <dt>W / P</dt><dd>walk the passing route in the plan, or play it in first person</dd>
+        <dt>Two fingers</dt><dd>pinch to zoom the plan or the 3D model</dd>
+        <dt>Esc</dt><dd>also stops a route walk or playback</dd>
+        <dt>In 3D model</dt><dd>drag, or ← → to turn · F to return to the first turn</dd>
+        <dt>?</dt><dd>show or hide this panel</dd>
+      </dl>
+      <button id="keys-close" type="button">Close</button>
+    </div>
+
+    <section class="stage" data-chapter="">
+      <canvas id="plan" aria-label="Plan view of the construction"></canvas>
+      <canvas id="fp" aria-label="First-person view from inside a room" hidden></canvas>
+      <canvas id="model" aria-label="Isometric model of the construction" hidden></canvas>
+      <canvas id="graph" aria-label="Spatial graph overlay"></canvas>
+    </section>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

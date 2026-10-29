@@ -1,0 +1,15 @@
+{
+  "name": "impossible-architecture",
+  "version": "0.30.0",
+  "description": "A spatial-topology construction game: build rooms whose connections ignore their drawn positions.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "node tools/serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

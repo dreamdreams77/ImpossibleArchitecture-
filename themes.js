@@ -1,0 +1,92 @@
+// Environment palettes. Each chapter names a theme; the theme sets the mood of
+// the architecture: wall stone, floor tint, and the colour of passages.
+// Colours are kept in one place so a theme change is a data change.
+
+const BASE = {
+  paper: '#0f1419',
+  paperEdge: '#070a0d',
+  grid: 'rgba(120, 170, 200, 0.07)',
+  gridStrong: 'rgba(120, 170, 200, 0.16)',
+  ink: '#d6e8f1',
+  inkDim: 'rgba(214, 232, 241, 0.45)',
+  floor: 'rgba(40, 70, 90, 0.55)',
+  hatch: 'rgba(127, 184, 214, 0.10)',
+  wall: '#8fc4de',
+  portal: '#e8a25a',
+  portalMirror: '#c77dd7',
+  gate: '#f2c879',
+  accent: '#f2c879',
+  selected: '#f2c879',
+  route: '#7fd6a4',
+  pending: '#7fd6a4',
+  glow: 'rgba(232, 162, 90, 0.35)',
+};
+
+const THEMES = Object.freeze({
+  slate: { ...BASE },
+  ash: {
+    ...BASE,
+    paper: '#12110f',
+    grid: 'rgba(200, 180, 150, 0.06)',
+    gridStrong: 'rgba(200, 180, 150, 0.14)',
+    ink: '#e8dccb',
+    inkDim: 'rgba(232, 220, 203, 0.45)',
+    floor: 'rgba(78, 66, 52, 0.55)',
+    hatch: 'rgba(220, 200, 170, 0.10)',
+    wall: '#c9b48f',
+    portal: '#d98c4f',
+    glow: 'rgba(217, 140, 79, 0.32)',
+    selected: '#f0d49a',
+    gate: '#f0d49a',
+  },
+  dusk: {
+    ...BASE,
+    paper: '#120f17',
+    grid: 'rgba(160, 130, 200, 0.07)',
+    gridStrong: 'rgba(160, 130, 200, 0.16)',
+    ink: '#e4d9f0',
+    inkDim: 'rgba(228, 217, 240, 0.45)',
+    floor: 'rgba(60, 44, 78, 0.55)',
+    hatch: 'rgba(190, 160, 230, 0.10)',
+    wall: '#b9a2dc',
+    portal: '#e48fb5',
+    portalMirror: '#8fb8ff',
+    glow: 'rgba(228, 143, 181, 0.30)',
+    selected: '#f2c879',
+    gate: '#f2c879',
+  },
+  verdigris: {
+    ...BASE,
+    paper: '#0b1412',
+    grid: 'rgba(110, 200, 175, 0.07)',
+    gridStrong: 'rgba(110, 200, 175, 0.16)',
+    ink: '#d3efe6',
+    inkDim: 'rgba(211, 239, 230, 0.45)',
+    floor: 'rgba(30, 72, 64, 0.55)',
+    hatch: 'rgba(120, 220, 190, 0.10)',
+    wall: '#7fd3b8',
+    portal: '#e8b25a',
+    glow: 'rgba(232, 178, 90, 0.30)',
+    gate: '#e8b25a',
+    route: '#b8f08a',
+  },
+  copper: {
+    ...BASE,
+    paper: '#130e0b',
+    grid: 'rgba(210, 150, 100, 0.07)',
+    gridStrong: 'rgba(210, 150, 100, 0.16)',
+    ink: '#f2dccb',
+    inkDim: 'rgba(242, 220, 203, 0.45)',
+    floor: 'rgba(84, 52, 34, 0.55)',
+    hatch: 'rgba(230, 170, 120, 0.10)',
+    wall: '#e0a77a',
+    portal: '#f08a4b',
+    glow: 'rgba(240, 138, 75, 0.32)',
+    accent: '#f5d27a',
+    gate: '#f5d27a',
+  },
+});
+
+export function themeFor(name) {
+  return THEMES[name] ?? THEMES.slate;
+}
