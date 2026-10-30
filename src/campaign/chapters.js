@@ -649,6 +649,11 @@ export function goalPredicate(chapter) {
 
 // Whether the structure satisfies a chapter's main goal.
 export function goalSatisfied(structure, chapter) {
+  const kind = chapter.goal.kind;
+  if (!chapter.physical && (kind === 'all' || kind === 'any')) {
+    const test = (sub) => goalSatisfied(structure, { ...chapter, goal: sub });
+    return kind === 'all' ? chapter.goal.goals.length > 0 && chapter.goal.goals.every(test) : chapter.goal.goals.some(test);
+  }
   if (chapter.physical) { const r = bodySolution(structure, chapter); return !!r && !r.exceeded; }
   const g = chapter.goal;
   if (g.kind === 'loop') return loopExists(structure, g.start);

@@ -14,6 +14,7 @@ import { CHAPTERS, chapterById, chapterStructure, goalSatisfied, goalPredicate, 
 import { searchCycles, dimensionReport } from './topology/analysis.js';
 import { describeStructure } from './topology/describe.js';
 import { diagnose } from './campaign/diagnose.js';
+import { normalizeChallenge, toChapter, problems as challengeProblems } from './campaign/editor.js';
 import { initialBody, move as bodyMove, bodyContext, bodyGoalMet, replayBody, DIRS } from './topology/blocks.js';
 
 const FACE_NAMES = { N: 'north', E: 'east', S: 'south', W: 'west' };
@@ -27,7 +28,7 @@ export class Session {
       time: { ...(progress.time ?? {}) },         // chapter id -> milliseconds spent
     };
     this.sandbox = false;
-    this.challenge = null; // a goal the player set in free construction: { start, to, heading, maxSteps }
+    this.challenge = null; // the challenge made in free construction (see campaign/editor.js)
     this.feedback = null; // { kind: 'info'|'error'|'success', text }
     this.selection = null; // { type: 'room', id } | { type: 'portal', id } | null
     this.pendingFace = null; // { room, face } while connecting
@@ -44,8 +45,14 @@ export class Session {
     return this.sandbox ? null : chapterById(this.chapterIdValue);
   }
 
+  // The challenge being played: a campaign chapter, or in free construction the one the player made.
+  // Both are chapter-shaped, so every system that reads a chapter reads either.
+  get active() {
+    return this.chapter ?? (this.sandbox ? this.challengeChapter() : null);
+  }
+
   get ruleset() {
-    return this.chapter?.ruleset ?? C.UNRESTRICTED;
+    return this.active?.ruleset ?? C.UNRESTRICTED;
   }
 
   get structure() {
@@ -54,7 +61,7 @@ export class Session {
 
   // Environment palette for the current chapter; sandbox uses the default.
   get themeName() {
-    return this.chapter?.theme ?? 'slate';
+    return this.active?.theme ?? 'slate';
   }
 
   // The traveller's walk along the test route. `progress` runs 0..steps.
@@ -107,8 +114,21 @@ export class Session {
     this.feedback = { kind: 'success', text: 'Structure loaded.' };
   }
 
-  // A goal of the player's own, set in free construction. Tested by the same engine as
-  // the campaign: a route search over the real graph.
+  // ---- the challenge editor's challenge ---------------------------------------------------------
+
+  // Sets (or with null clears) the challenge made in free construction. The value is normalised, so
+  // malformed pieces are dropped; the body and any route start again.
+  setChallengeObject(next) {
+    if (!this.sandbox) return false;
+    this.challenge = next ? normalizeChallenge(next) : null;
+    this.routeHighlight = null;
+    this.fp = null;
+    this.fpPlay = null;
+    return true;
+  }
+
+  // The first version's one-goal form, kept as a convenience: reach a room, optionally facing a way, in
+  // at most so many steps.
   setChallenge({ start, to, heading = null, maxSteps = null }) {
     if (!this.sandbox) return false;
     if (!this.structure.rooms.has(start) || !this.structure.rooms.has(to)) {
@@ -119,8 +139,7 @@ export class Session {
       this.feedback = { kind: 'error', text: 'Start and goal are the same room; give a heading or choose another room.' };
       return false;
     }
-    this.challenge = { start, to, heading, maxSteps };
-    this.routeHighlight = null;
+    this.setChallengeObject({ start, to, heading, maxSteps });
     this.feedback = { kind: 'info', text: `Challenge set: reach ${this.structure.rooms.get(to).label || to} from ${this.structure.rooms.get(start).label || start}${heading ? `, facing ${heading}` : ''}${maxSteps ? `, in at most ${maxSteps} step${maxSteps === 1 ? '' : 's'}` : ''}. Test construction checks it.` };
     return true;
   }
@@ -128,14 +147,25 @@ export class Session {
   clearChallenge() {
     this.challenge = null;
     this.routeHighlight = null;
+    this.fp = null;
   }
 
-  // The challenge as a chapter-shaped record, so every campaign check applies unchanged.
-  challengeAsChapter() {
+  // The challenge as a chapter-shaped record (remembered per challenge value).
+  challengeChapter() {
+    if (!this.challenge) return null;
     const c = this.challenge;
-    if (!c) return null;
-    const kind = c.heading ? 'arrive' : c.maxSteps ? 'shortcut' : 'reach';
-    return { id: 'sandbox-challenge', title: 'Your challenge', start: c.start, plates: [], cargo: [], pads: [], ruleset: C.UNRESTRICTED, hint: 'Join the rooms so that a route exists.', goal: { kind, to: c.to, heading: c.heading ?? undefined, maxSteps: c.maxSteps ?? undefined } };
+    return toChapter(c, 'slate');
+  }
+  challengeAsChapter() {
+    return this.challengeChapter();
+  }
+
+  // Gates a passage of the player's own on a plate or a crate delivery, in free construction.
+  gateSelectedPortal({ gate = null, opensAfter = null } = {}) {
+    const sel = this.selection;
+    if (!this.sandbox || sel?.type !== 'portal') return false;
+    return this.apply(C.setGate(this.structure, sel.id, { gate, opensAfter }, this.ruleset),
+      gate != null ? `The passage now waits for plate ${gate + 1}.` : opensAfter != null ? `The passage now waits for crate ${opensAfter + 1} to be delivered.` : 'The passage is open again.');
   }
 
   // Starts the current chapter again. Undo brings back the construction it replaces.
@@ -160,7 +190,7 @@ export class Session {
   // Applies an operation result. Returns true if the structure changed.
   apply(result, successText = null) {
     this.fpPlay = null; // an edit ends route playback: the route no longer matches
-    if (this.chapter?.physical && !result.error) this.fp = null; // a changed building starts the body, and its blocks, again
+    if (this.active?.physical && !result.error) this.fp = null; // a changed building starts the body, and its blocks, again
     if (result.error) {
       this.feedback = { kind: 'error', text: explain(result) };
       return false;
@@ -381,19 +411,20 @@ export class Session {
   // First-person walk. The walker is a traveller in the same engine as the
   // plan's route, so walls, gates, one-way passages and plates all behave alike.
   startFirstPerson() {
-    const start = this.chapter?.start && this.structure.rooms.has(this.chapter.start)
-      ? this.chapter.start
+    const act = this.active;
+    const start = act?.start && this.structure.rooms.has(act.start)
+      ? act.start
       : [...this.structure.rooms.keys()][0];
     if (!start) {
       this.fp = null; // nowhere to stand: drop any walker left from a deleted room
       return false;
     }
-    if (this.chapter?.physical) {
+    if (act?.physical) {
       // A physical challenge: the walker is a body on a grid, with blocks to push.
-      this.fp = { ...initialBody(this.structure, this.chapter), delivered: 0, carry: -1, headings: ['N'] };
+      this.fp = { ...initialBody(this.structure, act), delivered: 0, carry: -1, headings: ['N'] };
       return true;
     }
-    const rules = this.chapter ? rulesFor(this.chapter) : { plates: [], cargo: [], depot: null, pads: [] };
+    const rules = act ? rulesFor(act) : { plates: [], cargo: [], depot: null, pads: [] };
     const t = makeTraveller(start, 'N', { cargo: rules.cargo, depot: rules.depot, pads: rules.pads });
     t.lit = startingLit(rules.plates, start);
     this.fp = t;
@@ -415,8 +446,8 @@ export class Session {
   // Walk forward through the wall ahead. Returns true if the walker moved.
   fpForward() {
     if (!this.fpEnsure()) return false;
-    if (this.chapter?.physical) return this.bodyStep(this.fp.heading);
-    const plates = this.chapter?.plates ?? [];
+    if (this.active?.physical) return this.bodyStep(this.fp.heading);
+    const plates = this.active?.plates ?? [];
     const next = step(this.structure, this.fp, this.fp.heading);
     if (!next) {
       const exit = this.structure.exit(this.fp.room, this.fp.heading);
@@ -435,7 +466,7 @@ export class Session {
     next.lit = platesLitBy(plates, next.room, next.heading, next.lit);
     this.fp = next;
     this.feedback = { kind: 'info', text: `In ${this.structure.rooms.get(next.room).label || next.room}, facing ${next.heading}.` };
-    const deed = cargoEventText(this.structure, this.chapter, next.events);
+    const deed = cargoEventText(this.structure, this.active, next.events);
     if (deed) this.feedback = { kind: 'success', text: `${deed} ${this.feedback.text}` };
     return true;
   }
@@ -444,7 +475,7 @@ export class Session {
   // starts. During a walk they follow the walked route: a crate is with the
   // traveller while carried, at the depot once delivered, and otherwise where it lies.
   cratePositions() {
-    const chapter = this.chapter;
+    const chapter = this.active;
     const crates = chapter?.cargo ?? [];
     if (!crates.length) return [];
     let state = null;
@@ -474,12 +505,12 @@ export class Session {
   // ---- physical play ----------------------------------------------------------------------
 
   get physical() {
-    return !!this.chapter?.physical;
+    return !!this.active?.physical;
   }
 
   // One step on the grid in a compass direction (the heading is kept unless a passage turns it).
   bodyStep(dir) {
-    const chapter = this.chapter;
+    const chapter = this.active;
     const ctx = bodyContext(chapter);
     const r = bodyMove(this.structure, this.fp, dir, ctx);
     this.lastBody = null;
@@ -504,14 +535,16 @@ export class Session {
       : { kind: 'info', text: `In ${name(this.fp.room)}, facing ${this.fp.heading}.` };
     if (bodyGoalMet(this.fp, chapter, ctx)) {
       // Objectives earned by playing: finishing in few enough moves.
-      for (const o of chapter.optional ?? []) {
+      for (const o of this.sandbox ? [] : chapter.optional ?? []) {
         if (o.bonusMoves && this.fp.steps <= o.bonusMoves && !this.progress.discoveries.includes(o.id)) {
           this.progress.discoveries.push(o.id);
           this.feedback = { kind: 'success', text: `Discovered: ${o.title}. ${o.text}` };
         }
       }
     }
-    if (bodyGoalMet(this.fp, chapter, ctx) && !this.progress.completed.includes(chapter.id)) {
+    if (this.sandbox && bodyGoalMet(this.fp, chapter, ctx)) {
+      this.feedback = { kind: 'success', text: 'Your challenge is solved.' };
+    } else if (bodyGoalMet(this.fp, chapter, ctx) && !this.progress.completed.includes(chapter.id)) {
       this.progress.completed.push(chapter.id);
       this.justCompleted = chapter.id;
       this.feedback = { kind: 'success', text: `${chapter.title} complete.` };
@@ -521,14 +554,14 @@ export class Session {
 
   // One step backward: the opposite direction, without turning round.
   fpBack() {
-    if (!this.fpEnsure() || !this.chapter?.physical) return false;
+    if (!this.fpEnsure() || !this.active?.physical) return false;
     return this.bodyStep(rotateFace(this.fp.heading, 2));
   }
 
   // The blocks, for drawing: where each stands now, on the grid.
   bodyBlocks() {
-    if (!this.chapter?.physical) return [];
-    return (this.fp ?? initialBody(this.structure, this.chapter)).blocks.map((b, i) => ({ id: `block:${i}`, room: b.room, cell: b.cell }));
+    if (!this.active?.physical) return [];
+    return (this.fp ?? initialBody(this.structure, this.active)).blocks.map((b, i) => ({ id: `block:${i}`, room: b.room, cell: b.cell }));
   }
 
   // Plays the test route in the first-person view: the walker turns to each
@@ -619,23 +652,7 @@ export class Session {
       const id = this.chapter.id;
       this.progress.attempts[id] = (this.progress.attempts[id] ?? 0) + 1;
     }
-    if (this.sandbox && this.challenge) {
-      const pseudo = this.challengeAsChapter();
-      if (!this.structure.rooms.has(pseudo.start) || !this.structure.rooms.has(pseudo.goal.to)) {
-        this.challenge = null;
-        this.feedback = { kind: 'error', text: 'The challenge named a room that is gone, so it was cleared.' };
-        return;
-      }
-      if (goalSatisfied(this.structure, pseudo)) {
-        this.routeHighlight = routeFor(this.structure, pseudo);
-        this.feedback = { kind: 'success', text: 'Your challenge is solved by this construction.' };
-      } else {
-        this.routeHighlight = null;
-        this.feedback = { kind: 'error', text: `Your challenge is not solved. ${diagnose(this.structure, pseudo).join(' ')}` };
-      }
-      return;
-    }
-    if (this.sandbox) {
+    if (this.sandbox && !this.challenge) {
       const rooms = [...this.structure.rooms.keys()];
       if (rooms.length === 0) {
         this.feedback = { kind: 'error', text: 'Nothing to test yet.' };
@@ -649,7 +666,16 @@ export class Session {
       this.feedback = { kind: 'info', text: `From ${from}, ${reachable} of ${rooms.length - 1} other rooms are reachable.` };
       return;
     }
-    const chapter = this.chapter;
+    const chapter = this.active;
+    if (this.sandbox) {
+      const issues = challengeProblems(this.challenge, this.structure);
+      if (issues.length) { this.routeHighlight = null; this.feedback = { kind: 'error', text: issues.join(' ') }; return; }
+    }
+    const objectives = () => {
+      if (!this.sandbox || !(chapter.optional ?? []).length) return '';
+      const met = discoveriesIn(this.structure, chapter);
+      return ` Objectives: ${chapter.optional.map((o) => `${met.includes(o.id) ? '✓' : '✗'} ${o.title}`).join(' · ')}.`;
+    };
     if (chapter.physical) {
       const sol = bodySolution(this.structure, chapter);
       if (sol && !sol.exceeded) {
@@ -664,7 +690,7 @@ export class Session {
           st = r.state;
         }
         this.routeHighlight = { faces: sol.moves, portals, trail: replay.state.trail, headings: [], delivered: 0, physical: true };
-        this.feedback = { kind: 'success', text: `A solution exists: ${sol.moves.length} moves and ${replay.state.pushes} pushes. Play route shows it; or walk it yourself.` };
+        this.feedback = { kind: 'success', text: `A solution exists: ${sol.moves.length} moves and ${replay.state.pushes} pushes. Play route shows it; or walk it yourself.${objectives()}` };
       } else {
         this.routeHighlight = null;
         this.feedback = { kind: 'error', text: sol?.exceeded ? 'The search for a solution gave up: the construction is very open.' : `No sequence of moves solves it yet. ${diagnose(this.structure, chapter).join(' ')}` };
@@ -672,12 +698,12 @@ export class Session {
       return;
     }
     if (goalSatisfied(this.structure, chapter)) {
-      this.feedback = { kind: 'success', text: 'The construction functions. Goal met.' };
-      this.routeHighlight = routeFor(this.structure, chapter);
+      this.feedback = { kind: 'success', text: `${this.sandbox ? 'Your challenge is solved by this construction.' : 'The construction functions. Goal met.'}${objectives()}` };
+      this.routeHighlight = routeFor(this.structure, chapter.goal.kind === 'all' ? { ...chapter, goal: chapter.goal.goals[0] } : chapter);
       return;
     }
     this.routeHighlight = null;
-    this.feedback = { kind: 'error', text: `Goal not met. ${diagnose(this.structure, chapter).join(' ')}` };
+    this.feedback = { kind: 'error', text: `${this.sandbox ? 'Your challenge is not solved.' : 'Goal not met.'} ${diagnose(this.structure, chapter).join(' ')}` };
   }
 
   checkCompletion() {

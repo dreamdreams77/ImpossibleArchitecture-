@@ -63,7 +63,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   }
 
   function context() {
-    const chapter = session.chapter;
+    const chapter = session.active;
     const rules = chapter ? rulesFor(chapter) : { plates: [], cargo: [], pads: [] };
     const phys = !!chapter?.physical;
     return { physical: phys, solids: phys ? (chapter.solids ?? {}) : {}, sealed: session.ruleset?.sealedFaces ?? [], chapterId: chapter?.id ?? null, discipline: chapter?.discipline ?? null, themeName: session.themeName, plates: rules.plates, cargo: rules.cargo, pads: rules.pads };
@@ -72,7 +72,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function routePortals() {
     const set = new Set();
     const route = session.routeHighlight;
-    const chapter = session.chapter ?? session.challengeAsChapter?.();
+    const chapter = session.active;
     if (route?.physical) { for (const id of route.portals ?? []) set.add(id); return set; }
     if (!route || !chapter) return set;
     let room = chapter.start;
@@ -100,7 +100,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     const crates = session.cratePositions();
     const route = routePortals();
     // In a physical challenge the plates held down by weight count as lit, and the blocks are objects.
-    const lit = session.physical && walkerState ? litBits(walkerState, bodyContext(session.chapter)) : (walkerState?.lit ?? 0);
+    const lit = session.physical && walkerState ? litBits(walkerState, bodyContext(session.active)) : (walkerState?.lit ?? 0);
     const blocks = session.physical ? session.bodyBlocks() : [];
     const key = `${lit}|${walkerState?.delivered ?? 0}|${JSON.stringify(crates)}|${[...route].join(',')}|${JSON.stringify(blocks)}`;
     if (key !== stateKey) {

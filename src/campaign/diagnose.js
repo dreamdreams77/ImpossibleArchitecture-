@@ -4,9 +4,17 @@
 
 import { findRoute } from '../topology/traversal.js';
 import { findCycles } from '../topology/analysis.js';
-import { goalPredicate, rulesFor, bodySolution } from './chapters.js';
+import { goalPredicate, rulesFor, bodySolution, goalSatisfied } from './chapters.js';
 
 export function diagnose(structure, chapter) {
+  if (!chapter.physical && (chapter.goal.kind === 'all' || chapter.goal.kind === 'any')) {
+    const out = [];
+    chapter.goal.goals.forEach((g, i) => {
+      const sub = { ...chapter, goal: g };
+      if (!goalSatisfied(structure, sub)) out.push(...diagnose(structure, sub).map((r) => `Goal ${i + 1}: ${r}`));
+    });
+    return out.length ? out : [chapter.hint];
+  }
   const name = (id) => structure.rooms.get(id)?.label || id;
   const plates = chapter.plates ?? [];
   const start = chapter.start;

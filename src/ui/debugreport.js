@@ -55,7 +55,7 @@ export function debugReport(session) {
   } else out.push('(no walker)');
 
   out.push('-- objects');
-  const chapter = session.chapter;
+  const chapter = session.active;
   if (chapter) {
     (chapter.plates ?? []).forEach((p, i) => {
       const lit = fp ? (fp.lit & (1 << i)) !== 0 : false;

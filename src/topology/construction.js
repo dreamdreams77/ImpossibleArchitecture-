@@ -177,6 +177,23 @@ export function setOneWay(structure, portalId, oneWay, ruleset = UNRESTRICTED) {
   return commit(structure, next, ruleset);
 }
 
+// Gates a player-built passage on a plate (`gate`: plate index) or on a crate delivery (`opensAfter`:
+// crate index); either may be null to open it again. The challenge editor offers this; campaign
+// challenges gate only their fixed passages.
+export function setGate(structure, portalId, { gate = null, opensAfter = null } = {}, ruleset = UNRESTRICTED) {
+  const p = structure.portals.get(portalId);
+  if (!p) return fail(structure, 'NO_PORTAL', `No portal ${portalId}`);
+  if (p.fixed) return fail(structure, 'FIXED', RULES.FIXED);
+  for (const [name, v] of [['gate', gate], ['opensAfter', opensAfter]]) {
+    if (v !== null && !(Number.isInteger(v) && v >= 0)) return fail(structure, 'BAD_GATE', `${name} must be null or a whole number from 0`);
+  }
+  const next = structure.clone();
+  const q = next.portals.get(portalId);
+  q.gate = gate;
+  q.opensAfter = opensAfter;
+  return commit(structure, next, ruleset);
+}
+
 // Flips a one-way passage to face the other way. A two-way passage has no
 // direction to reverse, and a fixed passage is architecture, so both are refused.
 export function reverseOneWay(structure, portalId, ruleset = UNRESTRICTED) {

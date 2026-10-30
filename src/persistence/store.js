@@ -5,6 +5,7 @@
 // tested without a browser.
 
 import { Structure } from '../topology/graph.js';
+import { normalizeChallenge } from '../campaign/editor.js';
 
 const SAVE_VERSION = 1;
 
@@ -14,7 +15,7 @@ export function encodeSave({ chapterId, structure, progress, challenge = null })
     saveVersion: SAVE_VERSION,
     chapterId,
     structure: structure.toJSON(),
-    challenge: challenge ? { start: challenge.start, to: challenge.to, heading: challenge.heading ?? null, maxSteps: challenge.maxSteps ?? null } : null,
+    challenge: normalizeChallenge(challenge),
     progress: {
       completed: [...(progress?.completed ?? [])],
       discoveries: [...(progress?.discoveries ?? [])],
@@ -38,7 +39,7 @@ export function decodeSave(text) {
   return {
     chapterId: data.chapterId,
     structure: Structure.fromJSON(data.structure),
-    challenge: validChallenge(data.challenge),
+    challenge: normalizeChallenge(data.challenge),
     progress: {
       completed: data.progress?.completed ?? [],
       discoveries: data.progress?.discoveries ?? [],
@@ -46,13 +47,9 @@ export function decodeSave(text) {
   };
 }
 
-// A sandbox challenge is { start, to, heading, maxSteps }. Anything malformed is dropped.
-export function validChallenge(c) {
-  if (!c || typeof c.start !== 'string' || typeof c.to !== 'string') return null;
-  const heading = ['N', 'E', 'S', 'W'].includes(c.heading) ? c.heading : null;
-  const maxSteps = Number.isInteger(c.maxSteps) && c.maxSteps > 0 ? c.maxSteps : null;
-  return { start: c.start, to: c.to, heading, maxSteps };
-}
+// A sandbox challenge: the editor's current shape, or the first version's one goal, which is upgraded.
+// Anything malformed is dropped. (Kept under its old name for callers of the first version.)
+export const validChallenge = normalizeChallenge;
 
 // Thin wrapper over any key-value store with getItem/setItem/removeItem.
 export class SaveSlots {

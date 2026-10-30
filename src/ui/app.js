@@ -21,6 +21,7 @@ import { createPinch } from './pinch.js';
 import { createGlView } from './glview.js';
 import { styleFor } from '../render3d/styles.js';
 import { debugReport } from './debugreport.js';
+import { createEditorPanel } from './editorpanel.js';
 import { ACTIONS, loadBindings, saveBindings, rebind, translate } from './keybindings.js';
 import { copyText, canvasRatio } from './platform.js';
 
@@ -258,7 +259,7 @@ export function boot() {
     if (viewMode === 'first') {
       const fr = fpCanvas.getBoundingClientRect();
       const walker = session.fpEnsure();
-      const model = walker ? firstPersonModel(session.structure, walker, session.chapter?.plates ?? []) : null;
+      const model = walker ? firstPersonModel(session.structure, walker, session.active?.plates ?? []) : null;
       const key = walker ? `${walker.room}|${walker.heading}|${walker.steps}` : 'empty';
       if (key !== fpKey) {
         fpKind = transitionKind(fpKey, key);
@@ -502,6 +503,7 @@ export function boot() {
     const id = session.sandbox ? null : session.chapter?.id ?? null;
     if (id === lastChallenge) return;
     lastChallenge = id;
+    cardFor = null; // a card queued for a challenge the player has left is dropped
     if (id && isFirstOfChapter(id)) {
       const d = placeInChapter(id).chapter;
       if (!seenChapters.includes(d.no)) cardFor = d;
@@ -622,33 +624,10 @@ export function boot() {
   });
   $('#complete-stay').addEventListener('click', () => { closeComplete(); render(); });
 
-  // Free construction can set a goal of its own, tested by the campaign's engine.
-  let challengeKey = '';
-  function syncChallengeBox() {
-    const box = $('#challenge-box');
-    box.hidden = !session.sandbox;
-    if (!session.sandbox) return;
-    const rooms = [...session.structure.rooms.values()];
-    const key = rooms.map((r) => `${r.id}:${r.label}`).join('|') + JSON.stringify(session.challenge);
-    if (key === challengeKey) return;
-    challengeKey = key;
-    for (const id of ['#ch-start', '#ch-goal']) {
-      const sel = $(id);
-      const keep = sel.value;
-      sel.replaceChildren(...rooms.map((r) => new Option(r.label || r.id, r.id)));
-      if (rooms.some((r) => r.id === keep)) sel.value = keep;
-    }
-    const c = session.challenge;
-    if (c) { $('#ch-start').value = c.start; $('#ch-goal').value = c.to; $('#ch-heading').value = c.heading ?? ''; $('#ch-steps').value = String(c.maxSteps ?? ''); }
-    $('#ch-clear').disabled = !c;
-    $('#ch-status').textContent = c ? 'Challenge set. Test construction checks it.' : 'No challenge. Pick rooms and set one.';
-  }
-  $('#ch-set').addEventListener('click', () => {
-    session.setChallenge({ start: $('#ch-start').value, to: $('#ch-goal').value, heading: $('#ch-heading').value || null, maxSteps: Number($('#ch-steps').value) || null });
-    challengeKey = '';
-    render();
-  });
-  $('#ch-clear').addEventListener('click', () => { session.clearChallenge(); challengeKey = ''; render(); });
+  // Free construction is a challenge editor: goals, plates, crates, pads, blocks, gates, rules and
+  // objectives, all judged by the campaign's engine.
+  const editor = createEditorPanel({ root: $('#challenge-box'), session, render: () => render() });
+  function syncChallengeBox() { editor.sync(); }
 
   // Over the 3D view: the latest message (the sidebar may be out of sight), touch controls, a
   // Test button, and, in a room with no doorway, a prompt that says what to do.

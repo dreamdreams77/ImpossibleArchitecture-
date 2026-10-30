@@ -198,7 +198,12 @@ export function move(structure, state, dir, ctx) {
 //   place  every target holds a block (a target naming a `block` index needs that block)
 // With `requireLit` every plate must be lit too, weight plates included.
 export function bodyGoalMet(state, chapter, ctx = bodyContext(chapter)) {
-  const g = chapter.goal;
+  return metGoal(state, chapter.goal, ctx);
+}
+
+function metGoal(state, g, ctx) {
+  if (g.kind === 'all') return (g.goals ?? []).length > 0 && g.goals.every((sub) => metGoal(state, sub, ctx));
+  if (g.kind === 'any') return (g.goals ?? []).some((sub) => metGoal(state, sub, ctx));
   if (g.requireLit) {
     const full = ctx.plates.length ? (1 << ctx.plates.length) - 1 : 0;
     if ((litBits(state, ctx) & full) !== full) return false;

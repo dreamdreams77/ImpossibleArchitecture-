@@ -33,16 +33,16 @@ export function drawPlan(ctx, view, session, { width, height }, time = 0) {
   for (const p of s.portals.values()) drawPortal(ctx, s, p, toScreen, T, session, time);
 
   // Plates.
-  for (const plate of session.chapter?.plates ?? []) drawPlate(ctx, s, plate, toScreen, scale, T, time);
+  for (const plate of session.active?.plates ?? []) drawPlate(ctx, s, plate, toScreen, scale, T, time);
 
   // Pads: a dashed ring round each room that sets crates down.
-  for (const id of session.chapter?.pads ?? []) {
+  for (const id of session.active?.pads ?? []) {
     const r = s.rooms.get(id);
     if (r) drawPad(ctx, r, toScreen, scale, T);
   }
 
   // Physical challenges: the grid, pillars, weight plates, blocks and the body.
-  if (session.chapter?.physical) drawBodyLayer(ctx, s, session, toScreen, scale, T);
+  if (session.active?.physical) drawBodyLayer(ctx, s, session, toScreen, scale, T);
 
   // Crates, where the walk has them.
   drawCrates(ctx, s, session.cratePositions(), toScreen, scale, T);
@@ -508,7 +508,7 @@ export function drawGraph(ctx, structure, selection, { width, height }, themeNam
 // The grid of a physical challenge, drawn in each room: pillars, weight plates (lit while held down),
 // targets, blocks, and the body with the way it faces. Cells are the engine's own cells.
 function drawBodyLayer(ctx, s, session, toScreen, scale, T) {
-  const chapter = session.chapter;
+  const chapter = session.active;
   const body = session.fp;
   const ctxB = bodyContext(chapter);
   const lit = body ? litBits(body, ctxB) : 0;
