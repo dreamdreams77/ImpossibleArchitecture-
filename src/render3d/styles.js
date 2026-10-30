@@ -97,7 +97,7 @@ export const STYLES = Object.freeze({
     grade: { lift: [0.012, 0.006, 0.002], tint: [1.04, 0.99, 0.93], saturation: 1.02, contrast: 1.1, vignette: 0.38, exposure: 0.9 },
     name: 'The Mechanical Interior',
     height: 6.2,
-    floor: { gen: 'grating', args: { base: '#2b2522', seed: 41, cells: 8 }, repeat: 0.5, metalness: 0.8, env: 0.7 },
+    floor: { gen: 'grating', args: { base: '#53473f', seed: 41, cells: 8 }, repeat: 0.5, metalness: 0.55, env: 1.0 },
     inlay: { color: '#e08a3c', metal: 0.8 },
     wall: { gen: 'brushedMetal', args: { base: '#6c5546', seed: 42, seams: 2, wear: 0.7 }, repeat: 0.22, metalness: 0.75, env: 0.7 },
     inset: { gen: 'brushedMetal', args: { base: '#40342d', seed: 43, seams: 4, wear: 0.8 }, repeat: 0.22, metalness: 0.7, env: 0.5 },
