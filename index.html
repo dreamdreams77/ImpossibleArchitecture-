@@ -124,10 +124,6 @@
       </section>
 
       <section>
-        <h3>Inspector</h3>
-        <pre id="inspector" class="inspector" tabindex="0" role="region" aria-label="Inspector">Nothing selected.</pre>
-        <button id="describe" type="button" title="Copy a plain-language description of the construction">Copy description</button>
-        <button id="copy-route" type="button" disabled title="Copy the passing route as numbered steps">Copy route</button>
         <div id="portal-actions" class="toolrow" hidden>
           <button id="rotate" type="button" title="R">Turn ¼</button>
           <button id="mirror" type="button" title="M">Mirror</button>
@@ -170,6 +166,11 @@
       </section>
 
       <section>
+        <details id="advanced" class="advanced">
+          <summary class="sum-h3">Advanced: inspector, save, share</summary>
+        <pre id="inspector" class="inspector" tabindex="0" role="region" aria-label="Inspector">Nothing selected.</pre>
+        <button id="describe" type="button" title="Copy a plain-language description of the construction">Copy description</button>
+        <button id="copy-route" type="button" disabled title="Copy the passing route as numbered steps">Copy route</button>
         <h3>Save &amp; load</h3>
         <div class="toolrow">
           <select id="slot-list" aria-label="saved slots"><option value="">saved slots</option></select>
@@ -192,6 +193,7 @@
         </div>
         <button id="reset" type="button">Restart chapter</button>
         <button id="reset-progress" type="button" title="Forget completed chapters, discoveries, tests and time">Reset campaign progress</button>
+        </details>
       </section>
 
       <section>
@@ -350,6 +352,18 @@
       <canvas id="plan" aria-label="Plan view of the construction"></canvas>
       <canvas id="gl" aria-label="Three-dimensional view of the construction" hidden></canvas>
       <div id="gl-hud" class="gl-hud" hidden></div>
+      <div id="gl-toast" class="gl-toast" role="status" aria-live="polite" hidden></div>
+      <div id="gl-empty" class="gl-empty" hidden>
+        <strong>No doorway in this room yet.</strong>
+        <span>Rooms are joined by passages you build. Open the model, tap a ring on one room, then a ring on another.</span>
+        <button id="gl-empty-build" type="button" class="primary">Build in the model</button>
+      </div>
+      <div id="gl-pad" class="gl-pad" hidden>
+        <button id="pad-left" type="button" aria-label="Turn left">◀</button>
+        <button id="pad-fwd" type="button" aria-label="Walk forward">▲ Walk</button>
+        <button id="pad-right" type="button" aria-label="Turn right">▶</button>
+      </div>
+      <button id="gl-test" class="gl-test" type="button" hidden>Test construction</button>
       <pre id="debug-panel" class="gl-debug debug-panel" hidden></pre>
       <canvas id="fp" aria-label="First-person view from inside a room" hidden></canvas>
       <canvas id="model" aria-label="Isometric model of the construction" hidden></canvas>

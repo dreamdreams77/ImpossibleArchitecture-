@@ -648,6 +648,38 @@ export function boot() {
   });
   $('#ch-clear').addEventListener('click', () => { session.clearChallenge(); challengeKey = ''; render(); });
 
+  // Over the 3D view: the latest message (the sidebar may be out of sight), touch controls, a
+  // Test button, and, in a room with no doorway, a prompt that says what to do.
+  let toastText = '';
+  let toastTimer = null;
+  function syncViewOverlays() {
+    const on = glMode();
+    const first = on && viewMode === 'first';
+    $('#gl-pad').hidden = !first;
+    $('#gl-test').hidden = !on;
+    const fb = session.feedback;
+    const toast = $('#gl-toast');
+    if (!on || !fb?.text) { toast.hidden = true; toastText = ''; }
+    else if (fb.text !== toastText) {
+      toastText = fb.text;
+      toast.textContent = fb.text;
+      toast.dataset.kind = fb.kind ?? 'info';
+      toast.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.hidden = true; }, 5000);
+    }
+    const w = first ? session.fp : null;
+    const lonely = !!w && session.structure.degree(w.room) === 0 && !session.sandbox;
+    $('#gl-empty').hidden = !lonely;
+    if (lonely) toast.hidden = true;
+  }
+  $('#pad-left').addEventListener('click', () => $('#fp-left').click());
+  $('#pad-right').addEventListener('click', () => $('#fp-right').click());
+  $('#pad-fwd').addEventListener('click', () => $('#fp-forward').click());
+  $('#gl-test').addEventListener('click', () => $('#test').click());
+  $('#gl-empty-build').addEventListener('click', () => { session.tool = 'connect'; setView('model'); });
+  if (window.matchMedia?.('(min-width: 801px)').matches) $('#advanced').open = false;
+
   // Developer overlay (F3): the engine's own account of the world, plus renderer stats.
   let debugOn = false;
   let debugAt = 0;
@@ -803,6 +835,7 @@ export function boot() {
     $('#portal-actions').hidden = !(sel && sel.type === 'portal');
     syncChallengeBox();
     $('#feedback').textContent = session.feedback?.text ?? '';
+    syncViewOverlays();
     $('#feedback').dataset.kind = session.feedback?.kind ?? 'info';
     $('#next').hidden = !(session.chapter && session.progress.completed.includes(session.chapter.id) && session.nextChapterId());
     $('#prev').hidden = !(session.chapter && session.previousChapterId());

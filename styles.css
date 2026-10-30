@@ -213,3 +213,18 @@ body.panel-hidden .ending-screen { inset: 0; }
   .ending-screen { inset: 0; align-items: flex-end; padding: 4vh 5vw; }
   .debug-panel { max-width: 92%; }
 }
+
+/* On-view feedback: messages, touch controls, the empty-room prompt */
+.gl-toast { position: absolute; left: 10px; top: 10px; max-width: min(520px, calc(100% - 170px)); padding: 8px 14px; border-radius: 8px; font-size: 13px; line-height: 1.4; color: #f3ead6; background: rgba(10, 12, 16, 0.82); border: 1px solid rgba(240, 200, 120, 0.45); pointer-events: none; z-index: 4; }
+.gl-toast[data-kind="error"] { border-color: rgba(255, 106, 90, 0.8); }
+.gl-toast[data-kind="success"] { border-color: rgba(125, 255, 176, 0.8); }
+.gl-toast[hidden], .gl-empty[hidden], .gl-pad[hidden], .gl-test[hidden] { display: none; }
+.gl-empty { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: min(340px, calc(100% - 32px)); display: grid; gap: 10px; padding: 16px; text-align: center; color: #f3ead6; background: rgba(10, 12, 16, 0.86); border: 1px solid rgba(240, 200, 120, 0.5); border-radius: 10px; z-index: 4; }
+.gl-empty span { font-size: 13px; opacity: 0.85; line-height: 1.45; }
+.gl-pad { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 8px; z-index: 4; }
+.gl-pad button { min-width: 56px; min-height: 48px; font-size: 18px; background: rgba(10, 12, 16, 0.7); color: #f3ead6; border: 1px solid rgba(240, 200, 120, 0.5); border-radius: 10px; backdrop-filter: blur(4px); }
+.gl-pad #pad-fwd { font-size: 14px; padding: 0 16px; }
+.gl-test { position: absolute; right: 10px; top: 10px; z-index: 4; min-height: 36px; font-size: 13px; background: rgba(10, 12, 16, 0.7); color: #f3ead6; border: 1px solid rgba(125, 255, 176, 0.6); border-radius: 8px; }
+.advanced > summary { cursor: pointer; padding: 6px 0; }
+.advanced[open] > summary { margin-bottom: 10px; }
+@media (max-width: 800px) { .gl-toast { top: 6px; font-size: 12px; } .gl-test { top: 6px; } .gl-hud { bottom: 66px; } }
