@@ -11,6 +11,7 @@ import { connect } from '../topology/construction.js';
 import { bodyContext, litBits, gridSize } from '../topology/blocks.js';
 import { doorFrame } from '../render3d/frames.js';
 import { createPinch } from './pinch.js';
+import { Presentation } from '../render3d/presentation.js';
 import { deviceInfo, recommendPreset } from './bench.js';
 import { Structure } from '../topology/graph.js';
 
@@ -39,6 +40,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     return null;
   }
   const walker = new Walker();
+  const presentation = new Presentation({ enabled: settings.cinematic?.() ?? true, reduceMotion: !!settings.reduceMotion });
   walker.reduceMotion = !!settings.reduceMotion;
   const orbit = { azimuth: 0.62, elevation: 0.86, distance: 70, target: [0, 0, 0] };
   let mode = 'first';
@@ -221,11 +223,16 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       if (!walker.room || !session.structure.rooms.has(walker.room)) walker.key = null;
       walker.sync(session.structure, walkerState, halfOf);
       for (const ev of walker.update(dt)) {
-        if (ev.type === 'cross') { onCross?.(ev); if (ev.mirror || ev.turns) flash = 1; }
+        if (ev.type === 'cross') { onCross?.(ev); if (ev.mirror || ev.turns) { flash = 1; presentation.play('transform'); } }
       }
       world.state.flash = flash;
       flash = Math.max(0, flash - dt * 2.4);
-      if (walker.room) world.renderWalk({ ...walker.pose(), fov: settings.fov?.() ?? 72 }, t);
+      if (walker.room) {
+        const pose = walker.pose();
+        const o = presentation.update(dt);
+        presentation.enabled = settings.cinematic?.() ?? true;
+        world.renderWalk({ ...pose, pos: [pose.pos[0], pose.pos[1] + o.height, pose.pos[2]], yaw: pose.yaw + o.yaw, pitch: pose.pitch + o.pitch, fov: (settings.fov?.() ?? 72) + o.fov }, t);
+      }
     } else {
       if (fit) fitOrbit();
       if (autoOrbit) { orbit.azimuth += dt * 0.12; orbit.elevation += (0.62 - orbit.elevation) * Math.min(1, dt * 0.8); }
@@ -252,6 +259,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   // ---- input ----------------------------------------------------------------
 
   canvas.addEventListener('pointerdown', (evt) => {
+    presentation.cancel();
     if (pinch.down(evt.pointerId, evt.clientX, evt.clientY)) { drag = null; return; }
     drag = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, sx: evt.clientX, sy: evt.clientY, moved: false, room: null };
     // In the model, a drag that starts on the selected room moves that room on the plan.
@@ -339,6 +347,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('wheel', (evt) => {
+    presentation.cancel();
     if (mode !== 'model') return;
     evt.preventDefault();
     orbit.distance = clamp(orbit.distance * (evt.deltaY > 0 ? 1.1 : 0.9), 14, 320);
@@ -382,6 +391,8 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       world.debug = debugOn;
     },
     bump(heading) { walker.bump(heading); },
+    present(name) { return presentation.play(name); },
+    cancelPresentation() { presentation.cancel(); },
     // The worst-case scene for the benchmark: the game's own world is put back afterwards.
     startBench() {
       const s = new Structure();

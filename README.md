@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 400 tests over the engine, campaign, renderer maths and walker
+npm test       # 404 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -42,6 +42,7 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 - **Propagation**: sound and light spread through the real passages, not across the plan. Gates dull them, and rooms borrow glow from connected rooms (`src/topology/propagation.js`).
 - **The Atlas** (title menu): 11 architectural phenomena (self-joined rooms, hall of mirrors, turning and reversing loops, one-way rings, shared loops, plan versus graph distance) found by building them anywhere, shown as questions until found.
 - **Quick tools on the plan** (Select, Add room, Connect, Undo) so building never needs the side panel, which on a phone sits below the plan.
+- **Cinematic moments** (Settings, on by default): a gentle lift and widening of the walk camera when you make a discovery or finish a challenge. It is layered on your own view, ends the instant you touch anything, and never plays under reduced motion.
 - **Sequenced plates**: a plate with `after` lights only once an earlier plate is lit (The Ordered Hall).
 - **A challenge editor** in the sandbox: several goals, optional objectives, plates, gates, crates, pads, heading requirements and step limits, all run on the campaign engine.
 - **Graphics presets** (high, medium, low) with dynamic resolution, shadows, bloom and ACES grading; a built-in benchmark (`?bench` or Settings, Run benchmark) that produces a report. No claim is made here about real phones: the benchmark has only been run on a software renderer in development, so run it on your own device.

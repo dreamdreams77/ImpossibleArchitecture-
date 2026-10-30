@@ -48,11 +48,13 @@ export function boot() {
   const slots = new SaveSlots(window.localStorage);
   const glCanvas = $('#gl');
   // Camera comfort: look sensitivity, field of view, head bob. Remembered between visits.
-  const access = { look: 1, fov: 72, bob: true };
+  const access = { look: 1, fov: 72, bob: true, cinematic: true };
   try { Object.assign(access, JSON.parse(localStorage.getItem('ia-access') ?? '{}')); } catch { /* defaults */ }
   const saveAccess = () => { try { localStorage.setItem('ia-access', JSON.stringify(access)); } catch { /* not remembered */ } };
   let bindings = loadBindings(window.localStorage);
   // Rebound keys are translated before any handler sees them (capture phase, first listener).
+  // Any key ends a camera moment at once: the player's own view always wins.
+  window.addEventListener('keydown', () => gl?.cancelPresentation?.(), true);
   window.addEventListener('keydown', (evt) => {
     if (typeof capturing !== 'undefined' && capturing) return;
     if (evt.ctrlKey || evt.metaKey || evt.altKey || evt.key.length !== 1 || evt.isTrusted === false) return;
@@ -111,7 +113,7 @@ export function boot() {
     session,
     hud: $('#gl-hud'),
     
-    settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed, look: () => access.look, fov: () => access.fov, bob: () => access.bob },
+    settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed, look: () => access.look, fov: () => access.fov, bob: () => access.bob, cinematic: () => access.cinematic !== false },
     onWalkClick: (zone) => {
       session.fpStopPlay();
       if (zone === 'forward') walkForward();
@@ -454,6 +456,7 @@ export function boot() {
     $('#set-look').value = String(access.look);
     $('#set-fov').value = String(access.fov);
     $('#set-bob').checked = !!access.bob;
+    $('#set-cinematic').checked = access.cinematic !== false;
     fillKeyList();
   }
 
@@ -644,6 +647,7 @@ export function boot() {
   });
   $('#set-look').addEventListener('input', (e) => { access.look = Number(e.target.value); saveAccess(); });
   $('#set-fov').addEventListener('input', (e) => { access.fov = Number(e.target.value); saveAccess(); });
+  $('#set-cinematic').addEventListener('change', (e) => { access.cinematic = e.target.checked; saveAccess(); });
   $('#set-bob').addEventListener('change', (e) => { access.bob = e.target.checked; saveAccess(); });
   $('#gl-cutaway').addEventListener('click', () => {
     const on = !gl.cutaway;
@@ -769,7 +773,9 @@ export function boot() {
   }
 
   function render() {
+    if (session.justAtlas) { session.justAtlas = null; if (glMode()) gl.present('discovery'); }
     if (session.justCompleted) {
+      if (glMode()) gl.present('complete');
       const done = session.justCompleted;
       session.justCompleted = null;
       showComplete(done);
