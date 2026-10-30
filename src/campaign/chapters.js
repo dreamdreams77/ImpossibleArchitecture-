@@ -27,6 +27,7 @@ import { Structure } from '../topology/graph.js';
 import { findRoute } from '../topology/traversal.js';
 import { findCycles, dimensionReport } from '../topology/analysis.js';
 import { EXTRA } from './extra.js';
+import { solveBody } from '../topology/blocks.js';
 import { ORDER, placeInChapter } from './campaign.js';
 
 const RAW = [
@@ -611,7 +612,18 @@ export function rulesFor(chapter) {
   };
 }
 
+// A physical challenge is judged by search: is there any sequence of walking and pushing, on this
+// construction, that meets the goal? The answer is remembered per structure value.
+const bodyCache = new WeakMap();
+export function bodySolution(structure, chapter, maxStates = 250000) {
+  let per = bodyCache.get(structure);
+  if (!per) { per = new Map(); bodyCache.set(structure, per); }
+  if (!per.has(chapter.id)) per.set(chapter.id, solveBody(structure, chapter, { maxStates }));
+  return per.get(chapter.id);
+}
+
 export function goalPredicate(chapter) {
+  if (chapter.physical) return null; // judged by bodySolution, not by a traveller state
   const g = chapter.goal;
   const plates = chapter.plates ?? [];
   const full = plates.length ? (1 << plates.length) - 1 : 0;
@@ -637,6 +649,7 @@ export function goalPredicate(chapter) {
 
 // Whether the structure satisfies a chapter's main goal.
 export function goalSatisfied(structure, chapter) {
+  if (chapter.physical) { const r = bodySolution(structure, chapter); return !!r && !r.exceeded; }
   const g = chapter.goal;
   if (g.kind === 'loop') return loopExists(structure, g.start);
   const pred = goalPredicate(chapter);

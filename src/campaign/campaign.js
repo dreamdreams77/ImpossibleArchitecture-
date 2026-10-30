@@ -45,7 +45,7 @@ export const DISCIPLINES = Object.freeze([
     theme: 'copper',
     intro: 'Some rooms do things. The building has hands now: plates that wait to be struck, gates that wait to be opened, crates that must be carried and set down.',
     outro: 'A mechanism is a route taken in the right order, facing the right way. Your constructions no longer only connect: they work.',
-    challenges: ['the-machine', 'sealed-wing', 'revolving-house', 'the-wheel', 'the-freight', 'the-pad-room'],
+    challenges: ['the-machine', 'sealed-wing', 'the-first-push', 'revolving-house', 'the-wheel', 'the-weighted-gate', 'the-freight', 'the-pad-room'],
   },
   {
     no: 5,
@@ -55,7 +55,7 @@ export const DISCIPLINES = Object.freeze([
     theme: 'verdigris',
     intro: 'A building can hold two readings at once, and they may compete. Some passages never open back; some rooms must never touch. Choose how, and live with both.',
     outro: 'You have built structures that agree with themselves in two ways at once. Nothing is left to learn except how to use all of it together.',
-    challenges: ['lantern-court', 'two-keys', 'the-stillwater', 'the-drop', 'mirror-archive', 'the-seam'],
+    challenges: ['lantern-court', 'two-keys', 'the-stillwater', 'the-drop', 'mirror-archive', 'the-long-push', 'the-seam'],
   },
   {
     no: 6,
@@ -65,7 +65,7 @@ export const DISCIPLINES = Object.freeze([
     theme: 'dusk',
     intro: 'Everything you know, in one building. Loops and turns, mirrors and gates, plates and crates. When it stands, it opens the Concordance.',
     outro: 'It stands.',
-    challenges: ['the-sealed-vault', 'the-ring-hall', 'final-construction', 'the-last-construction'],
+    challenges: ['the-sealed-vault', 'the-ring-hall', 'the-moving-day', 'final-construction', 'the-last-construction'],
   },
 ]);
 

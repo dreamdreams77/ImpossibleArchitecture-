@@ -15,6 +15,10 @@ function steps(structure, from, to) {
   return route === null ? Infinity : route.length;
 }
 
+// Physical challenges: the walker is a body on a grid, with blocks to push. A cell is [column, row],
+// counted from the north-west corner; a door is the middle of a face. Goals are judged by search over
+// real moves (see src/topology/blocks.js), so any solution is accepted. An objective with `bonusMoves`
+// is earned by actually finishing in that many moves or fewer; it is not a property of the structure.
 export const EXTRA = [
   {
     id: 'the-two-doors',
@@ -222,6 +226,132 @@ export const EXTRA = [
         text: 'Four passages and one great ring: Foundation, Well, Forge, Crypt, Loft, Depot and back. The building folds back on itself without a single room doing it.',
         check: (s) => [...s.portals.values()].filter((p) => !p.fixed).length === 4
           && findCycles(s).some((c) => c.rooms.length === 6),
+      },
+    ],
+  },
+
+  {
+    id: 'the-first-push',
+    theme: 'copper',
+    physical: true,
+    title: 'The First Push',
+    blurb: 'Walk with the arrow keys or the on-screen buttons. A block can be pushed, never pulled. Build a doorway and push the block through it onto the plate in the Bay.',
+    rooms: [
+      { id: 'yard', x: 0, y: 0, label: 'Yard' },
+      { id: 'bay', x: 3, y: 0, label: 'Bay' },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 2, maxPortals: 1 },
+    start: 'yard',
+    startCell: [2, 3],
+    blocks: [{ room: 'yard', cell: [3, 3] }],
+    goal: { kind: 'place', targets: [{ room: 'bay', cell: [4, 2], block: 0 }] },
+    hint: 'A doorway is the middle of a face: the two cells there. A block on a door cell, pushed outward, goes through and arrives where the passage sends it.',
+    optional: [
+      {
+        id: 'first-push-lean',
+        title: 'No step wasted',
+        text: 'The block is home in the fewest moves the construction allows.',
+        bonusMoves: 9,
+        check: () => false,
+      },
+    ],
+  },
+  {
+    id: 'the-weighted-gate',
+    theme: 'copper',
+    physical: true,
+    title: 'The Weighted Gate',
+    blurb: 'The gate to the Vault stays shut unless something heavy rests on the plate in the Hall. The only block is in the Store, and the Store has no way out yet.',
+    rooms: [
+      { id: 'store', x: 0, y: 0, label: 'Store' },
+      { id: 'hall', x: 3, y: 0, label: 'Hall' },
+      { id: 'vault', x: 6, y: 0, label: 'Vault' },
+    ],
+    fixed: [{ a: { room: 'hall', face: 'E' }, b: { room: 'vault', face: 'W' }, gate: 0 }],
+    ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 2 },
+    start: 'hall',
+    startCell: [1, 6],
+    plates: [{ room: 'hall', cell: [3, 3], mode: 'weight' }],
+    blocks: [{ room: 'store', cell: [4, 3] }],
+    goal: { kind: 'reach', to: 'vault' },
+    hint: 'A plate lights while a block rests on it, and goes dark when the block leaves. You can walk through the gate while it is lit.',
+    optional: [
+      {
+        id: 'weighted-lean',
+        title: 'Light on its feet',
+        text: 'Through the gate in the fewest moves the construction allows.',
+        bonusMoves: 27,
+        check: () => false,
+      },
+    ],
+  },
+  {
+    id: 'the-long-push',
+    theme: 'verdigris',
+    physical: true,
+    title: 'The Long Push',
+    blurb: 'A block goes where a walker goes, but it cannot come back through a one-way passage, and a mirror swaps the side it lands on. Leave the Vault open.',
+    rooms: [
+      { id: 'dock', x: 0, y: 0, label: 'Dock' },
+      { id: 'ring', x: 3, y: 0, label: 'Ring' },
+      { id: 'annex', x: 6, y: 0, label: 'Annex' },
+      { id: 'vault', x: 9, y: 0, label: 'Vault' },
+    ],
+    fixed: [
+      { a: { room: 'ring', face: 'E' }, b: { room: 'annex', face: 'W' }, oneWay: 'a', transform: { mirror: true } },
+      { a: { room: 'annex', face: 'E' }, b: { room: 'vault', face: 'W' }, gate: 0 },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 3 },
+    start: 'dock',
+    startCell: [1, 1],
+    plates: [{ room: 'annex', cell: [3, 5], mode: 'weight' }],
+    solids: { ring: [[3, 3], [4, 3], [3, 4], [4, 4]] },
+    blocks: [{ room: 'dock', cell: [3, 3] }],
+    goal: { kind: 'reach', to: 'vault' },
+    hint: 'Join the Dock to the Ring. The Ring has a pillar in the middle: push the block round it to the east door. Through the one-way mirror the rows swap sides, so line the block up for the plate, not the door.',
+    optional: [
+      {
+        id: 'long-push-lean',
+        title: 'The straight way round',
+        text: 'The Vault is open in the fewest moves the construction allows.',
+        bonusMoves: 36,
+        check: () => false,
+      },
+    ],
+  },
+  {
+    id: 'the-moving-day',
+    theme: 'dusk',
+    physical: true,
+    title: 'The Moving Day',
+    blurb: 'Two gates in a row, each held open by its own plate, and two blocks to hold them. One block must go through the first gate to hold the second.',
+    rooms: [
+      { id: 'yard', x: 0, y: 0, label: 'Yard', size: 0.75 },
+      { id: 'hall', x: 3, y: 0, label: 'Hall', size: 0.75 },
+      { id: 'cellar', x: 3, y: 3, label: 'Cellar', kind: 'cellar', size: 0.75 },
+      { id: 'vault', x: 6, y: 3, label: 'Vault', size: 0.75 },
+    ],
+    fixed: [
+      { a: { room: 'hall', face: 'S' }, b: { room: 'cellar', face: 'N' }, gate: 0 },
+      { a: { room: 'cellar', face: 'E' }, b: { room: 'vault', face: 'W' }, gate: 1 },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 3 },
+    start: 'yard',
+    startCell: [0, 0],
+    plates: [
+      { room: 'hall', cell: [1, 3], mode: 'weight' },
+      { room: 'cellar', cell: [4, 2], mode: 'weight' },
+    ],
+    blocks: [{ room: 'yard', cell: [2, 2] }, { room: 'yard', cell: [3, 4] }],
+    goal: { kind: 'reach', to: 'vault' },
+    hint: 'Whichever block goes through the first gate must be pushed through while the other holds the first plate. Plan the order before you push: a block against a wall stays there.',
+    optional: [
+      {
+        id: 'moving-lean',
+        title: 'Everything in its place',
+        text: 'Both gates open and the Vault reached in very few moves.',
+        bonusMoves: 70,
+        check: () => false,
       },
     ],
   },

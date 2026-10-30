@@ -154,3 +154,51 @@ test('a chain of steps through a random structure always ends in the engine stat
     }
   }
 });
+
+test('body mode: a step in a room moves one cell, a doorway step crosses and ends on the engine cell and heading', async () => {
+  const { move, bodyContext, initialBody } = await import('../src/topology/blocks.js');
+  const cases = [
+    { portal: { a: 'a', aFace: 'E', b: 'b', bFace: 'W' } },
+    { portal: { a: 'a', aFace: 'E', b: 'b', bFace: 'W', transform: { mirror: true } } },
+    { portal: { a: 'a', aFace: 'E', b: 'b', bFace: 'N', transform: { turns: 1 } } },
+    { portal: { a: 'a', aFace: 'E', b: 'a', bFace: 'W', transform: { turns: 3 } } },
+  ];
+  for (const { portal } of cases) {
+    const s = build([portal], ['a', 'b']);
+    const chapter = { start: 'a', startCell: [5, 3], goal: { kind: 'reach', to: 'b' }, plates: [], blocks: [] };
+    const ctx = bodyContext(chapter);
+    let st = { ...initialBody(s, chapter) };
+    const w = new Walker();
+    w.sync(s, st, halfOf(s));
+    assert.ok(Math.abs(w.x - (5.5 - 4)) < 1e-9 && Math.abs(w.z - (3.5 - 4)) < 1e-9, 'rests on the cell centre');
+    for (const dir of ['E', 'E', 'E']) {
+      const r = move(s, st, dir, ctx);
+      assert.ok(!r.error, `${JSON.stringify(portal)} ${dir}`);
+      st = { ...r.state, lastDir: dir };
+      w.sync(s, st, halfOf(s));
+      w.finish();
+      assert.equal(w.room, st.room);
+      const n = Math.round(halfOf(s)(st.room) * 2);
+      assert.ok(Math.abs(w.x - (st.cell[0] + 0.5 - n / 2)) < 1e-6 && Math.abs(w.z - (st.cell[1] + 0.5 - n / 2)) < 1e-6, `ends on cell ${st.cell} (got ${w.x}, ${w.z})`);
+      assert.equal(headingOf(w), st.heading);
+    }
+  }
+});
+
+test('body mode: turning on the spot and stepping backward keep the walker where the engine says', async () => {
+  const { move, bodyContext, initialBody } = await import('../src/topology/blocks.js');
+  const s = build([], ['a']);
+  const chapter = { start: 'a', startCell: [3, 3], goal: { kind: 'reach', to: 'a' }, plates: [], blocks: [] };
+  const ctx = bodyContext(chapter);
+  let st = initialBody(s, chapter);
+  const w = new Walker();
+  w.sync(s, st, halfOf(s));
+  st = { ...st, heading: 'E' };
+  w.sync(s, st, halfOf(s)); w.finish();
+  assert.equal(headingOf(w), 'E');
+  const r = move(s, st, 'W', ctx); // backward: the heading is kept
+  st = { ...r.state, lastDir: 'W' };
+  w.sync(s, st, halfOf(s)); w.finish();
+  assert.equal(headingOf(w), 'E');
+  assert.ok(Math.abs(w.x - (2.5 - 4)) < 1e-6);
+});

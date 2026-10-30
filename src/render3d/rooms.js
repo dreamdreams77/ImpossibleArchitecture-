@@ -67,7 +67,7 @@ function ringShape(width, spring, thick, squash) {
 }
 
 export function buildRoom(spec, lib) {
-  const { style, kind = 'chamber', size = 1, doors = {} } = spec;
+  const { style, kind = 'chamber', size = 1, doors = {}, physical = false, solids = [] } = spec;
   const profile = KIND_PROFILE[kind] ?? KIND_PROFILE.chamber;
   const hw = halfWidth(size);
   const H = roomHeight(style, kind, size);
@@ -85,7 +85,7 @@ export function buildRoom(spec, lib) {
   const seed = hash(spec.id);
   const ceilingVariant = kind === 'chamber' || kind === 'atrium' ? seed % 3 : 0; // coffers, radial ribs, louvres
   const floorVariant = (seed >> 3) % 3;                                           // rings, diagonals, cross-hatch
-  const furnish = (seed >> 5) % 2 === 0;
+  const furnish = !physical && (seed >> 5) % 2 === 0;
 
   // ---- wall-aligned box: a along the wall, y up, d outward from the interior plane.
   const wallMat = (face, wx) => {
@@ -281,7 +281,7 @@ export function buildRoom(spec, lib) {
     }
   }
 
-  if (has.has('colossal') || profile.columns) {
+  if (!physical && (has.has('colossal') || profile.columns)) {
     const e = hw - 1.55;
     const w = has.has('colossal') ? 1.5 : 0.9;
     const top = profile.mezzanine ? H : H - 0.4;
@@ -325,6 +325,15 @@ export function buildRoom(spec, lib) {
       b.box('trim', 0.3, 0.5, 0.9, t, y - 0.55, -hw + 0.45);
       b.box('trim', 0.3, 0.5, 0.9, t, y - 0.55, hw - 0.45);
     }
+  }
+
+  // ---- solid cells of a physical room: pillars on the grid, so what blocks the body is seen
+  const cellsAcross = Math.round(hw * 2);
+  for (const [cx, cz] of solids) {
+    const x = cx + 0.5 - cellsAcross / 2; const z = cz + 0.5 - cellsAcross / 2;
+    b.box('trim', 0.94, H - 0.5, 0.94, x, 0.5 + (H - 0.5) / 2, z);
+    b.box('trim', 1.0, 0.4, 1.0, x, 0.2, z);
+    b.box('metal', 1.0, 0.1, 1.0, x, H - 0.4, z, 0, { ao: false });
   }
 
   // ---- ceiling (roof layer, hidden by the cutaway)

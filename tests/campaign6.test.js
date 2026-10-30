@@ -160,6 +160,15 @@ test('every chapter has an intro and an outro, and the ending is built from the 
 
 test('place in chapter reports the position within the run', () => {
   assert.deepEqual({ i: placeInChapter('threshold').index, of: placeInChapter('threshold').of }, { i: 1, of: 5 });
-  assert.equal(placeInChapter('the-last-construction').index, 4);
+  assert.equal(placeInChapter('the-last-construction').index, 5);
   assert.equal(placeInChapter('nonsense'), null);
+});
+
+test('deleting a room named by a discovery or a goal never crashes the checks', async () => {
+  const { Session } = await import('../src/game.js');
+  for (const c of CHAPTERS) {
+    const s = new Session({ chapterId: c.id });
+    for (const id of [...s.structure.rooms.keys()]) { s.selectRoom(id); s.deleteSelection(); }
+    assert.doesNotThrow(() => { s.testConstruction(); s.fpEnsure(); s.fpForward(); discoveriesIn(s.structure, c); goalSatisfied(s.structure, c); }, c.id);
+  }
 });

@@ -209,11 +209,12 @@ export class WorldRenderer {
       seen.add(id);
       const doors = {};
       for (const f of FACES) if (structure.portalAt(id, f)) doors[f] = true;
-      const sig = `${style.key}|${r.kind ?? 'chamber'}|${r.size ?? 1}|${FACES.map((f) => (doors[f] ? 1 : 0)).join('')}`;
+      const solids = ctx.solids?.[id] ?? [];
+      const sig = `${style.key}|${r.kind ?? 'chamber'}|${r.size ?? 1}|${FACES.map((f) => (doors[f] ? 1 : 0)).join('')}|${ctx.physical ? 'p' : ''}${JSON.stringify(solids)}`;
       let entry = this.rooms.get(id);
       if (!entry || entry.sig !== sig) {
         if (entry) this._disposeRoom(entry);
-        const built = buildRoom({ id, style, kind: r.kind ?? 'chamber', size: r.size ?? 1, doors }, lib);
+        const built = buildRoom({ id, style, kind: r.kind ?? 'chamber', size: r.size ?? 1, doors, physical: !!ctx.physical, solids }, lib);
         const holder = new THREE.Group();
         holder.matrixAutoUpdate = false;
         holder.add(built.group);
@@ -412,6 +413,19 @@ export class WorldRenderer {
       e.plateViews = [];
       const plates = (ctx.plates ?? []).map((p, i) => ({ ...p, i })).filter((p) => p.room === e.id);
       plates.forEach((p, k) => {
+        if (p.mode === 'weight') { // a pressure plate set into one cell of the grid
+          const n = Math.round(e.built.half * 2);
+          const base = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.9), new THREE.MeshStandardMaterial({ color: '#2b2b30', metalness: 0.8, roughness: 0.35 }));
+          const ringMat = new THREE.MeshStandardMaterial({ color: '#2a2822', emissive: '#6f6a58', emissiveIntensity: 0.35, metalness: 0.5, roughness: 0.4 });
+          const top = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.04, 0.72), ringMat);
+          top.position.y = 0.06;
+          const slot = new THREE.Group();
+          slot.position.set(p.cell[0] + 0.5 - n / 2, 0.04, p.cell[1] + 0.5 - n / 2);
+          slot.add(base, top);
+          g.add(slot);
+          e.plateViews.push({ index: p.i, slot, ringMat, drum: null, v: null, target: 0, baseY: slot.position.y });
+          return;
+        }
         const toggle = p.mode === 'toggle';
         const base = new THREE.Mesh(
           new THREE.CylinderGeometry(0.95, 1.05, 0.08, 40),
@@ -504,7 +518,8 @@ export class WorldRenderer {
         v.group.parent?.remove(v.group);
         room.built.group.add(v.group);
         v.room = o.room; v.x = o.x; v.z = o.z; v.yaw = o.yaw ?? 0;
-        v.group.position.set(o.x, o.lift ?? 0, o.z);
+        if (o.from) { v.x = o.from.x; v.z = o.from.z; } // a pushed block slides in through the doorway
+        v.group.position.set(v.x, o.lift ?? 0, v.z);
         v.group.rotation.y = v.yaw;
       }
       v.tx = o.x; v.tz = o.z; v.tyaw = o.yaw ?? 0; v.tlift = o.lift ?? 0;

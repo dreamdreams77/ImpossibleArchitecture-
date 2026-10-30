@@ -8,6 +8,8 @@ import { halfWidth } from '../render3d/frames.js';
 import { rulesFor } from '../campaign/chapters.js';
 import { fpZoneFor } from '../render/firstperson.js';
 import { connect } from '../topology/construction.js';
+import { bodyContext, litBits, gridSize } from '../topology/blocks.js';
+import { doorFrame, WALL_T } from '../render3d/frames.js';
 import { createPinch } from './pinch.js';
 
 const QUALITY_ORDER = ['high', 'medium', 'low'];
@@ -63,13 +65,15 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function context() {
     const chapter = session.chapter;
     const rules = chapter ? rulesFor(chapter) : { plates: [], cargo: [], pads: [] };
-    return { sealed: session.ruleset?.sealedFaces ?? [], chapterId: chapter?.id ?? null, discipline: chapter?.discipline ?? null, themeName: session.themeName, plates: rules.plates, cargo: rules.cargo, pads: rules.pads };
+    const phys = !!chapter?.physical;
+    return { physical: phys, solids: phys ? (chapter.solids ?? {}) : {}, sealed: session.ruleset?.sealedFaces ?? [], chapterId: chapter?.id ?? null, discipline: chapter?.discipline ?? null, themeName: session.themeName, plates: rules.plates, cargo: rules.cargo, pads: rules.pads };
   }
 
   function routePortals() {
     const set = new Set();
     const route = session.routeHighlight;
     const chapter = session.chapter ?? session.challengeAsChapter?.();
+    if (route?.physical) { for (const id of route.portals ?? []) set.add(id); return set; }
     if (!route || !chapter) return set;
     let room = chapter.start;
     for (const face of route.faces) {
@@ -95,14 +99,32 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     const walkerState = session.fpEnsure();
     const crates = session.cratePositions();
     const route = routePortals();
-    const key = `${walkerState?.lit ?? 0}|${walkerState?.delivered ?? 0}|${JSON.stringify(crates)}|${[...route].join(',')}`;
+    // In a physical challenge the plates held down by weight count as lit, and the blocks are objects.
+    const lit = session.physical && walkerState ? litBits(walkerState, bodyContext(session.chapter)) : (walkerState?.lit ?? 0);
+    const blocks = session.physical ? session.bodyBlocks() : [];
+    const key = `${lit}|${walkerState?.delivered ?? 0}|${JSON.stringify(crates)}|${[...route].join(',')}|${JSON.stringify(blocks)}`;
     if (key !== stateKey) {
       stateKey = key;
-      world.setState({ lit: walkerState?.lit ?? 0, delivered: walkerState?.delivered ?? 0, crates, routePortals: route });
+      world.setState({ lit, delivered: walkerState?.delivered ?? 0, crates, routePortals: route });
+      world.setObjects(blocks.map((b, i) => blockObject(b, i)));
     }
     world.setSelection(session.selection?.type === 'room' ? session.selection.id : null, session.selection?.type === 'portal' ? session.selection.id : null);
     if (mode === 'model') world.setMarkerState(session.pendingFace, world.markerState.hover);
     return walkerState;
+  }
+
+  // A block's place in the world: its cell's centre, and, if it was just pushed through a doorway,
+  // the doorway's outer plane to slide in from.
+  function blockObject(b, i) {
+    const n = gridSize(session.structure.rooms.get(b.room));
+    const x = b.cell[0] + 0.5 - n / 2; const z = b.cell[1] + 0.5 - n / 2;
+    const o = { id: b.id, kind: 'block', room: b.room, x, z, yaw: 0 };
+    const push = session.lastBody?.push;
+    if (push && push.index === i && push.crossed && push.to.room === b.room && push.from.room !== push.to.room) {
+      const f = doorFrame(push.crossed.toFace, n / 2);
+      o.from = { x: f.elements[12] + (push.crossed.toFace === 'N' || push.crossed.toFace === 'S' ? x : 0), z: f.elements[14] + (push.crossed.toFace === 'E' || push.crossed.toFace === 'W' ? z : 0) };
+    }
+    return o;
   }
 
   function fitOrbit() {
@@ -150,14 +172,14 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function updateHud(walkerState) {
     if (!hud) return;
     const room = walkerState && session.structure.rooms.get(walkerState.room);
-    const key = `${mode}|${previewNote}|${session.pendingFace?.room}${session.pendingFace?.face}|${walkerState?.room}|${walkerState?.heading}|${room?.label}|${walkerState?.carry}`;
+    const key = `${mode}|${session.physical}|${previewNote}|${session.pendingFace?.room}${session.pendingFace?.face}|${walkerState?.room}|${walkerState?.heading}|${room?.label}|${walkerState?.carry}`;
     if (key === hudKey) return;
     hudKey = key;
     const chips = LEGEND.map(([c, t]) => `<span class="chip"><i style="background:${c}"></i>${t}</span>`).join('');
     if (mode === 'first') {
       hud.innerHTML = `<div class="gl-place"><strong>${esc(room?.label || walkerState?.room || '')}</strong><span>facing ${walkerState?.heading ?? ''}</span>${walkerState?.carry >= 0 ? `<span class="carry">carrying crate ${walkerState.carry + 1}</span>` : ''}</div>`
         + `<div class="gl-legend">${chips}</div>`
-        + '<div class="gl-hint">drag to look · arrows or click the edges to turn · up or click the middle to walk</div>';
+        + `<div class="gl-hint">${session.physical ? 'push blocks, never pull · ▲ walk · ▼ step back · ◀ ▶ turn · a lit plate holds its gate open' : 'drag to look · arrows or click the edges to turn · up or click the middle to walk'}</div>`;
     } else {
       hud.innerHTML = '<div class="gl-place"><strong>Architect’s model</strong><span>rooms at their plan positions · arcs are the real connections</span></div>'
         + `<div class="gl-legend">${chips}</div>`

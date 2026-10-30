@@ -63,6 +63,7 @@ export class Walker {
   // single step the structure explains; otherwise snaps.
   sync(structure, state, halfOf) {
     if (!state) return;
+    if (state.cell) { this._syncBody(structure, state, halfOf); return; }
     const key = `${state.room}|${state.heading}|${state.steps ?? 0}`;
     if (key === this.key) return;
     const prev = this.last;
@@ -92,6 +93,62 @@ export class Walker {
     }
     if (exit) this._planStep(face, prev, exit, state, halfOf);
     else this.snap(state.room, state.heading);
+  }
+
+  // ---- physical play: the body moves a cell at a time --------------------------------------
+  // `state` carries { room, cell, heading, steps, lastDir }. The cell centre is the walker's
+  // resting place; a step across a doorway crosses the portal exactly as a plain step does.
+  _syncBody(structure, state, halfOf) {
+    const key = `${state.room}|${state.cell}|${state.heading}|${state.steps}`;
+    if (key === this.key) return;
+    const prev = this.last;
+    this.key = key;
+    this.last = { room: state.room, heading: state.heading, steps: state.steps, cell: [...state.cell] };
+    const at = (room, cell) => {
+      const n = Math.round(halfOf(room) * 2);
+      return [cell[0] + 0.5 - n / 2, cell[1] + 0.5 - n / 2];
+    };
+    const [tx, tz] = at(state.room, state.cell);
+    if (!prev || this.room == null || this.reduceMotion || !prev.cell) {
+      this.snap(state.room, state.heading);
+      this.x = tx; this.z = tz;
+      return;
+    }
+    this.finish();
+    if (state.steps === prev.steps) { // a turn on the spot
+      const target = this.yaw + yawDelta(this.yaw, headingYaw(state.heading));
+      this.queue.push({ room: state.room, to: { x: this.x, z: this.z, yaw: target }, dur: 0.22, ease: smooth });
+      return;
+    }
+    if (state.steps !== prev.steps + 1) { this.snap(state.room, state.heading); this.x = tx; this.z = tz; return; }
+    if (state.room === prev.room) { // one cell, keeping the way the body faces
+      this.queue.push({ room: state.room, to: { x: tx, z: tz, yaw: this.yaw }, dur: 0.17, ease: smooth, move: true });
+      return;
+    }
+    // Through a doorway: out along the door's line to the portal surface, across, in to the cell.
+    const face = state.lastDir;
+    const exit = face && structure.exit(prev.room, face);
+    if (!exit || exit.room !== state.room) { this.snap(state.room, state.heading); this.x = tx; this.z = tz; return; }
+    const hA = halfOf(prev.room); const hB = halfOf(state.room);
+    const n = FACE_NORMAL[face];
+    const reach = hA + WALL_T;
+    const along = n[0] !== 0 ? this.z : this.x; // the coordinate along the doorway, kept while crossing
+    const doorX = n[0] !== 0 ? n[0] * reach : along;
+    const doorZ = n[2] !== 0 ? n[2] * reach : along;
+    const T = portalLocalTransform({ faceA: face, halfA: hA, faceB: exit.face, halfB: hB, mirror: !!exit.transform.mirror });
+    const facing = this.yaw;
+    this.queue.push({ room: prev.room, to: { x: doorX, z: doorZ, yaw: facing }, dur: 0.2, ease: easeIn, move: true });
+    this.queue.push({
+      cross: true,
+      apply: () => {
+        const p = new Vector3(this.x, 0, this.z).applyMatrix4(T);
+        const dir = directionOfYaw(this.yaw).transformDirection(T);
+        this.room = state.room; this.x = p.x; this.z = p.z; this.yaw = yawOfDirection(dir);
+      },
+      mirror: !!exit.transform.mirror,
+      turns: exit.transform.turns ?? 0,
+    });
+    this.queue.push({ room: state.room, to: { x: tx, z: tz, yaw: null, finalHeading: state.heading }, dur: 0.25 + (exit.transform.turns ? 0.15 : 0), ease: easeOut, move: true });
   }
 
   _planStep(face, prev, exit, state, halfOf) {

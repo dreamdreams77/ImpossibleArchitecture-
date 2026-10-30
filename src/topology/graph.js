@@ -180,6 +180,7 @@ export class Structure {
   apparentDistance(a, b) {
     const ra = this.rooms.get(a);
     const rb = this.rooms.get(b);
+    if (!ra || !rb) return Infinity; // a deleted room is infinitely far: no discovery can hold for it
     return Math.hypot(ra.x - rb.x, ra.y - rb.y);
   }
 

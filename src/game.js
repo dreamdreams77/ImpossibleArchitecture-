@@ -10,10 +10,11 @@ import * as C from './topology/construction.js';
 import { History } from './topology/history.js';
 import { findRoute, replay, makeTraveller, step, startingLit, platesLitBy } from './topology/traversal.js';
 import { rotateFace } from './topology/graph.js';
-import { CHAPTERS, chapterById, chapterStructure, goalSatisfied, goalPredicate, discoveriesIn, rulesFor } from './campaign/chapters.js';
+import { CHAPTERS, chapterById, chapterStructure, goalSatisfied, goalPredicate, discoveriesIn, rulesFor, bodySolution } from './campaign/chapters.js';
 import { searchCycles, dimensionReport } from './topology/analysis.js';
 import { describeStructure } from './topology/describe.js';
 import { diagnose } from './campaign/diagnose.js';
+import { initialBody, move as bodyMove, bodyContext, bodyGoalMet, replayBody, DIRS } from './topology/blocks.js';
 
 const FACE_NAMES = { N: 'north', E: 'east', S: 'south', W: 'west' };
 
@@ -159,6 +160,7 @@ export class Session {
   // Applies an operation result. Returns true if the structure changed.
   apply(result, successText = null) {
     this.fpPlay = null; // an edit ends route playback: the route no longer matches
+    if (this.chapter?.physical && !result.error) this.fp = null; // a changed building starts the body, and its blocks, again
     if (result.error) {
       this.feedback = { kind: 'error', text: explain(result) };
       return false;
@@ -386,6 +388,11 @@ export class Session {
       this.fp = null; // nowhere to stand: drop any walker left from a deleted room
       return false;
     }
+    if (this.chapter?.physical) {
+      // A physical challenge: the walker is a body on a grid, with blocks to push.
+      this.fp = { ...initialBody(this.structure, this.chapter), delivered: 0, carry: -1, headings: ['N'] };
+      return true;
+    }
     const rules = this.chapter ? rulesFor(this.chapter) : { plates: [], cargo: [], depot: null, pads: [] };
     const t = makeTraveller(start, 'N', { cargo: rules.cargo, depot: rules.depot, pads: rules.pads });
     t.lit = startingLit(rules.plates, start);
@@ -408,6 +415,7 @@ export class Session {
   // Walk forward through the wall ahead. Returns true if the walker moved.
   fpForward() {
     if (!this.fpEnsure()) return false;
+    if (this.chapter?.physical) return this.bodyStep(this.fp.heading);
     const plates = this.chapter?.plates ?? [];
     const next = step(this.structure, this.fp, this.fp.heading);
     if (!next) {
@@ -461,6 +469,66 @@ export class Session {
       const found = this.progress.discoveries.includes(d.id);
       return { id: d.id, title: d.title, found, text: found ? d.text : null };
     });
+  }
+
+  // ---- physical play ----------------------------------------------------------------------
+
+  get physical() {
+    return !!this.chapter?.physical;
+  }
+
+  // One step on the grid in a compass direction (the heading is kept unless a passage turns it).
+  bodyStep(dir) {
+    const chapter = this.chapter;
+    const ctx = bodyContext(chapter);
+    const r = bodyMove(this.structure, this.fp, dir, ctx);
+    this.lastBody = null;
+    if (r.error) {
+      const why = {
+        wall: 'A wall.',
+        solid: 'A pillar is in the way.',
+        block: 'The block will not move: something is behind it.',
+        full: 'The block on the other side has nowhere to go.',
+        shut: 'The gate is shut. Something must hold its plate down.',
+        oneway: 'This passage only goes the other way.',
+      }[r.error] ?? 'You cannot go that way.';
+      this.feedback = { kind: 'error', text: why };
+      this.lastBody = { error: r.error };
+      return false;
+    }
+    this.fp = { ...r.state, delivered: 0, carry: -1, headings: this.fp.headings, lastDir: dir };
+    this.lastBody = { push: r.push ?? null, crossed: r.crossed ?? null };
+    const name = (id) => this.structure.rooms.get(id)?.label || id;
+    this.feedback = r.push
+      ? { kind: 'info', text: r.push.to.room !== r.push.from.room ? `Pushed the block through into ${name(r.push.to.room)}.` : 'Pushed the block.' }
+      : { kind: 'info', text: `In ${name(this.fp.room)}, facing ${this.fp.heading}.` };
+    if (bodyGoalMet(this.fp, chapter, ctx)) {
+      // Objectives earned by playing: finishing in few enough moves.
+      for (const o of chapter.optional ?? []) {
+        if (o.bonusMoves && this.fp.steps <= o.bonusMoves && !this.progress.discoveries.includes(o.id)) {
+          this.progress.discoveries.push(o.id);
+          this.feedback = { kind: 'success', text: `Discovered: ${o.title}. ${o.text}` };
+        }
+      }
+    }
+    if (bodyGoalMet(this.fp, chapter, ctx) && !this.progress.completed.includes(chapter.id)) {
+      this.progress.completed.push(chapter.id);
+      this.justCompleted = chapter.id;
+      this.feedback = { kind: 'success', text: `${chapter.title} complete.` };
+    }
+    return true;
+  }
+
+  // One step backward: the opposite direction, without turning round.
+  fpBack() {
+    if (!this.fpEnsure() || !this.chapter?.physical) return false;
+    return this.bodyStep(rotateFace(this.fp.heading, 2));
+  }
+
+  // The blocks, for drawing: where each stands now, on the grid.
+  bodyBlocks() {
+    if (!this.chapter?.physical) return [];
+    return (this.fp ?? initialBody(this.structure, this.chapter)).blocks.map((b, i) => ({ id: `block:${i}`, room: b.room, cell: b.cell }));
   }
 
   // Plays the test route in the first-person view: the walker turns to each
@@ -582,6 +650,27 @@ export class Session {
       return;
     }
     const chapter = this.chapter;
+    if (chapter.physical) {
+      const sol = bodySolution(this.structure, chapter);
+      if (sol && !sol.exceeded) {
+        const replay = replayBody(this.structure, chapter, sol.moves);
+        const portals = [];
+        let room = chapter.start;
+        let st = initialBody(this.structure, chapter);
+        const ctx = bodyContext(chapter);
+        for (const d of sol.moves) {
+          const r = bodyMove(this.structure, st, d, ctx);
+          if (r.crossed) { const e = this.structure.exit(room, r.crossed.face); if (e) portals.push(e.portalId); room = r.crossed.to; }
+          st = r.state;
+        }
+        this.routeHighlight = { faces: sol.moves, portals, trail: replay.state.trail, headings: [], delivered: 0, physical: true };
+        this.feedback = { kind: 'success', text: `A solution exists: ${sol.moves.length} moves and ${replay.state.pushes} pushes. Play route shows it; or walk it yourself.` };
+      } else {
+        this.routeHighlight = null;
+        this.feedback = { kind: 'error', text: sol?.exceeded ? 'The search for a solution gave up: the construction is very open.' : `No sequence of moves solves it yet. ${diagnose(this.structure, chapter).join(' ')}` };
+      }
+      return;
+    }
     if (goalSatisfied(this.structure, chapter)) {
       this.feedback = { kind: 'success', text: 'The construction functions. Goal met.' };
       this.routeHighlight = routeFor(this.structure, chapter);
@@ -602,7 +691,7 @@ export class Session {
         this.feedback = { kind: 'success', text: `Discovered: ${d.title}. ${d.text}` };
       }
     }
-    if (goalSatisfied(this.structure, chapter) && !this.progress.completed.includes(chapter.id)) {
+    if (!chapter.physical && goalSatisfied(this.structure, chapter) && !this.progress.completed.includes(chapter.id)) {
       this.progress.completed.push(chapter.id);
       this.justCompleted = chapter.id; // read once by the UI, which shows the completion card
       this.feedback = { kind: 'success', text: `${chapter.title} complete.` };

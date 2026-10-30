@@ -225,6 +225,8 @@ export function boot() {
     if (!ok) {
       sound.play(/One way/.test(session.feedback?.text ?? '') ? 'oneway' : 'bump');
       if (glMode() && session.fp) gl.bump(session.fp.heading);
+    } else if (session.lastBody?.push) {
+      sound.play('push');
     } else {
       sound.play(stepCue(gateBefore, litBefore));
     }
@@ -656,6 +658,7 @@ export function boot() {
     const on = glMode();
     const first = on && viewMode === 'first';
     $('#gl-pad').hidden = !first;
+    $('#pad-back').hidden = !session.physical;
     $('#gl-test').hidden = !on;
     const fb = session.feedback;
     const toast = $('#gl-toast');
@@ -676,6 +679,7 @@ export function boot() {
   $('#pad-left').addEventListener('click', () => $('#fp-left').click());
   $('#pad-right').addEventListener('click', () => $('#fp-right').click());
   $('#pad-fwd').addEventListener('click', () => $('#fp-forward').click());
+  $('#pad-back').addEventListener('click', () => { session.fpStopPlay(); if (session.physical) { session.fpBack(); sound.play(session.lastBody?.push ? 'push' : 'step'); } render(); });
   $('#gl-test').addEventListener('click', () => $('#test').click());
   $('#gl-empty-build').addEventListener('click', () => { session.tool = 'connect'; setView('model'); });
   if (window.matchMedia?.('(min-width: 801px)').matches) $('#advanced').open = false;
@@ -1341,7 +1345,8 @@ export function boot() {
       const k = evt.key.toLowerCase();
       const fpKeys = { arrowleft: () => session.fpTurn('left'), q: () => session.fpTurn('left'),
         arrowright: () => session.fpTurn('right'), e: () => session.fpTurn('right'),
-        arrowup: () => walkForward(), w: () => walkForward() };
+        arrowup: () => walkForward(), w: () => walkForward(),
+        arrowdown: () => { if (session.physical) { session.fpBack(); sound.play(session.lastBody?.push ? 'push' : 'step'); } }, s: () => { if (session.physical) { session.fpBack(); sound.play(session.lastBody?.push ? 'push' : 'step'); } } };
       if (fpKeys[k]) {
         evt.preventDefault();
         session.fpStopPlay();

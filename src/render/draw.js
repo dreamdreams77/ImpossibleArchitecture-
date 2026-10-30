@@ -10,6 +10,7 @@
 import { roomHalf, faceDir, faceAnchor, portalCurve, graphLayout, routeSegments, pointAlong } from './geometry.js';
 import { themeFor } from './themes.js';
 import { FACE_DIR } from './util.js';
+import { bodyContext, litBits, gridSize } from '../topology/blocks.js';
 
 const DOOR_HALF = 0.16; // half-width of a door opening, in world units
 
@@ -39,6 +40,9 @@ export function drawPlan(ctx, view, session, { width, height }, time = 0) {
     const r = s.rooms.get(id);
     if (r) drawPad(ctx, r, toScreen, scale, T);
   }
+
+  // Physical challenges: the grid, pillars, weight plates, blocks and the body.
+  if (session.chapter?.physical) drawBodyLayer(ctx, s, session, toScreen, scale, T);
 
   // Crates, where the walk has them.
   drawCrates(ctx, s, session.cratePositions(), toScreen, scale, T);
@@ -303,7 +307,7 @@ function drawCrates(ctx, s, crates, toScreen, scale, T) {
 
 function drawPlate(ctx, s, plate, toScreen, scale, T, time) {
   const r = s.rooms.get(plate.room);
-  if (!r) return;
+  if (!r || plate.mode === 'weight') return; // weight plates sit on one cell: see drawBodyLayer
   const c = toScreen(r.x, r.y);
   const d = faceDir(r, plate.heading);
   const rad = roomHalf(r) * scale + 6;
@@ -497,6 +501,77 @@ export function drawGraph(ctx, structure, selection, { width, height }, themeNam
     ctx.font = '11px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
     ctx.fillText(r.label || r.id, p.x, p.y + 30);
+  }
+  ctx.restore();
+}
+
+// The grid of a physical challenge, drawn in each room: pillars, weight plates (lit while held down),
+// targets, blocks, and the body with the way it faces. Cells are the engine's own cells.
+function drawBodyLayer(ctx, s, session, toScreen, scale, T) {
+  const chapter = session.chapter;
+  const body = session.fp;
+  const ctxB = bodyContext(chapter);
+  const lit = body ? litBits(body, ctxB) : 0;
+  const blocks = body ? body.blocks : (chapter.blocks ?? []);
+  const targets = chapter.goal?.kind === 'place' ? chapter.goal.targets ?? [] : [];
+  ctx.save();
+  for (const r of s.rooms.values()) {
+    const n = gridSize(r);
+    const half = roomHalf(r) * scale;
+    const c = toScreen(r.x, r.y);
+    const cs = (2 * half) / n;
+    const cell = (cx, cz) => ({ x: c.x - half + (cx + 0.5) * cs, y: c.y - half + (cz + 0.5) * cs });
+    ctx.strokeStyle = T.inkDim;
+    ctx.globalAlpha = 0.18;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i < n; i++) {
+      ctx.moveTo(c.x - half + i * cs, c.y - half); ctx.lineTo(c.x - half + i * cs, c.y + half);
+      ctx.moveTo(c.x - half, c.y - half + i * cs); ctx.lineTo(c.x + half, c.y - half + i * cs);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    for (const key of ctxB.solids.get(r.id) ?? []) {
+      const [cx, cz] = key.split(',').map(Number);
+      const p = cell(cx, cz);
+      ctx.fillStyle = T.inkDim;
+      ctx.fillRect(p.x - cs / 2 + 1, p.y - cs / 2 + 1, cs - 2, cs - 2);
+    }
+    for (const w of ctxB.weights.filter((q) => q.room === r.id)) {
+      const p = cell(w.cell[0], w.cell[1]);
+      const on = (lit & (1 << w.index)) !== 0;
+      ctx.strokeStyle = on ? T.route : T.accent;
+      ctx.lineWidth = on ? 2.5 : 1.6;
+      ctx.strokeRect(p.x - cs / 2 + 2, p.y - cs / 2 + 2, cs - 4, cs - 4);
+      if (on) { ctx.fillStyle = T.route; ctx.globalAlpha = 0.25; ctx.fillRect(p.x - cs / 2 + 2, p.y - cs / 2 + 2, cs - 4, cs - 4); ctx.globalAlpha = 1; }
+    }
+    for (const t of targets.filter((q) => q.room === r.id)) {
+      const p = cell(t.cell[0], t.cell[1]);
+      ctx.strokeStyle = T.accent;
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(p.x, p.y, cs * 0.42, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (const b of blocks.filter((q) => q.room === r.id)) {
+      const p = cell(b.cell[0], b.cell[1]);
+      ctx.fillStyle = T.ink;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(p.x - cs * 0.4, p.y - cs * 0.4, cs * 0.8, cs * 0.8);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = T.accent;
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(p.x - cs * 0.4, p.y - cs * 0.4, cs * 0.8, cs * 0.8);
+    }
+    if (body && body.room === r.id) {
+      const p = cell(body.cell[0], body.cell[1]);
+      const d = faceDir(r, body.heading);
+      ctx.fillStyle = T.selected;
+      ctx.beginPath(); ctx.arc(p.x, p.y, cs * 0.34, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = T.selected;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + d[0] * cs * 0.8, p.y + d[1] * cs * 0.8); ctx.stroke();
+    }
   }
   ctx.restore();
 }

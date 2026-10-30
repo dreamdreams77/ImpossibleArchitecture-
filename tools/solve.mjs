@@ -36,6 +36,8 @@ const binom = (n, k) => { let r = 1; for (let i = 0; i < k; i++) r = (r * (n - i
 
 // Returns { size, count, example } for the smallest solving size, or null if none within `maxSize`.
 export function solve(chapter, { maxSize = 4, budget = 1.5e6 } = {}) {
+  // Physical challenges are searched over moves and pushes (src/topology/blocks.js), not by enumerating builds here.
+  if (chapter.physical) return { skipped: true, size: 0, space: Infinity, physical: true };
   const cands = candidates(chapter);
   const fixedCount = (chapter.fixed ?? []).length;
   const allowed = Math.min(maxSize, (chapter.ruleset.maxPortals === Infinity ? maxSize : chapter.ruleset.maxPortals) - fixedCount);

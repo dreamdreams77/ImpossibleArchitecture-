@@ -9,6 +9,7 @@ const CUES = {
   plate: [{ freq: 660, at: 0, dur: 0.12, type: 'sine' }, { freq: 990, at: 0.08, dur: 0.16, type: 'sine' }],
   oneway: [{ freq: 300, at: 0, dur: 0.1, type: 'sawtooth' }, { freq: 200, at: 0.1, dur: 0.14, type: 'sawtooth' }],
   gate: [{ freq: 440, at: 0, dur: 0.1, type: 'sine' }, { freq: 660, at: 0.1, dur: 0.18, type: 'sine' }],
+  push: [{ freq: 70, at: 0, dur: 0.18, type: 'sawtooth' }, { freq: 95, at: 0.05, dur: 0.14, type: 'square' }],
   cross: [{ freq: 150, at: 0, dur: 0.22, type: 'sine' }, { freq: 330, at: 0.06, dur: 0.2, type: 'sine' }],
   mirror: [{ freq: 880, at: 0, dur: 0.1, type: 'sine' }, { freq: 1175, at: 0.05, dur: 0.14, type: 'sine' }, { freq: 660, at: 0.12, dur: 0.2, type: 'sine' }],
   goal: [

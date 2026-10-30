@@ -4,7 +4,7 @@
 
 import { findRoute } from '../topology/traversal.js';
 import { findCycles } from '../topology/analysis.js';
-import { goalPredicate, rulesFor } from './chapters.js';
+import { goalPredicate, rulesFor, bodySolution } from './chapters.js';
 
 export function diagnose(structure, chapter) {
   const name = (id) => structure.rooms.get(id)?.label || id;
@@ -12,6 +12,17 @@ export function diagnose(structure, chapter) {
   const start = chapter.start;
   const goal = chapter.goal;
 
+  if (chapter.physical) {
+    if (!structure.rooms.has(start)) return [chapter.hint];
+    const reach = findRoute(structure, start, (t) => goal.to ? t.room === goal.to : true, { open: true });
+    const sol = bodySolution(structure, chapter);
+    if (sol?.exceeded) return ['The search for a solution gave up: the construction is very open. Try a simpler one.'];
+    const out = [];
+    const target = goal.to ?? goal.targets?.[0]?.room;
+    if (target && !findRoute(structure, start, (t) => t.room === target, { open: true })) out.push(`No passage leads to ${name(target)} from ${name(start)} yet.`);
+    else out.push('Every move runs into a wall, a block that cannot move, a shut gate or a one-way passage. Look at where the blocks must go and which doorway row they need.');
+    return out;
+  }
   if (goal.kind === 'loop') {
     return findCycles(structure).length === 0
       ? ['No loop closes the construction yet.']
