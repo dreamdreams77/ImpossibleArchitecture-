@@ -569,6 +569,7 @@ export function buildRoom(spec, lib) {
   // Roof-flagged children (hoist, sprites above head height) are hidden in the cutaway.
   return {
     group, half: hw, height: H, frames, lights, animated, dw, dh,
+    hasMachinery: has.has('gears') || has.has('rails'),
     roofObjects: () => {
       const out = [];
       group.traverse((o) => { if (o.userData.layer === 'roof' || o.userData.roof === true) out.push(o); });

@@ -46,7 +46,7 @@ const ROOM_SPACING = 46;
 // deepest recursion level that casts them; `bloom` is the bloom strength (0 = off); `samples` is the
 // multisampling of the main image; `scales` shrink each recursion level's render target.
 export const QUALITY = {
-  high: { maxDepth: 4, samples: 4, scales: [1, 0.8, 0.62, 0.5, 0.4], maxPasses: 22, pixelRatio: 2, children: [3, 2, 2, 1, 1], shadows: 1024, shadowDepth: 1, bloom: 0.32, dust: 1 },
+  high: { maxDepth: 4, samples: 4, scales: [1, 0.8, 0.62, 0.5, 0.4], maxPasses: 22, pixelRatio: 2, children: [3, 2, 2, 1, 1], shadows: 2048, shadowDepth: 0, bloom: 0.32, dust: 1 },
   medium: { maxDepth: 2, samples: 2, scales: [1, 0.65, 0.5], maxPasses: 10, pixelRatio: 1.5, children: [3, 2, 1], shadows: 512, shadowDepth: 0, bloom: 0.22, dust: 0.6 },
   low: { maxDepth: 1, samples: 0, scales: [1, 0.5], maxPasses: 4, pixelRatio: 1, children: [2, 1], shadows: 0, shadowDepth: 0, bloom: 0, dust: 0.3 },
 };
@@ -139,7 +139,8 @@ export class WorldRenderer {
   // ---- sizing ------------------------------------------------------------
 
   setSize(w, h, devicePixelRatio = 1) {
-    const ratio = Math.min(devicePixelRatio, this.q.pixelRatio);
+    this._dpr = devicePixelRatio;
+    const ratio = Math.min(devicePixelRatio, this.q.pixelRatio) * (this.resScale ?? 1);
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(Math.max(1, w), Math.max(1, h), false);
     this.size = { w: Math.max(1, w), h: Math.max(1, h) };
@@ -149,6 +150,15 @@ export class WorldRenderer {
     this.pool.clear();
     const buf = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     this.post.resize(buf.x, buf.y, this.q.samples);
+  }
+
+  // Dynamic resolution: draw at a fraction of the preset's pixel ratio. The game lowers this before it
+  // lowers a whole preset, and raises it again when frames are comfortably fast.
+  setResolutionScale(k) {
+    k = Math.min(1, Math.max(0.5, k));
+    if (k === (this.resScale ?? 1)) return;
+    this.resScale = k;
+    this.setSize(this.size.w, this.size.h, this._dpr ?? 1);
   }
 
   setQuality(name) {
@@ -534,6 +544,7 @@ export class WorldRenderer {
     for (const e of this.rooms.values()) {
       let lit = 0;
       for (const pv of e.plateViews ?? []) {
+        if (pv.v !== pv.target) this._castersMoving = true;
         pv.v += (pv.target - pv.v) * Math.min(1, dt * 7);
         if (Math.abs(pv.target - pv.v) < 0.002) pv.v = pv.target;
         pv.slot.position.y = pv.baseY - 0.035 * pv.v;
@@ -552,8 +563,10 @@ export class WorldRenderer {
       // A room rises out of the ground when it is built.
       if (e.rise !== undefined && e.rise < 1) e.rise = Math.min(1, e.rise + dt / 0.9);
     }
+    this._castersMoving = false;
     for (const v of this.objectViews?.values() ?? []) {
       const k = Math.min(1, dt * 9);
+      if (Math.abs(v.tx - v.x) + Math.abs(v.tz - v.z) > 0.002) this._castersMoving = true;
       v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
       const dy = Math.atan2(Math.sin(v.tyaw - v.yaw), Math.cos(v.tyaw - v.yaw));
       v.yaw += dy * k;
@@ -825,13 +838,24 @@ export class WorldRenderer {
     const key = this.points[0];
     if (key.castShadow !== cast) key.castShadow = cast;
     if (cast) {
+      // Room geometry is static, so the shadow map is drawn once and kept: it is redrawn when the room,
+      // the lamp or the map size changes, and every few frames while something that casts is moving.
+      const moving = this._castersMoving || entry.built.animated.some(Boolean) && entry.built.hasMachinery;
+      const sig = `${entry.id}|${key.position.x.toFixed(2)},${key.position.y.toFixed(2)},${key.position.z.toFixed(2)}|${this.q.shadows}|${entry.sig}`;
+      this._shadowSig = this._shadowSig ?? '';
+      const stale = sig !== this._shadowSig;
+      this._shadowSig = sig;
+      this.renderer.shadowMap.autoUpdate = false;
+      this.renderer.shadowMap.needsUpdate = stale || (moving && this.frame % 3 === 0);
+      this.stats.shadowRenders = (this.stats.shadowRenders ?? 0) + (this.renderer.shadowMap.needsUpdate ? 1 : 0);
+    }
+    if (cast) {
       if (key.shadow.mapSize.x !== this.q.shadows) { key.shadow.mapSize.set(this.q.shadows, this.q.shadows); key.shadow.map?.dispose(); key.shadow.map = null; }
       key.shadow.camera.near = 0.3;
       key.shadow.camera.far = key.distance;
       key.shadow.bias = -0.0006;
       key.shadow.normalBias = 0.035;
       key.shadow.radius = 3;
-      this.renderer.shadowMap.needsUpdate = true;
     }
     this.scene.fog.color.set(s.fog.color);
     this.scene.fog.density = s.fog.density;
@@ -931,7 +955,6 @@ export class WorldRenderer {
     this.post.resize(...this._bufSize(), this.q.samples);
     this._pass(Wc, entry, 0, this.post.sceneTarget, null, this.baseProjection.clone());
     cam.projectionMatrix.copy(this.baseProjection);
-    this.renderer.shadowMap.needsUpdate = false;
     // `plain` strips bloom, vignette and grading so a test can read the geometry's own pixels.
     const grade = this.plain ? { ...entry.style.grade, vignette: 0, exposure: 1, saturation: 1, contrast: 1, lift: [0, 0, 0], tint: [1, 1, 1] } : entry.style.grade;
     this.post.render(grade, { bloom: this.plain ? 0 : this.q.bloom, threshold: 1.25, time });

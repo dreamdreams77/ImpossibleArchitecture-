@@ -240,3 +240,5 @@ body.panel-hidden .ending-screen { inset: 0; }
 .editor-problem { color: var(--err, #d97757); font-size: 13px; }
 .objectives { display: grid; gap: 4px; }
 .objective { font-size: 13px; }
+.perf { display: grid; gap: 6px; margin-top: 8px; }
+.bench-text { margin: 0 0 10px; max-height: 50vh; overflow: auto; white-space: pre-wrap; font: 11px/1.45 ui-monospace, Menlo, monospace; }

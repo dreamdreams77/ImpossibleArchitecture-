@@ -11,6 +11,8 @@ import { connect } from '../topology/construction.js';
 import { bodyContext, litBits, gridSize } from '../topology/blocks.js';
 import { doorFrame, WALL_T } from '../render3d/frames.js';
 import { createPinch } from './pinch.js';
+import { deviceInfo, recommendPreset } from './bench.js';
+import { Structure } from '../topology/graph.js';
 
 const QUALITY_ORDER = ['high', 'medium', 'low'];
 
@@ -22,9 +24,13 @@ export function glSupported() {
 export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onPickFace, onCross, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
   if (!glSupported()) return null;
   const params = new URLSearchParams(globalThis.location?.search ?? '');
-  let quality = params.get('quality') ?? settings.quality ?? 'high';
-  const autoQuality = !params.has('quality') && (settings.quality ?? 'auto') === 'auto';
-  if (quality === 'auto') quality = 'high';
+  let quality = params.get('quality') ?? settings.quality ?? 'auto';
+  let autoQuality = !params.has('quality') && (settings.quality ?? 'auto') === 'auto';
+  // Automatic: start where the device says it can cope, then adapt from what the frames show.
+  if (quality === 'auto') {
+    const info = deviceInfo(document.createElement('canvas'));
+    quality = recommendPreset({ renderer: info.renderer, mobile: info.mobile, memoryGB: info.memoryGB, cores: info.cores, dpr: info.dpr });
+  }
   let world;
   try {
     world = new WorldRenderer(canvas, { quality, debug: params.has('debug') });
@@ -50,9 +56,12 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   let autoOrbit = false;
   let frameMs = 16;
   let slow = 0;
+  let fast = 0;
+  let resScale = 1;
   let debugOn = world.debug;
   const pinch = createPinch();
   let lost = false;
+  let benchScene = false; // while measuring, a fixed worst-case scene replaces the game's own
   // A lost context cannot draw. Say so, let the app fall back to the 2D views, and
   // rebuild the renderer's GPU resources if the browser gives the context back.
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; hud && (hud.hidden = true); onLost?.(); });
@@ -199,6 +208,11 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     const dt = lastNow === null ? 0 : Math.min(0.1, (now - lastNow) / 1000);
     lastNow = now;
     const t = now / 1000;
+    if (benchScene) { // a self-looping atrium, a mirrored passage and a turned one, in the heaviest style
+      if (canvas.width < 2) resize();
+      world.renderWalk({ room: 'a', pos: [0, 1.65, 0], yaw: Math.sin(t * 0.6) * 0.7, pitch: 0.02 }, t);
+      return;
+    }
     const walkerState = ensureSynced();
     if (canvas.width < 2) resize();
     walker.speed = 6.5 * (settings.speed?.() ?? 1);
@@ -218,15 +232,20 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       world.renderOverview(orbit, t);
     }
     updateHud(walkerState);
-    // Adapt: if frames are slow for a sustained spell, step the quality down once.
+    // Adapt. First shrink the picture a little at a time; only when it cannot shrink further, lower the
+    // preset. When frames are comfortably quick the picture grows back. Presets never rise by themselves.
     frameMs += (dt * 1000 - frameMs) * 0.05;
     if (autoQuality && dt > 0) {
-      slow = frameMs > 42 ? slow + 1 : Math.max(0, slow - 2);
-      const i = QUALITY_ORDER.indexOf(world.quality);
-      if (slow > 120 && i < QUALITY_ORDER.length - 1) {
-        world.setQuality(QUALITY_ORDER[i + 1]);
+      slow = frameMs > 40 ? slow + 1 : Math.max(0, slow - 2);
+      fast = frameMs < 19 ? fast + 1 : 0;
+      if (slow > 90) {
         slow = 0;
-      }
+        if (resScale > 0.65) { resScale = Math.max(0.6, resScale - 0.1); world.setResolutionScale(resScale); }
+        else {
+          const i = QUALITY_ORDER.indexOf(world.quality);
+          if (i < QUALITY_ORDER.length - 1) { world.setQuality(QUALITY_ORDER[i + 1]); resScale = 1; world.setResolutionScale(1); }
+        }
+      } else if (fast > 400 && resScale < 1) { fast = 0; resScale = Math.min(1, resScale + 0.1); world.setResolutionScale(resScale); }
     }
   }
 
@@ -354,12 +373,29 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     setCutaway(on) { world.cutaway = !!on; },
     setCutHeight(y) { world.cutY = y; },
     setQuality(q) { world.setQuality(q); },
+    setAdaptive(on) { autoQuality = !!on && !params.has('quality') && (settings.quality ?? 'auto') === 'auto'; slow = 0; },
+    setResolutionScale(k) { resScale = k; world.setResolutionScale(k); },
+    get resolutionScale() { return resScale; },
     // Debug tint: passes are coloured by recursion depth so the portal budget is visible.
     setDebug(on) {
       debugOn = !!on;
       world.debug = debugOn;
     },
     bump(heading) { walker.bump(heading); },
+    // The worst-case scene for the benchmark: the game's own world is put back afterwards.
+    startBench() {
+      const s = new Structure();
+      s.addRoom({ id: 'a', x: 0, y: 0, label: 'A', size: 1.5, kind: 'atrium' });
+      s.addRoom({ id: 'b', x: 3, y: 0, label: 'B' });
+      s.addRoom({ id: 'c', x: 3, y: 3, label: 'C', kind: 'corridor' });
+      s.addPortal({ a: 'a', aFace: 'N', b: 'a', bFace: 'S' });
+      s.addPortal({ a: 'a', aFace: 'E', b: 'b', bFace: 'W', transform: { mirror: true } });
+      s.addPortal({ a: 'b', aFace: 'S', b: 'c', bFace: 'N' });
+      s.addPortal({ a: 'c', aFace: 'W', b: 'a', bFace: 'W', transform: { turns: 1 } });
+      world.sync(s, { chapterId: 'bench', discipline: 6, themeName: 'dusk', plates: [{ room: 'b', heading: 'N' }], cargo: [], pads: [] });
+      benchScene = true;
+    },
+    stopBench() { benchScene = false; lastStructure = null; },
     // Renders a frame and hands back the canvas as a PNG blob in the same task.
     capture(cb) {
       paint(performance.now());

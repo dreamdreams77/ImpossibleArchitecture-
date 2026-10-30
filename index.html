@@ -259,6 +259,10 @@
             <label class="field">Look sensitivity <input id="set-look" type="range" min="0.4" max="2.5" step="0.1" aria-label="Look sensitivity"></label>
             <label class="field">Field of view <input id="set-fov" type="range" min="55" max="100" step="1" aria-label="Field of view in degrees"></label>
             <label class="field">Head bob <input id="set-bob" type="checkbox" aria-label="Head bob while walking"></label>
+            <div class="perf"><strong>Performance</strong>
+              <p class="muted">Measures frame times at each graphics preset on this device, plus a short sustained run and touch response. Nothing is sent anywhere.</p>
+              <button id="bench-run" type="button">Run benchmark (about 40 s)</button>
+            </div>
             <div class="keybinds"><strong>Keys</strong><div id="key-list" class="menu-buttons"></div><p id="key-note" class="muted" role="status"></p><button id="key-reset" type="button">Reset keys</button></div>
             <button id="settings-back" type="button">Back</button>
           </div>
@@ -307,6 +311,13 @@
           <button id="ending-stay" type="button">Stay in the construction</button>
         </div>
       </div>
+    </div>
+
+    <div id="bench-report" class="keys" role="dialog" aria-label="Performance report" hidden>
+      <h2>Performance report</h2>
+      <pre id="bench-text" class="bench-text"></pre>
+      <button id="bench-copy" type="button">Copy report</button>
+      <button id="bench-close" type="button">Close</button>
     </div>
 
     <div id="keys-overlay" class="keys" role="dialog" aria-label="Keyboard shortcuts" hidden>

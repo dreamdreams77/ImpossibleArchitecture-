@@ -65,7 +65,7 @@ export class Builder {
     _q.setFromEuler(_e);
     _m.compose(_p.set(x, y, z), _q, _s);
     // Big faces are subdivided so the per-vertex occlusion varies across them.
-    const seg = (n) => (this.half && n > 2.2 ? Math.min(12, Math.ceil(n / 1.1)) : 1);
+    const seg = (n) => (this.half && n > 3 ? Math.min(8, Math.ceil(n / 1.3)) : 1);
     return this.add(mat, new BoxGeometry(w, h, d, seg(w), seg(h), seg(d)), _m, opts);
   }
 

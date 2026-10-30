@@ -22,6 +22,7 @@ import { createGlView } from './glview.js';
 import { styleFor } from '../render3d/styles.js';
 import { debugReport } from './debugreport.js';
 import { createEditorPanel } from './editorpanel.js';
+import { runBenchmark, formatReport } from './bench.js';
 import { ACTIONS, loadBindings, saveBindings, rebind, translate } from './keybindings.js';
 import { copyText, canvasRatio } from './platform.js';
 
@@ -662,6 +663,32 @@ export function boot() {
   $('#gl-test').addEventListener('click', () => $('#test').click());
   $('#gl-empty-build').addEventListener('click', () => { session.tool = 'connect'; setView('model'); });
   if (window.matchMedia?.('(min-width: 801px)').matches) $('#advanced').open = false;
+
+  // The benchmark: runs against the live walk view, then shows (and can copy) a report that names the
+  // machine, including whether its GPU is only software.
+  async function benchmark({ sustained = 20, touch = 5, seconds = 5 } = {}) {
+    if (!gl) { session.feedback = { kind: 'error', text: 'The 3D view is not available here, so there is nothing to measure.' }; render(); return null; }
+    closeMenu();
+    setView('first');
+    session.fpEnsure();
+    const report = await runBenchmark({
+      gl, canvas: glCanvas, seconds, sustained, touch,
+      onProgress: (t) => { session.feedback = { kind: 'info', text: t }; syncViewOverlays(); },
+    });
+    window.__benchReport = report;
+    $('#bench-text').textContent = formatReport(report);
+    $('#bench-report').hidden = false;
+    return report;
+  }
+  $('#bench-run').addEventListener('click', () => { benchmark(); });
+  $('#bench-close').addEventListener('click', () => { $('#bench-report').hidden = true; });
+  $('#bench-copy').addEventListener('click', async () => {
+    const ok = await copyText($('#bench-text').textContent);
+    session.feedback = ok ? { kind: 'success', text: 'Report copied.' } : { kind: 'error', text: 'Could not copy: select the text instead.' };
+    render();
+  });
+  window.__bench = benchmark;
+  if (new URLSearchParams(location.search).has('bench')) setTimeout(() => { $('#menu').hidden = true; benchmark(); }, 800);
 
   // Developer overlay (F3): the engine's own account of the world, plus renderer stats.
   let debugOn = false;
