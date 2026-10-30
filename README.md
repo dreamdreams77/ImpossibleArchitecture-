@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 407 tests over the engine, campaign, renderer maths and walker
+npm test       # 408 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -23,7 +23,7 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 
 ## What is in it
 
-- **A campaign of six chapters and 37 challenges (the original 31 plus four physical ones, a sequenced-plate puzzle and a two-lock gate)**, each chapter one discipline:
+- **A campaign of six chapters and 38 challenges (the original 31 plus four physical ones, a sequenced-plate puzzle, a two-lock gate and the three-lock Mirror Lock)**, each chapter one discipline:
   The First Connection, The Architecture of Return, The Rooms That Should Not Fit,
   The Mechanical Interior, The Structure With Two Truths, The Last Construction.
   Every goal is checked by searching the real graph, not by triggers, and most have

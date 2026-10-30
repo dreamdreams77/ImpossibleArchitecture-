@@ -160,7 +160,7 @@ test('every chapter has an intro and an outro, and the ending is built from the 
 
 test('place in chapter reports the position within the run', () => {
   assert.deepEqual({ i: placeInChapter('threshold').index, of: placeInChapter('threshold').of }, { i: 1, of: 5 });
-  assert.equal(placeInChapter('the-last-construction').index, 5);
+  assert.equal(placeInChapter('the-last-construction').index, 6);
   assert.equal(placeInChapter('nonsense'), null);
 });
 

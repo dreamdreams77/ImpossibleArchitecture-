@@ -222,3 +222,14 @@ test('The Two-Lock Vault needs a way back, and its second lock changes the answe
   const r = findRoute(s, 'hall', (t) => t.room === 'vault', { plates: c.plates });
   assert.ok(r.length >= 4);
 });
+
+test('The Mirror Lock: unsolved at first, solved by one way back from each dead end, and tidy routes are rewarded', () => {
+  const c = chapterById('the-mirror-lock');
+  const s = chapterStructure(c);
+  assert.equal(goalSatisfied(s, c), false);
+  s.addPortal({ a: 'gate', aFace: 'N', b: 'mirror', bFace: 'N', transform: { turns: 0, mirror: false } });
+  assert.equal(goalSatisfied(s, c), false, 'the Vent is still a dead end');
+  s.addPortal({ a: 'works', aFace: 'N', b: 'vent', bFace: 'W', transform: { turns: 0, mirror: false } });
+  assert.equal(goalSatisfied(s, c), true);
+  assert.ok(c.optional[0].check(s), 'this solution already walks it in seven');
+});

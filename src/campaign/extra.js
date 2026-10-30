@@ -407,4 +407,40 @@ export const EXTRA = [
     hint: 'Both plates must be lit at once. The corridor from the Lamp to the Bell only runs one way, so you will need a way back to the Hall. Mind how often you pass the Bell.',
     optional: [],
   },
+  {
+    id: 'the-mirror-lock',
+    theme: 'dusk',
+    title: 'The Mirror Lock',
+    blurb: 'A mirrored one-way door carries you to the Works. The Strongroom gate needs three plates at once: the Mirror Hall, a toggle in the Works, and the Vent. Arrive in the Strongroom facing south.',
+    rooms: [
+      { id: 'gate', x: 0, y: 0, label: 'Gatehouse' },
+      { id: 'mirror', x: 3, y: 0, label: 'Mirror Hall' },
+      { id: 'works', x: 6, y: 0, label: 'Works' },
+      { id: 'strong', x: 0, y: 3, label: 'Strongroom' },
+      { id: 'vent', x: 6, y: 3, label: 'Vent' },
+    ],
+    fixed: [
+      { a: { room: 'gate', face: 'E' }, b: { room: 'mirror', face: 'W' }, oneWay: 'a', transform: { mirror: true } },
+      { a: { room: 'mirror', face: 'E' }, b: { room: 'works', face: 'W' } },
+      { a: { room: 'works', face: 'S' }, b: { room: 'vent', face: 'N' }, oneWay: 'a' },
+      { a: { room: 'gate', face: 'S' }, b: { room: 'strong', face: 'N' }, gate: 0, also: [1, 2] },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 5, maxPortals: 7, sealedFaces: sealed(['strong', 'E'], ['strong', 'S'], ['strong', 'W'], ['vent', 'E'], ['gate', 'W'], ['mirror', 'S'], ['works', 'E'], ['vent', 'S']) },
+    start: 'gate',
+    plates: [
+      { room: 'mirror', heading: 'W' },
+      { room: 'works', heading: 'S', mode: 'toggle', startsLit: false },
+      { room: 'vent', heading: 'E' },
+    ],
+    goal: { kind: 'arrive', to: 'strong', heading: 'S' },
+    hint: 'The first door only goes one way and flips left and right. The Works plate answers an arrival from the north, and the Vent is a dead end, so you need ways back from both.',
+    optional: [
+      {
+        id: 'mirror-lock-tidy',
+        title: 'No wasted lap',
+        text: 'The Strongroom reached in seven steps.',
+        check: (s) => !!findRoute(s, 'gate', (t) => t.room === 'strong' && t.heading === 'S' && t.steps <= 7, { plates: [{ room: 'mirror', heading: 'W' }, { room: 'works', heading: 'S', mode: 'toggle', startsLit: false }, { room: 'vent', heading: 'E' }] }),
+      },
+    ],
+  },
 ];
