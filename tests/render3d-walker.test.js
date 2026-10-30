@@ -202,3 +202,15 @@ test('body mode: turning on the spot and stepping backward keep the walker where
   assert.equal(headingOf(w), 'E');
   assert.ok(Math.abs(w.x - (2.5 - 4)) < 1e-6);
 });
+
+import { isMonumental, roomHeight } from '../src/render3d/rooms.js';
+import { styleFor as styleForMonument } from '../src/render3d/styles.js';
+
+test('only the grandest atrium is a monument, and it stands taller than the same room unmarked', () => {
+  assert.equal(isMonumental('atrium', 1.5), true);
+  assert.equal(isMonumental('atrium', 1), false);
+  assert.equal(isMonumental('chamber', 1.5), false);
+  assert.equal(isMonumental('atrium', 1.5, true), false, 'physical rooms keep their grid height');
+  const style = styleForMonument('slate', null, null);
+  assert.ok(roomHeight(style, 'atrium', 1.5) > roomHeight(style, 'atrium', 1.5, true) * 1.2);
+});

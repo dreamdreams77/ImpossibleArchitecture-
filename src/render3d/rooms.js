@@ -10,7 +10,7 @@
 
 import {
   Group, Mesh, Points, BufferGeometry, Float32BufferAttribute, PointsMaterial, Shape, ExtrudeGeometry,
-  Matrix4, Vector3, Euler, Quaternion, Sprite, SpriteMaterial, AdditiveBlending, Color,
+  TorusGeometry, SphereGeometry, Matrix4, Vector3, Euler, Quaternion, Sprite, SpriteMaterial, AdditiveBlending, Color,
   CylinderGeometry, Path,
 } from '../vendor/three/three.module.js';
 import { Builder } from './builder.js';
@@ -21,9 +21,13 @@ import { FACES, FACE_NORMAL, WALL_T, DOOR_W, DOOR_H, halfWidth, doorFrame } from
 const T = WALL_T;
 const FACE_THETA = Object.fromEntries(FACES.map((f) => [f, Math.atan2(FACE_NORMAL[f][0], FACE_NORMAL[f][2])]));
 
-export function roomHeight(style, kind, size) {
+// The grand atria are monuments: taller again, with a suspended instrument, crossing light and a
+// medallion in the floor. Only the biggest atrium size earns this, so it stays rare and readable.
+export const isMonumental = (kind, size, physical = false) => kind === 'atrium' && size >= 1.5 && !physical;
+
+export function roomHeight(style, kind, size, physical = false) {
   const profile = KIND_PROFILE[kind] ?? KIND_PROFILE.chamber;
-  return style.height * profile.heightScale * (0.9 + 0.1 * size);
+  return style.height * profile.heightScale * (0.9 + 0.1 * size) * (isMonumental(kind, size, physical) ? 1.25 : 1);
 }
 
 // A gear: a toothed disc with spokes cut out, as an extrusion.
@@ -70,7 +74,8 @@ export function buildRoom(spec, lib) {
   const { style, kind = 'chamber', size = 1, doors = {}, physical = false, solids = [] } = spec;
   const profile = KIND_PROFILE[kind] ?? KIND_PROFILE.chamber;
   const hw = halfWidth(size);
-  const H = roomHeight(style, kind, size);
+  const H = roomHeight(style, kind, size, physical);
+  const monumental = isMonumental(kind, size, physical);
   const has = new Set(style.features);
   const b = new Builder(lib, H, hw);
   const group = new Group();
@@ -559,6 +564,38 @@ export function buildRoom(spec, lib) {
     });
   }
 
+  // ---- monument: medallion, crossing light, and a suspended armillary that turns with the building
+  if (monumental) {
+    for (let i = 0; i < 4; i++) b.torus(i % 2 ? 'metal' : 'inlay', hw * (0.18 + 0.13 * i), 0.025, 0, 0.012 + i * 0.002, 0, Math.PI / 2, { ao: false });
+    // Four slanted shafts through the clerestory, crossing over the floor medallion.
+    const sunCol = new Color(style.sun.color);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const len = H * 1.05;
+      const m = new Mesh(new CylinderGeometry(0.25, 0.9, len, 16, 1, true), shaftMaterial(sunCol, 0.09));
+      m.position.set(Math.cos(a) * hw * 0.42, H * 0.5, Math.sin(a) * hw * 0.42);
+      m.rotation.set(Math.sin(a) * 0.38, 0, -Math.cos(a) * 0.38);
+      m.renderOrder = 4;
+      group.add(m);
+    }
+    const arm = new Group();
+    arm.position.set(0, H * 0.58, 0);
+    const rings = [0.34, 0.27, 0.2].map((f, i) => {
+      const ring = new Mesh(new TorusGeometry(hw * f, 0.05, 10, 64), lib.metal);
+      ring.rotation.set(i === 0 ? 0 : Math.PI / 2, i === 1 ? Math.PI / 2 : 0, 0);
+      arm.add(ring);
+      return ring;
+    });
+    arm.add(new Mesh(new SphereGeometry(0.22, 18, 12), lib.lamp));
+    group.add(arm);
+    // Slow by default; it quickens for a moment after a crossing (the same energy the gears answer to).
+    animated.push((t, c) => {
+      rings[0].rotation.z += c.dt * (0.12 + 0.9 * c.energy);
+      rings[1].rotation.x += c.dt * (0.17 + 1.1 * c.energy);
+      rings[2].rotation.y += c.dt * (0.23 + 1.3 * c.energy);
+    });
+  }
+
   // ---- finalise
   group.add(b.build());
   group.traverse((o) => { if (o.isMesh && o.material && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } });
@@ -567,7 +604,7 @@ export function buildRoom(spec, lib) {
   // Roof-flagged children (hoist, sprites above head height) are hidden in the cutaway.
   return {
     group, half: hw, height: H, frames, lights, animated, dw, dh,
-    hasMachinery: has.has('gears') || has.has('rails'),
+    hasMachinery: has.has('gears') || has.has('rails') || monumental,
     roofObjects: () => {
       const out = [];
       group.traverse((o) => { if (o.userData.layer === 'roof' || o.userData.roof === true) out.push(o); });
