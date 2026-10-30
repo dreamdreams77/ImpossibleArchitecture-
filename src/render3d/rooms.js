@@ -578,21 +578,48 @@ export function buildRoom(spec, lib) {
       m.renderOrder = 4;
       group.add(m);
     }
+    // The centrepiece differs by chapter, so the grand room of each discipline has its own silhouette.
     const arm = new Group();
     arm.position.set(0, H * 0.58, 0);
-    const rings = [0.34, 0.27, 0.2].map((f, i) => {
-      const ring = new Mesh(new TorusGeometry(hw * f, 0.05, 10, 64), lib.metal);
-      ring.rotation.set(i === 0 ? 0 : Math.PI / 2, i === 1 ? Math.PI / 2 : 0, 0);
-      arm.add(ring);
-      return ring;
-    });
+    const spin = [];
+    const ringOf = (R, tube, rx, ry, axis, mat = lib.metal) => {
+      const m = new Mesh(new TorusGeometry(R, tube, 10, 64), mat);
+      m.rotation.set(rx, ry, 0);
+      arm.add(m);
+      spin.push({ m, axis });
+      return m;
+    };
+    const k = style.key;
+    if (k === 'mechanical') {
+      // A great gear turning in a vertical plane, with a smaller one meshed beside it.
+      const big = new Mesh(gearGeometry(24, hw * 0.34, hw * 0.29, 0.3, 6), lib.metal);
+      arm.add(big); spin.push({ m: big, axis: 'z', rate: 0.12 });
+      const small = new Mesh(gearGeometry(12, hw * 0.17, hw * 0.145, 0.3, 4), lib.metal);
+      small.position.set(hw * 0.5, 0, 0);
+      arm.add(small); spin.push({ m: small, axis: 'z', rate: -0.24 });
+    } else if (k === 'return') {
+      // Nested arches that lean into one another: a doorway that is also a ring.
+      for (let i = 0; i < 4; i++) { const r = ringOf(hw * (0.34 - i * 0.065), 0.045, 0, (i * Math.PI) / 4, 'y'); spin[spin.length - 1].rate = 0.08 + i * 0.03; r.userData.tag = 'arch'; }
+    } else if (k === 'twotruths') {
+      // Two half-worlds, one warm and one cool, turning against each other.
+      const warm = new Mesh(new TorusGeometry(hw * 0.3, 0.07, 10, 48, Math.PI), lib.metal);
+      const cool = new Mesh(new TorusGeometry(hw * 0.3, 0.07, 10, 48, Math.PI), lib.metal);
+      cool.rotation.z = Math.PI;
+      arm.add(warm, cool); spin.push({ m: warm, axis: 'y', rate: 0.2 }, { m: cool, axis: 'y', rate: -0.2 });
+    } else if (k === 'monument') {
+      // A single colossal ring on a tilted axis, a gate for no one.
+      ringOf(hw * 0.38, 0.12, Math.PI / 2.4, 0, 'z').userData.tag = 'gate';
+      ringOf(hw * 0.3, 0.04, Math.PI / 2.4, 0, 'z');
+    } else if (k === 'final') {
+      for (let i = 0; i < 5; i++) ringOf(hw * (0.36 - i * 0.05), 0.04, (i * Math.PI) / 5, (i * Math.PI) / 7, i % 2 ? 'x' : 'y');
+    } else {
+      ringOf(hw * 0.34, 0.05, 0, 0, 'z'); ringOf(hw * 0.27, 0.05, Math.PI / 2, Math.PI / 2, 'x'); ringOf(hw * 0.2, 0.05, Math.PI / 2, 0, 'y');
+    }
     arm.add(new Mesh(new SphereGeometry(0.22, 18, 12), lib.lamp));
     group.add(arm);
     // Slow by default; it quickens for a moment after a crossing (the same energy the gears answer to).
     animated.push((t, c) => {
-      rings[0].rotation.z += c.dt * (0.12 + 0.9 * c.energy);
-      rings[1].rotation.x += c.dt * (0.17 + 1.1 * c.energy);
-      rings[2].rotation.y += c.dt * (0.23 + 1.3 * c.energy);
+      spin.forEach((s, i) => { s.m.rotation[s.axis] += c.dt * ((s.rate ?? 0.12 + 0.05 * i) * (1 + 7 * c.energy)); });
     });
   }
 
