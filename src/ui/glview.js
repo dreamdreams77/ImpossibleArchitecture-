@@ -9,7 +9,7 @@ import { rulesFor } from '../campaign/chapters.js';
 import { fpZoneFor } from '../render/firstperson.js';
 import { connect } from '../topology/construction.js';
 import { bodyContext, litBits, gridSize } from '../topology/blocks.js';
-import { doorFrame, WALL_T } from '../render3d/frames.js';
+import { doorFrame } from '../render3d/frames.js';
 import { createPinch } from './pinch.js';
 import { deviceInfo, recommendPreset } from './bench.js';
 import { Structure } from '../topology/graph.js';

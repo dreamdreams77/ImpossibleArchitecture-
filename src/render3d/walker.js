@@ -11,7 +11,7 @@
 
 import { Vector3 } from '../vendor/three/three.module.js';
 import {
-  doorFrame, portalLocalTransform, halfWidth, headingYaw, yawDelta, yawOfDirection, directionOfYaw,
+  doorFrame, portalLocalTransform, headingYaw, yawDelta, yawOfDirection, directionOfYaw,
   FACE_NORMAL, WALL_T,
 } from './frames.js';
 

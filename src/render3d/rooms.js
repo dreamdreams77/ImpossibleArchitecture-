@@ -10,8 +10,8 @@
 
 import {
   Group, Mesh, Points, BufferGeometry, Float32BufferAttribute, PointsMaterial, Shape, ExtrudeGeometry,
-  Matrix4, Vector3, Euler, Quaternion, Sprite, SpriteMaterial, AdditiveBlending, Color, MeshBasicMaterial,
-  CylinderGeometry, DoubleSide, Path,
+  Matrix4, Vector3, Euler, Quaternion, Sprite, SpriteMaterial, AdditiveBlending, Color,
+  CylinderGeometry, Path,
 } from '../vendor/three/three.module.js';
 import { Builder } from './builder.js';
 import { glowTexture, shaftMaterial } from './materials.js';
@@ -77,7 +77,6 @@ export function buildRoom(spec, lib) {
   group.name = `room:${spec.id}`;
   const animated = [];
   const lights = [];
-  const sprites = [];
   const split = has.has('split');
   const dw = DOOR_W;
   const dh = DOOR_H;
@@ -173,7 +172,6 @@ export function buildRoom(spec, lib) {
   // The plate pad lives at the centre; leave the medallion otherwise clear.
 
   // ---- walls
-  const cap = 0.3;
   for (const f of FACES) {
     const door = doors[f];
     const full = hw + T;
@@ -218,7 +216,7 @@ export function buildRoom(spec, lib) {
     lbox(f, 'trim', -hw, hw, H - 0.36, H - 0.18, -0.24, 0);
     lbox(f, 'metal', -hw, hw, H - 0.4, H - 0.36, -0.2, 0, { ao: false });
     // Bays between the piers.
-    const lo = 0.5; const hi = hw - 0.5;
+    const hi = hw - 0.5;
     const bays = [];
     if (door) {
       const edge = dw / 2 + 0.42 + 0.35;

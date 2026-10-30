@@ -5,7 +5,7 @@
 
 import {
   WebGLRenderTarget, HalfFloatType, LinearFilter, Scene, OrthographicCamera, Mesh, PlaneGeometry,
-  ShaderMaterial, Vector2, Vector3, Color,
+  ShaderMaterial, Vector2, Vector3,
 } from '../vendor/three/three.module.js';
 
 const VERT = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';

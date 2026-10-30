@@ -22,7 +22,7 @@ export function diagnose(structure, chapter) {
 
   if (chapter.physical) {
     if (!structure.rooms.has(start)) return [chapter.hint];
-    const reach = findRoute(structure, start, (t) => goal.to ? t.room === goal.to : true, { open: true });
+    findRoute(structure, start, (t) => goal.to ? t.room === goal.to : true, { open: true });
     const sol = bodySolution(structure, chapter);
     if (sol?.exceeded) return ['The search for a solution gave up: the construction is very open. Try a simpler one.'];
     const out = [];

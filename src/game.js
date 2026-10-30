@@ -15,7 +15,7 @@ import { searchCycles, dimensionReport } from './topology/analysis.js';
 import { describeStructure } from './topology/describe.js';
 import { diagnose } from './campaign/diagnose.js';
 import { normalizeChallenge, toChapter, problems as challengeProblems } from './campaign/editor.js';
-import { initialBody, move as bodyMove, bodyContext, bodyGoalMet, replayBody, DIRS } from './topology/blocks.js';
+import { initialBody, move as bodyMove, bodyContext, bodyGoalMet, replayBody } from './topology/blocks.js';
 
 const FACE_NAMES = { N: 'north', E: 'east', S: 'south', W: 'west' };
 

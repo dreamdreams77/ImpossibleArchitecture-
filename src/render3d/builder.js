@@ -4,7 +4,7 @@
 // material. A room of several hundred primitives costs a dozen draw calls.
 
 import {
-  BoxGeometry, CylinderGeometry, PlaneGeometry, ExtrudeGeometry, BufferGeometry, Float32BufferAttribute,
+  BoxGeometry, CylinderGeometry, PlaneGeometry, ExtrudeGeometry, Float32BufferAttribute,
   Matrix4, Mesh, Group, Euler, Vector3, Quaternion, Shape, TorusGeometry,
 } from '../vendor/three/three.module.js';
 import { mergeGeometries } from '../vendor/three/BufferGeometryUtils.js';

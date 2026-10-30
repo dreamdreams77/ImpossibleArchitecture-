@@ -24,7 +24,7 @@ import { buildRoom } from './rooms.js';
 import { makePortalMaterial } from './portalMaterial.js';
 import { Post } from './post.js';
 import {
-  FACES, DOOR_W, DOOR_H, halfWidth, doorFrame, portalLocalTransform, planeBeyond, obliqueProjection,
+  FACES, DOOR_W, DOOR_H, doorFrame, portalLocalTransform, planeBeyond, obliqueProjection,
   headingYaw,
 } from './frames.js';
 
@@ -357,7 +357,6 @@ export class WorldRenderer {
       const scale = this._frame.scale;
       this.planScale = scale;
       this.planOrigin = { x: this._frame.x, y: this._frame.y };
-      const minX = this._frame.x; const maxX = this._frame.x; const minY = this._frame.y; const maxY = this._frame.y;
       for (const id of ids) {
         const r = this.rooms.get(id).room;
         this.positions.set(id, new THREE.Vector3((r.x - this._frame.x) * scale, 0, (r.y - this._frame.y) * scale));

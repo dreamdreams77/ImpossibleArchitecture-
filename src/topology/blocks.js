@@ -29,8 +29,6 @@ export function gridSize(room) {
   return Math.round(8 * size);
 }
 
-const key = (room, c) => `${room}:${c[0]},${c[1]}`;
-
 // The two cells at the middle of a face, which together make the doorway.
 export function doorCells(n, face) {
   const a = n / 2 - 1; const b = n / 2;
