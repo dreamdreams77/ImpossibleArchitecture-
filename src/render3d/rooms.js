@@ -176,6 +176,49 @@ export function buildRoom(spec, lib) {
   }
   // The plate pad lives at the centre; leave the medallion otherwise clear.
 
+  // ---- wall dressing: what hangs in each bay, chosen per room and wall so rooms of one style differ.
+  // Sconce glows are collected here and given their sprites once the glow helper exists, below.
+  const sconces = [];
+  const dress = (f, a0, a1, y0, y1) => {
+    const w = a1 - a0;
+    if (w < 1.2 || y1 - y0 < 1.6) return;
+    const ac = (a0 + a1) / 2;
+    const v = hash(`${spec.id}:${f}:${Math.round(ac * 4)}`) % 5;
+    const th = FACE_THETA[f];
+    const at = (a, y, d) => { const cz = hw - d; return [a * Math.cos(th) + cz * Math.sin(th), y, -a * Math.sin(th) + cz * Math.cos(th)]; };
+    if (v === 0) {
+      // A hanging banner on a rod, in the chapter's accent.
+      lbox(f, 'metal', ac - w * 0.3, ac + w * 0.3, y1 - 0.2, y1 - 0.15, -0.14, -0.06, { ao: false });
+      lbox(f, 'accent', ac - w * 0.24, ac + w * 0.24, y0 + 0.5, y1 - 0.2, -0.1, -0.07, { ao: false });
+      lbox(f, 'trim', ac - w * 0.24, ac + w * 0.24, y0 + 0.44, y0 + 0.5, -0.12, -0.06);
+    } else if (v === 1) {
+      // A pair of sconces: bracket, shade and a glow that is lit by the room's own lamp colour.
+      for (const s of [-1, 1]) {
+        const a = ac + s * Math.min(w * 0.32, 1.1);
+        lbox(f, 'metal', a - 0.05, a + 0.05, y0 + 1.3, y0 + 1.36, -0.22, -0.05, { ao: false });
+        lbox(f, 'lamp', a - 0.07, a + 0.07, y0 + 1.36, y0 + 1.62, -0.2, -0.12, { ao: false });
+        sconces.push(at(a, y0 + 1.5, 0.3));
+      }
+    } else if (v === 2) {
+      // A niche with a plinth and a small figure.
+      const nw = Math.min(w * 0.4, 0.8);
+      lbox(f, 'trim', ac - nw / 2 - 0.08, ac + nw / 2 + 0.08, y0 + 0.2, y0 + 0.26, -0.18, -0.02);
+      lbox(f, 'trim', ac - nw / 2, ac + nw / 2, y0 + 0.26, y0 + 0.9, -0.2, -0.05);
+      lbox(f, 'metal', ac - nw / 2 - 0.02, ac + nw / 2 + 0.02, y0 + 0.9, y0 + 0.94, -0.21, -0.04, { ao: false });
+      lbox(f, 'accent', ac - 0.1, ac + 0.1, y0 + 0.94, y0 + 1.5, -0.17, -0.1, { ao: false });
+    } else if (v === 3) {
+      // A relief: concentric rings let into the panel, the building's own motif.
+      const [x, y, z] = at(ac, (y0 + y1) / 2, 0.1);
+      const rr = Math.min(w * 0.36, (y1 - y0) * 0.3);
+      const q = new Quaternion().setFromEuler(new Euler(0, th, 0));
+      for (let k = 0; k < 3; k++) {
+        const R = rr * (1 - k * 0.3);
+        b.add(k % 2 ? 'metal' : 'inlay', new TorusGeometry(R, 0.02, 8, 40), new Matrix4().compose(new Vector3(x, y, z), q, new Vector3(1, 1, 1)), { ao: false, uv: 'cyl', center: new Vector3(x, y, z), radius: R });
+      }
+    }
+    // v === 4: left plain, so some bays rest.
+  };
+
   // ---- walls
   for (const f of FACES) {
     const door = doors[f];
@@ -258,6 +301,7 @@ export function buildRoom(spec, lib) {
         const y0 = 1.25; const y1 = H - 1.1;
         if (y1 - y0 > 1) {
           lbox(f, 'inset', a0, a1, y0, y1, -0.05, 0);
+          dress(f, a0, a1, y0, y1);
           const fw = 0.1;
           lbox(f, 'trim', a0 - fw, a1 + fw, y0 - fw, y0, -0.1, 0);
           lbox(f, 'trim', a0 - fw, a1 + fw, y1, y1 + fw, -0.1, 0);
@@ -490,6 +534,7 @@ export function buildRoom(spec, lib) {
     lampSprites.push(s);
     return s;
   };
+  for (const [x, y, z] of sconces) addGlow(x, y, z, style.lamp, 0.9, 0.45);
   if (split) {
     lights.push({ x: -hw * 0.5, y: lampY, z: 0, color: style.warm, intensity: style.lampIntensity * 0.9 });
     lights.push({ x: hw * 0.5, y: lampY, z: 0, color: style.cool, intensity: style.lampIntensity * 0.9 });
