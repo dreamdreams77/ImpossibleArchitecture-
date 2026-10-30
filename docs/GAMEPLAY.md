@@ -9,7 +9,7 @@ Open the game with `npm start`, then visit http://localhost:8080.
 - **Turn ¼ / Mirror:** change a selected portal's transform.
 - **Test construction:** checks the current chapter's goal and highlights the route.
 
-Chapters are short. Each teaches one idea: a direct connection, a self-loop,
+The campaign is six chapters of 31 challenges (see the README). Each challenge teaches one idea: a direct connection, a self-loop,
 turns that change your heading, a shortcut across the plan, a mirror that
 reflects your heading, a machine whose plates must be struck on one route, a
 hidden stair, and a final construction combining them. Free construction has
@@ -52,3 +52,15 @@ and out of a room to change the building's state before passing through.
 When a room is selected, a small grid appears in the sidebar. The room is in the
 centre. Each side shows a wall, or the room beyond that passage with the heading
 you would arrive with. A gate is drawn across its opening.
+
+## Sealed faces and forbidden links
+
+Some challenges seal faces or forbid two rooms from ever being joined directly. The
+game says which rule refused a passage. Forbidden links make you build through a hub.
+
+## Walking and the model
+
+Switch to **Walk** to stand inside your building. Doorways show the real room beyond,
+including loops that show themselves, mirrors that reverse the view, and gates that
+stay barred until their plate is lit. **Model** shows the building from above with the
+real connections drawn as arcs.

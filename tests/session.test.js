@@ -9,7 +9,7 @@ test('connecting the threshold through the UI flow completes the chapter', () =>
   s.pickFace('vault', 'W');
   assert.equal(s.structure.portals.size, 1);
   assert.deepEqual(s.progress.completed, ['threshold']);
-  assert.equal(s.nextChapterId(), 'returning-hall');
+  assert.equal(s.nextChapterId(), 'the-two-doors');
 });
 
 test('a second connection onto an occupied face is refused with an explanation', () => {

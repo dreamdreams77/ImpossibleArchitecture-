@@ -26,7 +26,7 @@ for (const k of q.getAll('size')) { const [id, size] = k.split(':'); s.rooms.get
 const canvas = document.getElementById('c');
 const w = new WorldRenderer(canvas, { quality: q.get('quality') ?? 'high', debug: q.has('debug') });
 w.setSize(innerWidth, innerHeight, devicePixelRatio);
-w.sync(s, { chapterId: q.get('style') ?? ch.id, themeName: q.get('theme') ?? ch.theme, plates: ch.plates ?? [] });
+w.sync(s, { chapterId: ch.id, discipline: +(q.get('discipline') ?? ch.discipline) || null, themeName: q.get('theme') ?? ch.theme, plates: ch.plates ?? [] });
 w.setState({ lit: +q.get('lit') || 0 });
 const room = q.get('room') ?? ch.start;
 const yaw = headingYaw(q.get('h') ?? 'N') + (+q.get('yaw') || 0);

@@ -175,10 +175,12 @@ export const STYLES = Object.freeze({
 });
 
 const BY_THEME = { slate: 'threshold', ash: 'return', dusk: 'monument', copper: 'mechanical', verdigris: 'twotruths' };
+const BY_CHAPTER = ['threshold', 'return', 'monument', 'mechanical', 'twotruths', 'final'];
 
-// The style for a chapter: the finale has its own; every other chapter follows its theme.
-export function styleFor(themeName, chapterId = null) {
-  if (chapterId === 'final-construction') return STYLES.final;
+// The style for a challenge: its chapter (1 to 6) decides, so the six disciplines
+// each keep one look. With no chapter (free construction) the 2D theme decides.
+export function styleFor(themeName, chapterId = null, chapter = null) {
+  if (chapter >= 1 && chapter <= BY_CHAPTER.length) return STYLES[BY_CHAPTER[chapter - 1]];
   return STYLES[BY_THEME[themeName] ?? 'threshold'];
 }
 

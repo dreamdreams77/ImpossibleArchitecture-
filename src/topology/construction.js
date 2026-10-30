@@ -12,6 +12,7 @@ const RULES = Object.freeze({
   PORTAL_LIMIT: 'This chapter allows no more portals.',
   FORBIDDEN_FACE: 'This face is sealed in this chapter.',
   FIXED: 'That passage is part of the architecture and cannot be changed.',
+  FORBIDDEN_LINK: 'These two rooms may never be joined directly in this chapter.',
 });
 
 // Ruleset is supplied by the campaign so each chapter can restrict building.
@@ -19,6 +20,7 @@ export const UNRESTRICTED = Object.freeze({
   maxRooms: Infinity,
   maxPortals: Infinity,
   sealedFaces: Object.freeze([]),
+  forbiddenLinks: Object.freeze([]),
 });
 
 export function validate(structure, ruleset = UNRESTRICTED) {
@@ -36,6 +38,15 @@ export function validate(structure, ruleset = UNRESTRICTED) {
       used.set(k, p.id);
       if (ruleset.sealedFaces.some((s) => s.room === end.room && s.face === end.face)) {
         violations.push({ code: 'FORBIDDEN_FACE', message: RULES.FORBIDDEN_FACE, portal: p.id, room: end.room, face: end.face });
+      }
+    }
+  }
+  // A forbidden link is a pair of rooms that no single passage may join, in either direction.
+  for (const p of structure.portals.values()) {
+    if (p.fixed) continue;
+    for (const f of ruleset.forbiddenLinks ?? []) {
+      if ((p.a.room === f.a && p.b.room === f.b) || (p.a.room === f.b && p.b.room === f.a)) {
+        violations.push({ code: 'FORBIDDEN_LINK', message: RULES.FORBIDDEN_LINK, portal: p.id, rooms: [f.a, f.b] });
       }
     }
   }

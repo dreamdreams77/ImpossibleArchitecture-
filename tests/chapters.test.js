@@ -278,7 +278,7 @@ test('the Reflecting Vault: a loop with one mirror reveals the mirror-pair disco
 });
 
 test('chapter data is consistent: gates name real plates, numbering runs in order, ids are unique', () => {
-  const romans = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV'];
+  const romans = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX', 'XXXI'];
   const ids = new Set();
   CHAPTERS.forEach((c, i) => {
     assert.ok(!ids.has(c.id), `duplicate id ${c.id}`);

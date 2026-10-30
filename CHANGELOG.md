@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.0 — a 3D walk, six chapters, an ending
+
+Layout
+- The repository had been uploaded flat; `src/`, `tests/`, `tools/` and `docs/` are restored, so `npm test` and `npm start` work again.
+
+Rendering
+- WebGL walk and architect's model (three.js r170, vendored). Doorways show the real room beyond by recursive
+  render-to-texture portals with oblique clipping; mirrored passages, quarter turns and rooms that open into
+  themselves are drawn. Six chapter styles, procedural PBR materials, real room architecture, a walker that
+  animates the engine's steps. The 2D views remain as a fallback where WebGL is missing.
+
+Campaign
+- Six chapters, 31 challenges (seven new), chapter cards, outros, and an ending built from the player's structure.
+- New construction rule: forbidden links. Chapters may give rooms a kind and size.
+
+Tools
+- F3 developer report; `tools/e2e.mjs`; `tools/preview.html` renderer preview.
+
+Tests: 326 pass.
+
+Known limits are listed in the README.
+
 ## 0.30.0 — rooms that resize and turn, pads, and a pad chapter
 
 Rooms

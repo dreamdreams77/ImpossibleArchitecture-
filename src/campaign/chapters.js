@@ -26,8 +26,10 @@ import { UNRESTRICTED } from '../topology/construction.js';
 import { Structure } from '../topology/graph.js';
 import { findRoute } from '../topology/traversal.js';
 import { findCycles, dimensionReport } from '../topology/analysis.js';
+import { EXTRA } from './extra.js';
+import { ORDER, placeInChapter } from './campaign.js';
 
-export const CHAPTERS = Object.freeze([
+const RAW = [
   {
     id: 'threshold',
     theme: 'slate',
@@ -559,7 +561,24 @@ export const CHAPTERS = Object.freeze([
       },
     ],
   },
-]);
+];
+
+// The campaign order and chapter grouping come from campaign.js. Each challenge
+// takes its chapter's look (theme), its chapter number and a numeral in play order.
+const ROMANS = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV','XXV','XXVI','XXVII','XXVIII','XXIX','XXX','XXXI','XXXII','XXXIII','XXXIV','XXXV','XXXVI','XXXVII','XXXVIII','XXXIX','XL'];
+const BY_ID = new Map([...RAW, ...EXTRA].map((c) => [c.id, c]));
+export const CHAPTERS = Object.freeze(ORDER.map((id, i) => {
+  const raw = BY_ID.get(id);
+  if (!raw) throw new Error(`Campaign names an unknown challenge ${id}`);
+  const place = placeInChapter(id);
+  return Object.freeze({
+    ...raw,
+    title: `${ROMANS[i]}. ${raw.title.replace(/^[IVXL]+\.\s*/, '')}`,
+    theme: place.chapter.theme,
+    discipline: place.chapter.no,
+    inChapter: place.index,
+  });
+}));
 
 export function chapterById(id) {
   return CHAPTERS.find((c) => c.id === id) ?? null;
@@ -568,7 +587,7 @@ export function chapterById(id) {
 // The structure a player starts a chapter with: its rooms and fixed passages.
 export function chapterStructure(chapter) {
   const s = new Structure();
-  for (const r of chapter.rooms) s.addRoom({ id: r.id, x: r.x, y: r.y, label: r.label });
+  for (const r of chapter.rooms) s.addRoom({ id: r.id, x: r.x, y: r.y, label: r.label, kind: r.kind, size: r.size });
   for (const f of chapter.fixed ?? []) {
     s.addPortal({ a: f.a.room, aFace: f.a.face, b: f.b.room, bFace: f.b.face, gate: f.gate ?? null, opensAfter: f.opensAfter ?? null, fixed: true, oneWay: f.oneWay ?? null, transform: f.transform });
   }

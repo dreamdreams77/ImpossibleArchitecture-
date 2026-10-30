@@ -9,7 +9,8 @@ src/topology/     pure data model and rules (no DOM, no canvas)
 src/campaign/     chapters as data and goal checks (uses traversal only)
 src/persistence/  versioned save format and slot storage (storage injected)
 src/game.js       Session: the controller between UI intent and rules
-src/render/       geometry (pure) and canvas drawing (read-only)
+src/render/       geometry (pure) and 2D canvas drawing (read-only)
+src/render3d/     WebGL walk and model: frames, materials, rooms, portals, walker (see RENDERING.md)
 src/ui/app.js     DOM shell: translates pointer and keys into Session calls
 tools/serve.js    static server for local play
 ```

@@ -177,7 +177,7 @@ export class WorldRenderer {
   sync(structure, ctx = {}) {
     this.structure = structure;
     this.context = ctx;
-    const style = styleFor(ctx.themeName, ctx.chapterId);
+    const style = styleFor(ctx.themeName, ctx.chapterId, ctx.discipline);
     this.style = style;
     const lib = materialsFor(style);
     const seen = new Set();

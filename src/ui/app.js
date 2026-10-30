@@ -4,6 +4,7 @@
 
 import { Session } from '../game.js';
 import { CHAPTERS, chapterById } from '../campaign/chapters.js';
+import { DISCIPLINES, PREMISE, placeInChapter, isFirstOfChapter, isLastOfChapter, endingFor } from '../campaign/campaign.js';
 import { encodeShare, decodeShare } from '../persistence/share.js';
 import { hitTest, portalHit } from '../render/geometry.js';
 import { drawPlan, drawGraph } from '../render/draw.js';
@@ -18,6 +19,7 @@ import { SaveSlots, encodeSave, decodeSave } from '../persistence/store.js';
 import { encodeProgress, decodeProgress, SHARE_LIMIT } from '../persistence/share.js';
 import { createPinch } from './pinch.js';
 import { createGlView } from './glview.js';
+import { debugReport } from './debugreport.js';
 import { copyText, canvasRatio } from './platform.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -86,7 +88,7 @@ export function boot() {
     canvas: glCanvas,
     session,
     hud: $('#gl-hud'),
-    debugEl: $('#gl-debug'),
+    
     settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed },
     onWalkClick: (zone) => {
       session.fpStopPlay();
@@ -365,12 +367,20 @@ export function boot() {
   function fillChapterList() {
     const box = $('#menu-chapter-buttons');
     box.innerHTML = '';
-    for (const c of CHAPTERS) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = `${session.progress.completed.includes(c.id) ? '✓ ' : ''}${c.title}`;
-      b.addEventListener('click', () => { session.loadChapter(c.id); closeMenu(); render(); });
-      box.appendChild(b);
+    for (const d of DISCIPLINES) {
+      const done = d.challenges.filter((id) => session.progress.completed.includes(id)).length;
+      const head = document.createElement('div');
+      head.className = 'chapter-head';
+      head.innerHTML = `<strong>Chapter ${d.no} · ${d.title}</strong><span>${done} / ${d.challenges.length}</span>`;
+      box.appendChild(head);
+      for (const id of d.challenges) {
+        const c = chapterById(id);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = `${session.progress.completed.includes(c.id) ? '✓ ' : ''}${c.title}`;
+        b.addEventListener('click', () => { session.loadChapter(c.id); closeMenu(); render(); });
+        box.appendChild(b);
+      }
     }
   }
 
@@ -384,6 +394,7 @@ export function boot() {
   }
 
   function showComplete(chapterId) {
+    if (session.isFinished() && !session.sandbox) { showEnding(); return; }
     const done = chapterById(chapterId);
     const next = session.nextChapterId();
     const nextTitle = next ? chapterById(next).title : null;
@@ -393,6 +404,11 @@ export function boot() {
       : session.isFinished()
         ? 'Every chapter is complete. The ending is open, and free construction stays available.'
         : 'That was the last chapter. The ending opens once every chapter is complete.';
+    if (isLastOfChapter(chapterId)) {
+      const d = placeInChapter(chapterId).chapter;
+      $('#complete-heading').textContent = `Chapter ${d.no} complete: ${d.title}`;
+      $('#complete-text').textContent = `${d.outro} ${nextTitle ? `Next: ${nextTitle}.` : ''}`;
+    }
     $('#complete-next').hidden = !next;
     $('#complete').hidden = false;
     (next ? $('#complete-next') : $('#complete-stay')).focus();
@@ -401,6 +417,83 @@ export function boot() {
   function closeComplete() {
     $('#complete').hidden = true;
   }
+
+  // ---- chapter cards -------------------------------------------------------
+  // Each chapter opens with a short card the first time one of its challenges is
+  // entered. It waits behind any dialog that is open.
+  let seenChapters = [];
+  try { seenChapters = JSON.parse(localStorage.getItem('ia-seen-chapters') ?? '[]'); } catch { /* none seen */ }
+  let cardFor = null;
+  let lastChallenge = null;
+  let booted = false; // the title menu opens at the end of boot; no card may appear before it
+  function maybeQueueCard() {
+    const id = session.sandbox ? null : session.chapter?.id ?? null;
+    if (id === lastChallenge) return;
+    lastChallenge = id;
+    if (id && isFirstOfChapter(id)) {
+      const d = placeInChapter(id).chapter;
+      if (!seenChapters.includes(d.no)) cardFor = d;
+    }
+  }
+  function showCardIfReady() {
+    if (!booted || !cardFor || !$('#menu').hidden || !$('#complete').hidden || !$('#ending-screen').hidden) return;
+    const d = cardFor;
+    cardFor = null;
+    seenChapters.push(d.no);
+    try { localStorage.setItem('ia-seen-chapters', JSON.stringify(seenChapters)); } catch { /* not remembered */ }
+    $('#card-kicker').textContent = `Chapter ${d.no} of ${DISCIPLINES.length}`;
+    $('#card-title').textContent = d.title;
+    $('#card-text').textContent = d.no === 1 ? `${PREMISE} ${d.intro}` : d.intro;
+    $('#chapter-card').hidden = false;
+    $('#card-begin').focus();
+  }
+  $('#card-begin').addEventListener('click', () => { $('#chapter-card').hidden = true; });
+
+  // ---- the ending ------------------------------------------------------------
+  // The ending is made from what the player actually built in the last construction:
+  // the model turns slowly above it while the facts of the building are read out.
+  let endingTimers = [];
+  function showEnding() {
+    closeComplete();
+    const e = endingFor(session.structure, session.progress, { timeMs: Object.values(session.progress.time ?? {}).reduce((a, b) => a + b, 0) });
+    setView(gl ? 'model' : 'plan');
+    gl?.setAutoOrbit(true);
+    $('#ending-heading').textContent = e.heading;
+    const lines = $('#ending-lines');
+    lines.innerHTML = '';
+    $('#ending-closing').textContent = '';
+    $('#ending-actions').hidden = true;
+    $('#ending-screen').hidden = false;
+    endingTimers.forEach(clearTimeout);
+    endingTimers = [];
+    e.lines.forEach((text, i) => {
+      endingTimers.push(setTimeout(() => {
+        const p = document.createElement('p');
+        p.textContent = text;
+        lines.appendChild(p);
+      }, reduceMotion ? 0 : 1400 + i * 2200));
+    });
+    endingTimers.push(setTimeout(() => {
+      $('#ending-closing').textContent = e.closing;
+      $('#ending-actions').hidden = false;
+      $('#ending-walk').focus();
+    }, reduceMotion ? 0 : 1400 + e.lines.length * 2200 + 1200));
+  }
+  function closeEnding() {
+    endingTimers.forEach(clearTimeout);
+    endingTimers = [];
+    gl?.setAutoOrbit(false);
+    $('#ending-screen').hidden = true;
+  }
+  $('#ending-walk').addEventListener('click', () => {
+    closeEnding();
+    session.testConstruction();
+    setView('first');
+    $('#fp-play').click();
+  });
+  $('#ending-credits').addEventListener('click', () => { closeEnding(); showMenu('credits'); });
+  $('#ending-stay').addEventListener('click', closeEnding);
+  $('#ending-again').addEventListener('click', () => { closeEnding(); showEnding(); });
 
   $('#menu-continue').addEventListener('click', () => { closeMenu(); render(); });
   $('#menu-new').addEventListener('click', () => {
@@ -454,14 +547,33 @@ export function boot() {
   });
   $('#complete-stay').addEventListener('click', () => { closeComplete(); render(); });
 
+  // Developer overlay (F3): the engine's own account of the world, plus renderer stats.
+  let debugOn = false;
+  let debugAt = 0;
+  function toggleDebugPanel() {
+    debugOn = !debugOn;
+    $('#debug-panel').hidden = !debugOn;
+    gl?.setDebug(debugOn);
+    if (debugOn) updateDebugPanel(true);
+  }
+  function updateDebugPanel(force = false) {
+    if (!debugOn || (!force && lastTime - debugAt < 400)) return;
+    debugAt = lastTime;
+    const lines = debugReport(session);
+    if (gl && (viewMode === 'first' || viewMode === 'model')) lines.push('-- renderer', ...gl.world.debugLines());
+    $('#debug-panel').textContent = lines.join('\n');
+  }
+
   function render() {
     if (session.justCompleted) {
       const done = session.justCompleted;
       session.justCompleted = null;
       showComplete(done);
     }
+    maybeQueueCard();
     paint(lastTime);
     renderPanel();
+    showCardIfReady();
   }
 
   // Animation loop: advances the traveller along the test route and keeps the
@@ -502,6 +614,7 @@ export function boot() {
       }
     }
     paint(now);
+    updateDebugPanel();
     requestAnimationFrame(frame);
   }
 
@@ -595,7 +708,7 @@ export function boot() {
     $('#ending').hidden = !(session.isFinished() && !session.sandbox);
     $('#chapter-select').value = session.sandbox ? '__sandbox' : session.chapter.id;
     const at = session.chapter ? CHAPTERS.findIndex((c) => c.id === session.chapter.id) + 1 : 0;
-    $('#progress').textContent = `${session.progress.completed.length} / ${CHAPTERS.length} chapters complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · on chapter ${at}` : ''}`;
+    $('#progress').textContent = `${session.progress.completed.length} / ${CHAPTERS.length} challenges complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · chapter ${session.chapter.discipline}, challenge ${session.chapter.inChapter}` : ''}`;
     persistProgress();
   }
 
@@ -1067,7 +1180,7 @@ export function boot() {
     if (viewMode === 'model' && !mod && gl) {
       if (gl.key(evt.key.toLowerCase())) { evt.preventDefault(); return; }
     }
-    if (evt.key === 'F3' && gl) { evt.preventDefault(); gl.toggleDebug(); return; }
+    if (evt.key === 'F3') { evt.preventDefault(); toggleDebugPanel(); return; }
     if (viewMode === 'model' && !mod && !gl) {
       const k = evt.key.toLowerCase();
       if (k === 'arrowleft' || k === 'arrowright') {
@@ -1211,17 +1324,25 @@ export function boot() {
   render();
   requestAnimationFrame(frame);
   showMenu('title');
+  booted = true;
   window.__session = session; // exposed for manual inspection in devtools
+  window.__ia = { showEnding, render, setView, gl }; // and for the end-to-end checks in tools/e2e.mjs
 }
 
 function populateChapters() {
   const sel = $('#chapter-select');
   sel.innerHTML = '';
-  for (const c of CHAPTERS) {
-    const o = document.createElement('option');
-    o.value = c.id;
-    o.textContent = c.title;
-    sel.appendChild(o);
+  for (const d of DISCIPLINES) {
+    const group = document.createElement('optgroup');
+    group.label = `Chapter ${d.no} · ${d.title}`;
+    for (const id of d.challenges) {
+      const c = chapterById(id);
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.title;
+      group.appendChild(o);
+    }
+    sel.appendChild(group);
   }
   const sb = document.createElement('option');
   sb.value = '__sandbox';

@@ -278,6 +278,29 @@
       </div>
     </div>
 
+    <div id="chapter-card" class="menu card-dim" role="dialog" aria-modal="true" aria-labelledby="card-title" hidden>
+      <div class="menu-card chapter-card">
+        <p id="card-kicker" class="kicker"></p>
+        <h2 id="card-title" class="menu-heading"></h2>
+        <p id="card-text"></p>
+        <div class="menu-buttons"><button id="card-begin" type="button" class="primary">Begin</button></div>
+      </div>
+    </div>
+
+    <div id="ending-screen" class="ending-screen" role="dialog" aria-live="polite" aria-labelledby="ending-heading" hidden>
+      <div class="ending-copy">
+        <h2 id="ending-heading"></h2>
+        <div id="ending-lines" class="ending-lines"></div>
+        <p id="ending-closing" class="ending-closing"></p>
+        <div id="ending-actions" class="ending-actions" hidden>
+          <button id="ending-walk" type="button" class="primary">Walk the Last Construction</button>
+          <button id="ending-again" type="button">Watch again</button>
+          <button id="ending-credits" type="button">Credits</button>
+          <button id="ending-stay" type="button">Stay in the construction</button>
+        </div>
+      </div>
+    </div>
+
     <div id="keys-overlay" class="keys" role="dialog" aria-label="Keyboard shortcuts" hidden>
       <h2>Keyboard</h2>
       <dl>
@@ -311,7 +334,7 @@
       <canvas id="plan" aria-label="Plan view of the construction"></canvas>
       <canvas id="gl" aria-label="Three-dimensional view of the construction" hidden></canvas>
       <div id="gl-hud" class="gl-hud" hidden></div>
-      <pre id="gl-debug" class="gl-debug" hidden></pre>
+      <pre id="debug-panel" class="gl-debug debug-panel" hidden></pre>
       <canvas id="fp" aria-label="First-person view from inside a room" hidden></canvas>
       <canvas id="model" aria-label="Isometric model of the construction" hidden></canvas>
       <canvas id="graph" aria-label="Spatial graph overlay"></canvas>

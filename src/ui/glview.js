@@ -42,6 +42,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   let fit = true;
   let drag = null;
   let flash = 0;
+  let autoOrbit = false;
   let frameMs = 16;
   let slow = 0;
   let debugOn = world.debug;
@@ -54,7 +55,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function context() {
     const chapter = session.chapter;
     const rules = chapter ? rulesFor(chapter) : { plates: [], cargo: [], pads: [] };
-    return { chapterId: chapter?.id ?? null, themeName: session.themeName, plates: rules.plates, cargo: rules.cargo, pads: rules.pads };
+    return { chapterId: chapter?.id ?? null, discipline: chapter?.discipline ?? null, themeName: session.themeName, plates: rules.plates, cargo: rules.cargo, pads: rules.pads };
   }
 
   function routePortals() {
@@ -180,6 +181,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       if (walker.room) world.renderWalk(walker.pose(), t);
     } else {
       if (fit) fitOrbit();
+      if (autoOrbit) { orbit.azimuth += dt * 0.12; orbit.elevation += (0.62 - orbit.elevation) * Math.min(1, dt * 0.8); }
       world.renderOverview(orbit, t);
     }
     updateHud(walkerState);
@@ -192,10 +194,6 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
         world.setQuality(QUALITY_ORDER[i + 1]);
         slow = 0;
       }
-    }
-    if (debugOn && debugEl && Math.floor(now / 250) !== Math.floor((now - dt * 1000) / 250)) {
-      debugEl.hidden = false;
-      debugEl.textContent = [...world.debugLines(), `walker ${walker.room} busy=${walker.busy}`, `fps ~${(1000 / Math.max(1, frameMs)).toFixed(0)}`].join('\n');
     }
   }
 
@@ -267,15 +265,15 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       else return false;
       return true;
     },
+    setAutoOrbit(on) { autoOrbit = !!on; if (on) { fit = true; world.cutaway = true; } },
     get cutaway() { return world.cutaway; },
     setCutaway(on) { world.cutaway = !!on; },
     setCutHeight(y) { world.cutY = y; },
     setQuality(q) { world.setQuality(q); },
-    toggleDebug() {
-      debugOn = !debugOn;
+    // Debug tint: passes are coloured by recursion depth so the portal budget is visible.
+    setDebug(on) {
+      debugOn = !!on;
       world.debug = debugOn;
-      if (debugEl) debugEl.hidden = !debugOn;
-      return debugOn;
     },
     bump(heading) { walker.bump(heading); },
     // Renders a frame and hands back the canvas as a PNG blob in the same task.
