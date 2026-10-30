@@ -68,6 +68,7 @@ export function drawPlan(ctx, view, session, { width, height }, time = 0) {
 function drawDrafting(ctx, view, session, width, height, T) {
   const { scale } = view;
   if (width < 220 || height < 160) return;
+  const narrow = width < 520;
   ctx.save();
   ctx.strokeStyle = T.ink;
   ctx.fillStyle = T.ink;
@@ -87,7 +88,8 @@ function drawDrafting(ctx, view, session, width, height, T) {
     ctx.strokeRect(bx + i * scale, by, scale, 4);
   }
   ctx.fillStyle = T.ink; ctx.textAlign = 'left';
-  ctx.fillText('0', bx - 2, by - 3); ctx.fillText('2 plan units', bx + 2 * scale + 6, by + 5);
+  ctx.fillText('0', bx - 2, by - 3); if (!narrow) ctx.fillText('2 plan units', bx + 2 * scale + 6, by + 5);
+  if (narrow) { ctx.restore(); return; }
   // Title block, bottom right.
   const title = session.chapter?.title ?? 'Free construction';
   const rooms = session.structure.rooms.size; const portals = session.structure.portals.size;

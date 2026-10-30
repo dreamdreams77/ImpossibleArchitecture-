@@ -214,6 +214,16 @@ body.panel-hidden .ending-screen { inset: 0; }
   .debug-panel { max-width: 92%; }
 }
 
+.atlas-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; max-height: 50vh; overflow: auto; }
+.atlas-list li { padding: 8px 10px; border: 1px solid rgba(128,128,128,0.35); border-radius: 8px; font-size: 14px; }
+.atlas-list li.locked { opacity: 0.6; }
+.atlas-list strong { display: block; }
+/* Quick tools over the plan, so building never depends on scrolling to the side panel */
+.plan-tools { position: absolute; left: 8px; bottom: 34px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; z-index: 3; max-width: calc(100% - 16px); }
+.plan-tools[hidden] { display: none; }
+.plan-tools button { padding: 6px 12px; font-size: 14px; background: rgba(12, 16, 22, 0.82); color: #f3ead6; border: 1px solid rgba(240, 200, 120, 0.45); border-radius: 8px; }
+.plan-tools button[aria-pressed="true"] { background: rgba(240, 200, 120, 0.9); color: #14110b; }
+.plan-hint { order: -1; flex-basis: 100%; font-size: 13px; color: #f3ead6; text-shadow: 0 1px 3px #000; }
 /* On-view feedback: messages, touch controls, the empty-room prompt */
 .gl-toast { position: absolute; left: 10px; top: 10px; max-width: min(520px, calc(100% - 170px)); padding: 8px 14px; border-radius: 8px; font-size: 13px; line-height: 1.4; color: #f3ead6; background: rgba(10, 12, 16, 0.82); border: 1px solid rgba(240, 200, 120, 0.45); pointer-events: none; z-index: 4; }
 .gl-toast[data-kind="error"] { border-color: rgba(255, 106, 90, 0.8); }

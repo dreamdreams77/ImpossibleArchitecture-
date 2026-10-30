@@ -11,6 +11,7 @@ import { drawPlan, drawGraph } from '../render/draw.js';
 import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, describeFirstPerson, fpZoneFor } from '../render/firstperson.js';
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
+import { ATLAS } from '../campaign/atlas.js';
 import { throughFaces } from '../topology/propagation.js';
 import { fitViewFor, transitionProgress, snapTo } from '../render/view.js';
 import { sightlines } from '../topology/traversal.js';
@@ -382,7 +383,7 @@ export function boot() {
   let menuView = 'title';
   let menuParent = 'title';
   let menuReturnFocus = null;
-  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'credits'];
+  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'credits'];
 
   function showMenu(view = 'title') {
     const menu = $('#menu');
@@ -393,13 +394,28 @@ export function boot() {
 
   function showView(view) {
     // Chapters, settings and credits return to whichever view opened them.
-    if (['chapters', 'settings', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
+    if (['chapters', 'settings', 'atlas', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
+    if (view === 'atlas') fillAtlas();
     if (view === 'pause') for (const id of ['solution', 'easier', 'harder']) $(`#pause-gen-${id}`).hidden = !session.generated;
     $(`#menu-${view}`).querySelector('button, input')?.focus();
+  }
+
+  // The Atlas lists what has been found, and for the rest only a question: no recipes.
+  function fillAtlas() {
+    const found = new Set(session.progress.discoveries);
+    $('#atlas-count').textContent = `${ATLAS.filter((e) => found.has(e.id)).length} of ${ATLAS.length} phenomena found. Build them anywhere: the campaign, free construction or a generated challenge.`;
+    $('#atlas-list').replaceChildren(...ATLAS.map((e) => {
+      const li = document.createElement('li');
+      const hit = found.has(e.id);
+      li.className = hit ? '' : 'locked';
+      const t = document.createElement('strong'); t.textContent = hit ? e.title : '???';
+      li.append(t, document.createTextNode(hit ? e.text : e.hint));
+      return li;
+    }));
   }
 
   function closeMenu() {
@@ -602,6 +618,8 @@ export function boot() {
   $('#pause-gen-harder').addEventListener('click', () => newGenerated(1));
   $('#pause-gen-solution').addEventListener('click', () => { session.revealGenerated(); closeMenu(); render(); });
   $('#menu-settings-open').addEventListener('click', () => showView('settings'));
+  $('#menu-atlas-open').addEventListener('click', () => showView('atlas'));
+  $('#atlas-back').addEventListener('click', () => showView(menuParent));
   $('#menu-credits-open').addEventListener('click', () => showView('credits'));
   $('#pause-resume').addEventListener('click', () => { closeMenu(); render(); });
   $('#pause-restart').addEventListener('click', () => { $('#reset').click(); closeMenu(); });
@@ -756,6 +774,10 @@ export function boot() {
       session.justCompleted = null;
       showComplete(done);
     }
+    // A blank free construction offers rooms first: the tool is Add room, and the plan says so.
+    if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
+    $('#plan-tools').hidden = viewMode !== 'plan';
+    $('#plan-hint').textContent = session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     updateSpatialAudio();
     maybeQueueCard();
@@ -1026,6 +1048,7 @@ export function boot() {
     });
   }
 
+  $('#plan-undo').addEventListener('click', () => { session.undo(); render(); });
   $('#undo').addEventListener('click', () => { session.undo(); render(); });
   $('#redo').addEventListener('click', () => { session.redo(); render(); });
   $('#delete').addEventListener('click', () => { session.deleteSelection(); render(); });

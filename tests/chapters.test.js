@@ -107,17 +107,19 @@ test('session: solving the machine through the UI completes it and keeps progres
   assert.ok(s.progress.completed.includes('the-machine'));
 });
 
+// Atlas entries share the list; the chapter's own discoveries are what this test is about.
+const own = (p) => p.discoveries.filter((d) => !d.startsWith('atlas:'));
 test('session: discoveries are recorded once and survive a reload of progress', () => {
   const s = new Session({ chapterId: 'returning-hall' });
   s.pickFace('gallery', 'N'); s.pickFace('gallery', 'S');
   s.selectPortal([...s.structure.portals.keys()][0]);
   s.mirrorSelectedPortal();
-  assert.deepEqual(s.progress.discoveries, ['mirror-gallery-loop']);
+  assert.deepEqual(own(s.progress), ['mirror-gallery-loop']);
   s.mirrorSelectedPortal();
   s.mirrorSelectedPortal();
-  assert.deepEqual(s.progress.discoveries, ['mirror-gallery-loop'], 'not duplicated');
+  assert.deepEqual(own(s.progress), ['mirror-gallery-loop'], 'not duplicated');
   const reloaded = new Session({ chapterId: 'returning-hall', progress: s.progress });
-  assert.deepEqual(reloaded.progress.discoveries, ['mirror-gallery-loop']);
+  assert.deepEqual(own(reloaded.progress), ['mirror-gallery-loop']);
 });
 
 test('session analysis reports loops and reachable distances', () => {

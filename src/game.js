@@ -10,6 +10,7 @@ import * as C from './topology/construction.js';
 import { History } from './topology/history.js';
 import { findRoute, replay, makeTraveller, step, startingLit, platesLitBy } from './topology/traversal.js';
 import { rotateFace } from './topology/graph.js';
+import { atlasIn, atlasById } from './campaign/atlas.js';
 import { generateChallenge, toChallenge } from './campaign/generate.js';
 import { CHAPTERS, chapterById, chapterStructure, goalSatisfied, goalPredicate, discoveriesIn, rulesFor, bodySolution } from './campaign/chapters.js';
 import { searchCycles, dimensionReport } from './topology/analysis.js';
@@ -736,7 +737,20 @@ export class Session {
     this.feedback = { kind: 'error', text: `${this.sandbox ? 'Your challenge is not solved.' : 'Goal not met.'} ${diagnose(this.structure, chapter).join(' ')}` };
   }
 
+  // Records any Atlas phenomena the construction now shows, and announces the first new one. Works in
+  // free construction too: understanding the building is the reward, not finishing a goal.
+  checkAtlas() {
+    for (const id of atlasIn(this.structure)) {
+      if (this.progress.discoveries.includes(id)) continue;
+      this.progress.discoveries.push(id);
+      const e = atlasById(id);
+      this.feedback = { kind: 'success', text: `Atlas: ${e.title}. ${e.text}` };
+      this.justAtlas = id; // read once by the UI
+    }
+  }
+
   checkCompletion() {
+    this.checkAtlas();
     if (this.sandbox || !this.chapter) return;
     const chapter = this.chapter;
     const found = discoveriesIn(this.structure, chapter);

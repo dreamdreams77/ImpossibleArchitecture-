@@ -212,6 +212,7 @@
             <button id="menu-sandbox" type="button">Free construction</button>
             <button id="menu-generated" type="button">Generated challenge</button>
             <button id="menu-settings-open" type="button">Settings</button>
+            <button id="menu-atlas-open" type="button">Atlas</button>
             <button id="menu-credits-open" type="button">Credits</button>
           </div>
         </section>
@@ -270,6 +271,13 @@
             <div class="keybinds"><strong>Keys</strong><div id="key-list" class="menu-buttons"></div><p id="key-note" class="muted" role="status"></p><button id="key-reset" type="button">Reset keys</button></div>
             <button id="settings-back" type="button">Back</button>
           </div>
+        </section>
+
+        <section id="menu-atlas" class="menu-view" hidden>
+          <h2 class="menu-heading">Atlas</h2>
+          <p class="muted" id="atlas-count"></p>
+          <ul id="atlas-list" class="atlas-list"></ul>
+          <div class="menu-buttons"><button id="atlas-back" type="button">Back</button></div>
         </section>
 
         <section id="menu-credits" class="menu-view" hidden>
@@ -356,6 +364,13 @@
     <section class="stage" data-chapter="">
       <canvas id="plan" aria-label="Plan view of the construction"></canvas>
       <canvas id="gl" aria-label="Three-dimensional view of the construction" hidden></canvas>
+      <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Quick tools">
+        <button type="button" data-tool="select">Select</button>
+        <button type="button" data-tool="add">Add room</button>
+        <button type="button" data-tool="connect">Connect</button>
+        <button type="button" id="plan-undo">Undo</button>
+        <span id="plan-hint" class="plan-hint"></span>
+      </div>
       <div id="gl-hud" class="gl-hud" hidden></div>
       <div id="gl-toast" class="gl-toast" role="status" aria-live="polite" hidden></div>
       <div id="gl-empty" class="gl-empty" hidden>
