@@ -27,6 +27,23 @@ Current coverage focus:
   actually produces cycles, gates, mirrors and turns, so the properties are not
   vacuous. Failures report the seed that produced them.
 - `persistence.test.js`, `geometry.test.js`.
+- `blocks.test.js`, `physical-campaign.test.js`: the grid engine, crates through
+  transformed passages, plates and gates, and the four physical challenges solved
+  by the push solver.
+- `editor.test.js`, `sandbox-challenge.test.js`: the challenge editor's data,
+  validation and its use by the live session.
+- `render3d-frames.test.js`, `render3d-walker.test.js`: portal frame maths and
+  the walker, including body mode.
+- `bench.test.js`: benchmark statistics and preset recommendation.
+- `spatial-sound.test.js`: room acoustics, neighbour mix and a fake AudioContext.
+
+Total: 379 tests. Browser tools (need Playwright, server on port 8080):
+`npm run e2e` (drives the real UI and asserts WebGL initialised), `npm run fuzz`
+(random edits and views in every challenge), `npm run portalcheck` (analytic
+marker projections against the rendered portals, within 4 px).
+
+Real-device performance has not been measured by these tools. Use the in-game
+benchmark on an Android phone and keep its report.
 
 Screenshots are regenerated with `npm start` running and:
 
