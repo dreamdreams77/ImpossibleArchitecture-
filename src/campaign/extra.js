@@ -20,7 +20,7 @@ export const EXTRA = [
     id: 'the-two-doors',
     theme: 'slate',
     title: 'The Two Doors',
-    blurb: 'The straight way is sealed. A passage can join any face to any face, wherever the rooms are drawn.',
+    blurb: 'The Hall and the Vault may never be joined directly, and the straight way through the Annex is sealed. A passage can join any face to any face, wherever the rooms are drawn.',
     rooms: [
       { id: 'hall', x: 0, y: 0, label: 'Hall' },
       { id: 'annex', x: 2, y: 0, label: 'Annex' },
@@ -29,10 +29,11 @@ export const EXTRA = [
     ruleset: {
       ...UNRESTRICTED, maxRooms: 3, maxPortals: 2,
       sealedFaces: sealed(['hall', 'E'], ['annex', 'W'], ['annex', 'E'], ['vault', 'W']),
+      forbiddenLinks: [{ a: 'hall', b: 'vault' }],
     },
     start: 'hall',
     goal: { kind: 'reach', to: 'vault' },
-    hint: 'The faces that look at each other are sealed. Use the north or south faces: any two faces can be joined.',
+    hint: 'You must go through the Annex, and its east and west faces are sealed. Use its north or south faces: any two faces can be joined.',
     optional: [
       {
         id: 'round-the-back',
@@ -124,14 +125,14 @@ export const EXTRA = [
     id: 'the-seam',
     theme: 'verdigris',
     title: 'The Seam',
-    blurb: 'Two wings that must never touch, and a hall that serves both. Light both plates, then stand in the Seam facing south.',
+    blurb: 'Two wings that must never touch, and a hall that serves both, with two passages to build. Light both plates, then stand in the Seam facing south.',
     rooms: [
       { id: 'seam', x: 2, y: 2, label: 'The Seam' },
       { id: 'warm', x: 0, y: 0, label: 'Warm Wing' },
       { id: 'cool', x: 4, y: 0, label: 'Cool Wing' },
     ],
     ruleset: {
-      ...UNRESTRICTED, maxRooms: 3, maxPortals: 3,
+      ...UNRESTRICTED, maxRooms: 3, maxPortals: 2,
       forbiddenLinks: [{ a: 'warm', b: 'cool' }],
     },
     start: 'seam',
@@ -140,13 +141,13 @@ export const EXTRA = [
       { room: 'cool', heading: 'W' },
     ],
     goal: { kind: 'machine', to: 'seam', heading: 'S' },
-    hint: 'A passage turns you the same way from both sides, so the way you leave a wing and the way you return cannot be the same passage.',
+    hint: 'A passage turns you the same way from both sides. Each wing needs a plate struck and then a way back to the Seam facing south, so one passage per wing must do both jobs: look for the faces and turns that give each arrival the heading it needs.',
     optional: [
       {
         id: 'two-routes',
-        title: 'Two routes, one hall',
-        text: 'Both wings are served by the Seam, and the Seam is entered two different ways. The building holds two readings at once.',
-        check: (s) => s.degree('seam') >= 3,
+        title: 'One doorway, two readings',
+        text: 'A mirror in the Seam: the same doorway reads one way entering and another leaving. The building holds two readings at once.',
+        check: (s) => s.degree('seam') >= 2 && [...s.portals.values()].some((p) => p.transform.mirror),
       },
     ],
   },
@@ -154,7 +155,7 @@ export const EXTRA = [
     id: 'the-ring-hall',
     theme: 'copper',
     title: 'The Ring Hall',
-    blurb: 'Four halls in a ring. Every plate is struck facing south, and no hall may be entered from the north.',
+    blurb: 'Three halls off the Gate Hall. Every plate is struck facing south, and no hall may be entered from its north face. Strike all three, then come back to the Gate.',
     rooms: [
       { id: 'gate', x: 0, y: 0, label: 'Gate Hall' },
       { id: 'east', x: 3, y: 0, label: 'East Hall' },
@@ -172,12 +173,12 @@ export const EXTRA = [
       { room: 'west', heading: 'S' },
     ],
     goal: { kind: 'machine', to: 'gate' },
-    hint: 'Entering a room through its north face would face you south, but those faces are sealed. A quarter-turn on the passage changes your heading instead.',
+    hint: 'Entering a room through its north face would face you south, but those faces are sealed. A quarter-turn on the passage, or entering through its south face with a half-turn, changes your heading instead. Joining the halls in a ring is not required, but there is something in it.',
     optional: [
       {
         id: 'the-whole-ring',
         title: 'The whole ring',
-        text: 'All four halls lie on one loop. Walk it and you are turned all the way round and back to where you began.',
+        text: 'You closed all four halls into one loop, though the plates only asked for a chain. Walk it and you are turned all the way round and back to where you began.',
         check: (s) => findCycles(s).some((c) => c.rooms.length === 4),
       },
     ],

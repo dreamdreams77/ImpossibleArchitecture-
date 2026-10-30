@@ -109,6 +109,8 @@ export class WorldRenderer {
     this.ground.visible = false;
     this.scene.add(this.ground);
     this.planScale = 15;
+    this.planOrigin = { x: 0, y: 0 };
+    this.linkPicks = [];
     // Construction in the model: a marker on every free face, and a preview of a join.
     this.markerGroup = new THREE.Group();
     this.markerGroup.visible = false;
@@ -268,11 +270,12 @@ export class WorldRenderer {
       if (d.gate !== null) shut = (lit & (1 << d.gate)) === 0;
       else if (d.opensAfter != null) shut = (delivered & (1 << d.opensAfter)) === 0;
       d.shut = shut;
+      if (d.slide === undefined) d.slide = shut ? 0 : 1; // a gate already open at load does not play
       const u = d.mesh.material.uniforms;
       u.mirror.value = d.mirror ? 1 : 0;
       u.twist.value = d.turns;
       u.arrow.value = d.allowedOut == null ? 0 : d.allowedOut ? 1 : 0;
-      u.overlay.value = d.blocked ? 2 : shut ? 1 : 0;
+      u.overlay.value = d.blocked ? 2 : (shut || d.slide < 0.995) && (d.gate !== null || d.opensAfter != null) ? 1 : 0;
       let color = DOOR_COLORS.plain;
       if (d.blocked) color = DOOR_COLORS.refuse;
       else if (shut) color = DOOR_COLORS.gate;
@@ -282,6 +285,20 @@ export class WorldRenderer {
       else if (d.gate !== null || d.opensAfter != null) color = DOOR_COLORS.open;
       u.rim.value.set(this.state.routePortals.has(d.portalId) ? '#ffffff' : color);
     }
+  }
+
+  // Gates slide: bars draw back when a gate opens and close again if it shuts.
+  _slideGates(dt) {
+    let moving = false;
+    for (const d of this.doors.values()) {
+      if (d.gate === null && d.opensAfter == null) continue;
+      const target = d.shut ? 0 : 1;
+      if (d.slide === target) continue;
+      d.slide += Math.sign(target - d.slide) * Math.min(Math.abs(target - d.slide), dt * 1.4);
+      d.mesh.material.uniforms.retract.value = d.slide;
+      moving = true;
+    }
+    if (moving) this._refreshDoorState();
   }
 
   // ---- layout -------------------------------------------------------------
@@ -301,14 +318,22 @@ export class WorldRenderer {
       const cols = Math.ceil(Math.sqrt(ids.length));
       ids.forEach((id, i) => this.positions.set(id, new THREE.Vector3((i % cols) * ROOM_SPACING, 0, Math.floor(i / cols) * ROOM_SPACING)));
     } else {
-      let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-      for (const id of ids) { const r = this.rooms.get(id).room; minX = Math.min(minX, r.x); maxX = Math.max(maxX, r.x); minY = Math.min(minY, r.y); maxY = Math.max(maxY, r.y); }
-      const extent = Math.max(1, maxX - minX, maxY - minY);
-      const scale = Math.min(15, 150 / extent);
+      // The plan frame (centre and scale) is fixed while the set of rooms is unchanged, so
+      // dragging a room does not slide the whole model under the pointer.
+      const key = ids.slice().sort().join('|');
+      if (!this._frame || this._frame.key !== key) {
+        let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
+        for (const id of ids) { const r = this.rooms.get(id).room; minX = Math.min(minX, r.x); maxX = Math.max(maxX, r.x); minY = Math.min(minY, r.y); maxY = Math.max(maxY, r.y); }
+        const extent = Math.max(1, maxX - minX, maxY - minY);
+        this._frame = { key, scale: Math.min(15, 150 / extent), x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+      }
+      const scale = this._frame.scale;
       this.planScale = scale;
+      this.planOrigin = { x: this._frame.x, y: this._frame.y };
+      const minX = this._frame.x; const maxX = this._frame.x; const minY = this._frame.y; const maxY = this._frame.y;
       for (const id of ids) {
         const r = this.rooms.get(id).room;
-        this.positions.set(id, new THREE.Vector3((r.x - (minX + maxX) / 2) * scale, 0, (r.y - (minY + maxY) / 2) * scale));
+        this.positions.set(id, new THREE.Vector3((r.x - this._frame.x) * scale, 0, (r.y - this._frame.y) * scale));
       }
       // Rooms may not overlap: nudge any that crowd each other apart along their separation.
       for (let it = 0; it < 24; it++) {
@@ -491,12 +516,14 @@ export class WorldRenderer {
     return g;
   }
 
-  setSelection(roomId) {
+  setSelection(roomId, portalId = null) {
     this.state.selection = roomId;
+    this.state.selectedPortal = portalId;
   }
 
   _buildLinks() {
     for (const c of [...this.linkGroup.children]) { this.linkGroup.remove(c); c.geometry?.dispose(); c.material?.dispose(); }
+    this.linkPicks = [];
     for (const p of this.structure.portals.values()) {
       const a = this.doors.get(`${p.id}:a`); const b = this.doors.get(`${p.id}:b`);
       if (!a || !b) continue;
@@ -538,6 +565,10 @@ export class WorldRenderer {
       tube.userData.portalId = p.id;
       tube.renderOrder = 5;
       this.linkGroup.add(tube);
+      const pick = new THREE.Mesh(new THREE.TubeGeometry(curve, 32, 0.9, 5, false), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      pick.userData.portalId = p.id;
+      this.linkGroup.add(pick);
+      this.linkPicks.push(pick);
       // Beacons at each end, and an arrowhead for a one-way passage.
       for (const pt of [pa, pb]) {
         const s = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial({ color, toneMapped: false, fog: false }));
@@ -715,6 +746,9 @@ export class WorldRenderer {
     const entry = this.rooms.get(pose.room);
     if (!entry) { this.renderer.setRenderTarget(null); this.renderer.setClearColor('#0b0d11'); this.renderer.clear(); return; }
     const t0 = performance.now();
+    const dt = Math.min(0.1, Math.max(0, time - (this._lastT ?? time)));
+    this._lastT = time;
+    this._slideGates(dt);
     this.time = time;
     this.frame++;
     this.setLayout('walk');
@@ -878,7 +912,7 @@ export class WorldRenderer {
     this.ground.material.uniforms.unit.value = this.planScale;
     const route = this.state.routePortals;
     for (const c of this.linkGroup.children) {
-      if (c.material?.uniforms?.time) { c.material.uniforms.time.value = time; c.material.uniforms.lit.value = route.has(c.userData.portalId) ? 1 : 0; }
+      if (c.material?.uniforms?.time) { c.material.uniforms.time.value = time; c.material.uniforms.lit.value = route.has(c.userData.portalId) || this.state.selectedPortal === c.userData.portalId ? 1 : 0; }
     }
     for (const e of this.rooms.values()) {
       this._animate(e, time);
@@ -921,6 +955,27 @@ export class WorldRenderer {
     this.stats.rooms = this.rooms.size;
     this.stats.doors = this.doors.size;
     this.stats.ms = performance.now() - t0;
+  }
+
+  // The point on the floor plane under a pointer, in world space; null if the ray misses.
+  groundPoint(ndcX, ndcY) {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const hit = new THREE.Vector3();
+    return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit) ? hit : null;
+  }
+
+  // World position on the floor -> plan coordinates (the inverse of the overview layout).
+  worldToPlan(v) {
+    return { x: v.x / this.planScale + this.planOrigin.x, y: v.z / this.planScale + this.planOrigin.y };
+  }
+
+  // The passage whose arc is under a pointer, by a fat invisible tube along each arc.
+  pickLink(ndcX, ndcY) {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const hits = ray.intersectObjects(this.linkPicks, false);
+    return hits.length ? hits[0].object.userData.portalId : null;
   }
 
   // The room under a pointer, found by intersecting the pick ray with the floor plane.

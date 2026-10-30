@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 334 tests over the engine, campaign, renderer maths and walker
+npm test       # 336 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
 ```
@@ -78,17 +78,20 @@ and [docs/TESTING.md](docs/TESTING.md).
   times there say nothing about real GPUs. The renderer is built to be cheap (merged
   geometry, about 35 to 130 draw calls a frame, bounded recursion with adaptive quality)
   but it has not been profiled on real hardware.
-- In 3D you can join faces (model view) but adding, moving and resizing rooms and editing
-  a passage's turn, mirror and direction still happen in the plan view.
+- Construction works in the model view: join faces, add rooms (Add tool), drag the selected room, click an arc
+  to select a passage. Its turn, mirror, direction, and a room's size and kind, are the sidebar's buttons, shared
+  with the plan.
 - A twisting passage does not bend the doorway's view; it turns the traveller as they
   cross, like a revolving door. A mirroring passage reflects the view and the walker
   snaps to the engine's heading on arrival.
-- Objects are plates, gates, crates and pads. Doors do not slide and crates cannot be
+- Objects are plates, gates, crates and pads. Gates slide open when their plate is lit, but crates cannot be
   pushed. Only six actions are rebindable.
 - Sound is a set of short synthesised cues, not a soundscape.
 - Your own challenges are single goals (reach, arrive facing, within N steps): no plates, crates or restrictions. Campaign challenges are data files.
-- Campaign challenges were checked by explicit planted solutions and negative cases in
-  the tests, not by exhaustive search, so unintended solutions may exist.
+- Campaign challenges are checked by planted solutions and negative cases, and by `tools/solve.mjs`, an exhaustive
+  solver that proves 18 of them solvable and reports their minimum builds. The larger ones (Machine, Wheel, Spiral
+  Cellar, Cupboard, Ring Hall, Last Construction) are beyond brute force, so unintended shortcuts may exist there.
+  The solver also shows that many early challenges are solvable by a single passage: they are tutorials.
 
 ## License
 

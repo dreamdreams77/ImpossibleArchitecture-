@@ -49,6 +49,8 @@ test('The Two Doors: sealed faces are refused; going round by the north and sout
   const c = chapterById('the-two-doors');
   const direct = connect(chapterStructure(c), { a: 'hall', aFace: 'E', b: 'annex', bFace: 'W' }, c.ruleset);
   assert.equal(direct.error, 'FORBIDDEN_FACE');
+  const skip = connect(chapterStructure(c), { a: 'hall', aFace: 'N', b: 'vault', bFace: 'N' }, c.ruleset);
+  assert.equal(skip.error, 'FORBIDDEN_LINK', 'the Hall and the Vault may not be joined directly');
   assert.ok(solves('the-two-doors', [['hall', 'N', 'annex', 'N'], ['annex', 'S', 'vault', 'S']]));
   assert.ok(solves('the-two-doors', [['hall', 'S', 'annex', 'S'], ['annex', 'N', 'vault', 'N']]), 'a second, different solution');
   assert.equal(solves('the-two-doors', [['hall', 'N', 'annex', 'N']]), false, 'half a route is not a route');
@@ -88,12 +90,14 @@ test('The Seam: the forbidden link is refused, and the hub with a returning pass
   const direct = connect(chapterStructure(c), { a: 'warm', aFace: 'E', b: 'cool', bFace: 'W' }, c.ruleset);
   assert.equal(direct.error, 'FORBIDDEN_LINK');
   assert.match(direct.violations[0].message, /never be joined/);
-  const links = [['seam', 'W', 'warm', 'W'], ['seam', 'E', 'cool', 'E'], ['cool', 'N', 'seam', 'N']];
+  // Two passages, each doing two jobs: strike a plate, and return to the Seam facing south.
+  const links = [['seam', 'N', 'warm', 'N', 1, true], ['seam', 'E', 'cool', 'N', 3, true]];
   assert.ok(solves('the-seam', links));
-  // Without the extra passage, the walk ends in the Seam facing west, not south.
-  assert.equal(solves('the-seam', links.slice(0, 2)), false);
-  // A quarter turn on the plate passage would spoil the plate it serves.
-  assert.equal(solves('the-seam', [['seam', 'W', 'warm', 'W'], ['seam', 'E', 'cool', 'E', 3], ['cool', 'N', 'seam', 'N']]), false);
+  assert.deepEqual(discoveriesIn(...(() => { const r = build('the-seam', links); return [r.s, r.c]; })()), ['two-routes']);
+  // The same faces with no turn or mirror light the plates but leave you facing the wrong way.
+  assert.equal(solves('the-seam', [['seam', 'N', 'warm', 'N'], ['seam', 'E', 'cool', 'N']]), false);
+  // One passage cannot serve both wings.
+  assert.equal(solves('the-seam', [links[0]]), false);
 });
 
 test('The Ring Hall: sealed north faces force the quarter-turn ring; the ring is found as a loop', () => {

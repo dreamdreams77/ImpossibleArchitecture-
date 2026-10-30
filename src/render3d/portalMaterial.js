@@ -33,6 +33,7 @@ uniform float arrow;     // 0 none, 1 chevrons pointing out of the room, -1 poin
 uniform float fade;      // 0..1, darkening with recursion depth
 uniform float debugTint; // recursion depth heat, 0 off
 uniform float flash;     // crossing pulse
+uniform float retract;   // 0 bars across, 1 bars drawn back (a gate opening)
 uniform vec3 rim;
 uniform vec3 fogColor;
 uniform vec3 heat;
@@ -90,10 +91,11 @@ void main() {
   }
   // Gate bars and one-way refusal sit over a dimmed view.
   if (overlay > 0.5 && overlay < 1.5) {
-    col *= 0.35;
-    float bars = smoothstep(0.06, 0.03, abs(fract(p.x * 2.4 + 0.5) - 0.5));
-    float cross = smoothstep(0.05, 0.02, abs(fract((p.y + p.x * 0.3) * 1.6) - 0.5));
-    col += rim * (bars * 0.9 + cross * 0.25) * (0.7 + 0.3 * sin(time * 3.0));
+    col *= mix(0.35, 1.0, retract);
+    float sx = p.x + sign(p.x) * retract * 1.4;      // the bars slide apart as the gate opens
+    float bars = smoothstep(0.06, 0.03, abs(fract(sx * 2.4 + 0.5) - 0.5));
+    float cross = smoothstep(0.05, 0.02, abs(fract((p.y + sx * 0.3) * 1.6) - 0.5));
+    col += rim * (bars * 0.9 + cross * 0.25) * (0.7 + 0.3 * sin(time * 3.0)) * (1.0 - retract);
     alpha = 1.0;
   } else if (overlay > 1.5) {
     col *= 0.3;
@@ -122,6 +124,7 @@ export function makePortalMaterial() {
       fade: { value: 0 },
       debugTint: { value: 0 },
       flash: { value: 0 },
+      retract: { value: 0 },
       rim: { value: new Color('#6fd6ff') },
       fogColor: { value: new Color('#202030') },
       heat: { value: new Color('#ff3366') },

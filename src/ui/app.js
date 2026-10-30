@@ -111,9 +111,18 @@ export function boot() {
     },
     onSelectRoom: (id) => { session.selectRoom(id); render(); },
     onPickFace: (room, face) => { session.pickFace(room, face); sound.play(session.pendingFace ? 'step' : 'goal'); render(); },
+    onSelectPortal: (id) => { session.selectPortal(id); render(); },
+    onAddRoom: (x, y) => { session.addRoomAt(snapTo(x, 0.5), snapTo(y, 0.5)); render(); },
+    onMoveRoom: (id, x, y, phase) => {
+      if (phase === 'end') { session.endGesture(); modelMoving = false; return; }
+      if (phase === 'move' && !modelMoving) { session.beginGesture(); modelMoving = true; }
+      session.moveRoom(id, snapTo(x, snapOn ? 0.5 : 0), snapTo(y, snapOn ? 0.5 : 0));
+      render();
+    },
     onLost: () => { session.feedback = { kind: 'error', text: 'The 3D view lost its graphics context. Showing the 2D views until it returns.' }; setView(viewMode); },
     onRestored: () => { session.feedback = { kind: 'info', text: 'The 3D view is back.' }; setView(viewMode); },
   });
+  let modelMoving = false;
   const glMode = () => gl && !gl.lost && (viewMode === 'first' || viewMode === 'model');
 
   populateChapters();

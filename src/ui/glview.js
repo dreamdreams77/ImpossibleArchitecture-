@@ -17,7 +17,7 @@ export function glSupported() {
 }
 
 // Creates the view, or returns null where WebGL is unavailable (the app then keeps its 2D views).
-export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onPickFace, onLost, onRestored, settings = {} }) {
+export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onPickFace, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
   if (!glSupported()) return null;
   const params = new URLSearchParams(globalThis.location?.search ?? '');
   let quality = params.get('quality') ?? settings.quality ?? 'high';
@@ -41,6 +41,8 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   let stateKey = '';
   let hudKey = '';
   let fit = true;
+  let fitChapter = null;
+  let fitCount = -1;
   let drag = null;
   let flash = 0;
   let autoOrbit = false;
@@ -87,7 +89,8 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       lastTheme = session.themeName;
       world.sync(session.structure, context());
       stateKey = '';
-      fit = true;
+      const count = session.structure.rooms.size;
+      if (chapterId !== fitChapter || count !== fitCount) { fit = true; fitChapter = chapterId; fitCount = count; }
     }
     const walkerState = session.fpEnsure();
     const crates = session.cratePositions();
@@ -97,7 +100,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       stateKey = key;
       world.setState({ lit: walkerState?.lit ?? 0, delivered: walkerState?.delivered ?? 0, crates, routePortals: route });
     }
-    world.setSelection(session.selection?.type === 'room' ? session.selection.id : null);
+    world.setSelection(session.selection?.type === 'room' ? session.selection.id : null, session.selection?.type === 'portal' ? session.selection.id : null);
     if (mode === 'model') world.setMarkerState(session.pendingFace, world.markerState.hover);
     return walkerState;
   }
@@ -158,7 +161,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     } else {
       hud.innerHTML = '<div class="gl-place"><strong>Architect’s model</strong><span>rooms at their plan positions · arcs are the real connections</span></div>'
         + `<div class="gl-legend">${chips}</div>`
-        + `<div class="gl-hint">${previewNote ? `<strong>${esc(previewNote)}</strong> · ` : ''}click a doorway ring, then another, to join them · drag to orbit · wheel to zoom · click a room to select it</div>`;
+        + `<div class="gl-hint">${previewNote ? `<strong>${esc(previewNote)}</strong> · ` : ''}click a doorway ring, then another, to join them · click an arc to edit it · drag the selected room to move it · drag elsewhere to orbit · wheel to zoom · click a room to select it</div>`;
     }
   }
 
@@ -208,7 +211,18 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
 
   canvas.addEventListener('pointerdown', (evt) => {
     if (pinch.down(evt.pointerId, evt.clientX, evt.clientY)) { drag = null; return; }
-    drag = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, sx: evt.clientX, sy: evt.clientY, moved: false };
+    drag = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, sx: evt.clientX, sy: evt.clientY, moved: false, room: null };
+    // In the model, a drag that starts on the selected room moves that room on the plan.
+    if (mode === 'model' && session.tool !== 'connect' && session.selection?.type === 'room') {
+      const r = canvas.getBoundingClientRect();
+      const ndc = [((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1)];
+      if (!world.pickMarker(...ndc) && world.pickRoom(...ndc) === session.selection.id) {
+        const g = world.groundPoint(...ndc);
+        const room = session.structure.rooms.get(session.selection.id);
+        const plan = g && world.worldToPlan(g);
+        if (plan) drag.room = { id: room.id, offX: plan.x - room.x, offY: plan.y - room.y };
+      }
+    }
     canvas.setPointerCapture?.(evt.pointerId);
     walker.dragging = true;
   });
@@ -245,6 +259,12 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     drag.x = evt.clientX;
     drag.y = evt.clientY;
     if (!drag.moved) return;
+    if (drag.room) {
+      const r = canvas.getBoundingClientRect();
+      const g = world.groundPoint(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
+      if (g) { const p = world.worldToPlan(g); onMoveRoom?.(drag.room.id, p.x - drag.room.offX, p.y - drag.room.offY, 'move'); }
+      return;
+    }
     if (mode === 'first') walker.look(dx * 0.005, dy * 0.0035);
     else {
       orbit.azimuth -= dx * 0.006;
@@ -254,12 +274,20 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   const end = (evt) => {
     pinch.up(evt.pointerId);
     walker.dragging = false;
+    if (drag?.id === evt.pointerId && drag.room && drag.moved) onMoveRoom?.(drag.room.id, 0, 0, 'end');
     if (drag?.id === evt.pointerId && !drag.moved && evt.type === 'pointerup') {
       const r = canvas.getBoundingClientRect();
       if (mode === 'first') onWalkClick?.(fpZoneFor(evt.clientX - r.left, r.width));
       else {
         const face = world.pickMarker(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
         if (face) { onPickFace?.(face.room, face.face); previewKey = ''; world.setPreview(null, null); drag = null; return; }
+        const link = world.pickLink(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
+        const roomHit = world.pickRoom(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
+        if (link && !roomHit) { onSelectPortal?.(link); drag = null; return; }
+        if (!roomHit && session.tool === 'add') {
+          const g = world.groundPoint(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
+          if (g) { const p = world.worldToPlan(g); onAddRoom?.(p.x, p.y); drag = null; return; }
+        }
         const id = world.pickRoom(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
         onSelectRoom?.(id);
       }
