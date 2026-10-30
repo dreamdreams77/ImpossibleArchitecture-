@@ -71,8 +71,8 @@
         <h3>View</h3>
         <div class="toolrow">
           <button id="view-plan" type="button" aria-pressed="true">Plan</button>
-          <button id="view-first" type="button" aria-pressed="false">First person</button>
-          <button id="view-model" type="button" aria-pressed="false">3D model</button>
+          <button id="view-first" type="button" aria-pressed="false" title="Walk the building in 3D">Walk</button>
+          <button id="view-model" type="button" aria-pressed="false" title="The architect's model in 3D">Model</button>
         </div>
         <div class="toolrow">
           <button id="fit" type="button" title="F">Fit view</button>
@@ -87,6 +87,11 @@
           <button id="fp-right" type="button" title="Right arrow or E">Turn right</button>
           <button id="fp-reset" type="button">Back to start</button>
           <button id="fp-play" type="button" disabled title="Walk the last passing route">Play route</button>
+        </div>
+        <div id="gl-model-controls" class="toolrow" hidden>
+          <button id="gl-cutaway" type="button" aria-pressed="true" title="Cut the model at a section plane">Cutaway</button>
+          <label class="field" title="Height of the section plane">Section <input id="gl-cut-height" type="range" min="1" max="6" step="0.1" value="2.7" aria-label="Section plane height"></label>
+          <button id="gl-reset-view" type="button" title="F">Reset view</button>
         </div>
       </section>
 
@@ -239,6 +244,14 @@
                 <option value="2">2×</option>
               </select>
             </label>
+            <label class="field">Graphics
+              <select id="set-quality" aria-label="Graphics quality">
+                <option value="auto">Auto</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
             <button id="settings-back" type="button">Back</button>
           </div>
         </section>
@@ -287,7 +300,8 @@
         <dt>W / P</dt><dd>walk the passing route in the plan, or play it in first person</dd>
         <dt>Two fingers</dt><dd>pinch to zoom the plan or the 3D model</dd>
         <dt>Esc</dt><dd>also stops a route walk or playback</dd>
-        <dt>In 3D model</dt><dd>drag, or ← → to turn · F to return to the first turn</dd>
+        <dt>In the model</dt><dd>drag or arrow keys to orbit · wheel or + − to zoom · click a room to select · F resets</dd>
+        <dt>In the walk</dt><dd>drag to look · ← → or Q E to turn · ↑ or W to walk · F3 developer overlay</dd>
         <dt>?</dt><dd>show or hide this panel</dd>
       </dl>
       <button id="keys-close" type="button">Close</button>
@@ -295,6 +309,9 @@
 
     <section class="stage" data-chapter="">
       <canvas id="plan" aria-label="Plan view of the construction"></canvas>
+      <canvas id="gl" aria-label="Three-dimensional view of the construction" hidden></canvas>
+      <div id="gl-hud" class="gl-hud" hidden></div>
+      <pre id="gl-debug" class="gl-debug" hidden></pre>
       <canvas id="fp" aria-label="First-person view from inside a room" hidden></canvas>
       <canvas id="model" aria-label="Isometric model of the construction" hidden></canvas>
       <canvas id="graph" aria-label="Spatial graph overlay"></canvas>

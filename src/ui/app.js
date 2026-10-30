@@ -17,6 +17,7 @@ import { sightCardModel, drawSightCards } from '../render/sightcards.js';
 import { SaveSlots, encodeSave, decodeSave } from '../persistence/store.js';
 import { encodeProgress, decodeProgress, SHARE_LIMIT } from '../persistence/share.js';
 import { createPinch } from './pinch.js';
+import { createGlView } from './glview.js';
 import { copyText, canvasRatio } from './platform.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -37,6 +38,7 @@ export function boot() {
   const pctx = plan.getContext('2d');
   const gctx = graph.getContext('2d');
   const slots = new SaveSlots(window.localStorage);
+  const glCanvas = $('#gl');
 
   const saved = loadProgress();
   const session = new Session({ chapterId: saved?.lastChapter ?? CHAPTERS[0].id, progress: saved?.progress });
@@ -77,6 +79,25 @@ export function boot() {
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   // Under reduced motion the pulses hold still; walking and turning still happen.
 
+  // The WebGL walk and architect's model. Where WebGL is unavailable the 2D views below stay in use.
+  let savedQuality = 'auto';
+  try { savedQuality = localStorage.getItem('ia-quality') || 'auto'; } catch { /* default */ }
+  const gl = createGlView({
+    canvas: glCanvas,
+    session,
+    hud: $('#gl-hud'),
+    debugEl: $('#gl-debug'),
+    settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed },
+    onWalkClick: (zone) => {
+      session.fpStopPlay();
+      if (zone === 'forward') walkForward();
+      else session.fpTurn(zone);
+      render();
+    },
+    onSelectRoom: (id) => { session.selectRoom(id); render(); },
+  });
+  const glMode = () => gl && (viewMode === 'first' || viewMode === 'model');
+
   populateChapters();
 
   let ratio = canvasRatio(); // canvas pixels per CSS pixel, set by fitView
@@ -109,8 +130,13 @@ export function boot() {
     viewMode = mode;
     try { localStorage.setItem('ia-view', mode); } catch { /* not remembered */ }
     plan.hidden = mode !== 'plan';
-    fpCanvas.hidden = mode !== 'first';
-    modelCanvas.hidden = mode !== 'model';
+    const useGl = !!gl && (mode === 'first' || mode === 'model');
+    fpCanvas.hidden = useGl || mode !== 'first';
+    modelCanvas.hidden = useGl || mode !== 'model';
+    gl?.setVisible(useGl);
+    if (useGl) gl.setMode(mode);
+    $('#gl-hud').hidden = !useGl;
+    $('#gl-model-controls').hidden = !(useGl && mode === 'model');
     $('#fp-controls').hidden = mode !== 'first';
     graph.hidden = mode !== 'plan' || !showGraph;
     $('#view-plan').setAttribute('aria-pressed', String(mode === 'plan'));
@@ -165,6 +191,7 @@ export function boot() {
     const ok = session.fpForward();
     if (!ok) {
       sound.play(/One way/.test(session.feedback?.text ?? '') ? 'oneway' : 'bump');
+      if (glMode() && session.fp) gl.bump(session.fp.heading);
     } else {
       sound.play(stepCue(gateBefore, litBefore));
     }
@@ -182,6 +209,7 @@ export function boot() {
   // pulse and the walker moves; the panel is refreshed only on state changes.
   function paint(now = 0) {
     const time = reduceMotion ? 0 : now;
+    if (glMode()) { gl.paint(now); return; }
     if (viewMode === 'model') {
       const mr = modelCanvas.getBoundingClientRect();
       mctx.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -242,7 +270,8 @@ export function boot() {
   function saveImage() {
     const canvas = viewMode === 'first' ? fpCanvas : viewMode === 'model' ? modelCanvas : plan;
     const name = session.sandbox ? 'free-construction' : session.chapter.id;
-    canvas.toBlob((blob) => {
+    const toBlob = (cb) => (glMode() ? gl.capture(cb) : canvas.toBlob(cb, 'image/png'));
+    toBlob((blob) => {
       if (!blob) {
         session.feedback = { kind: 'error', text: 'This browser could not make an image of the view.' };
         render();
@@ -263,7 +292,7 @@ export function boot() {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, 'image/png');
+    });
   }
 
   function toggleSnap(force) {
@@ -350,6 +379,8 @@ export function boot() {
     $('#set-sound').textContent = `Sound: ${sound.enabled ? 'on' : 'off'}`;
     $('#set-volume').value = String(Math.round(sound.volume * 100));
     $('#set-speed').value = $('#speed').value;
+    $('#set-quality').value = savedQuality;
+    $('#set-quality').disabled = !gl;
   }
 
   function showComplete(chapterId) {
@@ -399,6 +430,18 @@ export function boot() {
     $('#speed').dispatchEvent(new Event('change'));
     syncSettings();
   });
+  $('#set-quality').addEventListener('change', (evt) => {
+    savedQuality = evt.target.value;
+    try { localStorage.setItem('ia-quality', savedQuality); } catch { /* not remembered */ }
+    gl?.setQuality(savedQuality === 'auto' ? 'high' : savedQuality);
+  });
+  $('#gl-cutaway').addEventListener('click', () => {
+    const on = !gl.cutaway;
+    gl.setCutaway(on);
+    $('#gl-cutaway').setAttribute('aria-pressed', String(on));
+  });
+  $('#gl-cut-height').addEventListener('input', (evt) => gl?.setCutHeight(Number(evt.target.value)));
+  $('#gl-reset-view').addEventListener('click', () => gl?.key('f'));
   $('#set-volume').addEventListener('input', (evt) => {
     $('#volume').value = evt.target.value;
     $('#volume').dispatchEvent(new Event('input'));
@@ -1021,7 +1064,11 @@ export function boot() {
     if (evt.target.matches('input, textarea, select')) return;
     const mod = evt.ctrlKey || evt.metaKey;
     if (viewMode === 'plan' && !mod && handlePlanKey(evt)) return;
-    if (viewMode === 'model' && !mod) {
+    if (viewMode === 'model' && !mod && gl) {
+      if (gl.key(evt.key.toLowerCase())) { evt.preventDefault(); return; }
+    }
+    if (evt.key === 'F3' && gl) { evt.preventDefault(); gl.toggleDebug(); return; }
+    if (viewMode === 'model' && !mod && !gl) {
       const k = evt.key.toLowerCase();
       if (k === 'arrowleft' || k === 'arrowright') {
         evt.preventDefault();

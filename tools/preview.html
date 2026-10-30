@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Renderer preview</title>
+<style>html,body{margin:0;background:#000;height:100%}canvas{width:100vw;height:100vh;display:block}#hud{position:fixed;left:8px;top:8px;color:#9fd;font:12px monospace;white-space:pre}</style>
+<canvas id="c"></canvas><div id="hud"></div>
+<script type="module">
+// Developer preview of the 3D renderer: /tools/preview.html?chapter=threshold&room=hall&yaw=0&mode=walk
+import { WorldRenderer } from '../src/render3d/world.js';
+import { CHAPTERS } from '../src/campaign/chapters.js';
+import { Structure } from '../src/topology/graph.js';
+import { headingYaw } from '../src/render3d/frames.js';
+const q = new URLSearchParams(location.search);
+const ch = CHAPTERS.find((c) => c.id === (q.get('chapter') ?? 'threshold')) ?? CHAPTERS[0];
+const s = new Structure();
+for (const r of ch.rooms) s.addRoom({ ...r });
+for (const p of ch.portals ?? []) s.addPortal({ ...p });
+// Optional extra portals: ?p=hall:E:vault:W:1:0 (a:aFace:b:bFace:turns:mirror)
+// Extra fields: :oneWay(a|b|-) :gate(plate index|-)
+for (const spec of q.getAll('p')) {
+  const [a, af, b, bf, t = 0, m = 0, ow = '-', gate = '-'] = spec.split(':');
+  s.addPortal({ a, aFace: af, b, bFace: bf, transform: { turns: +t, mirror: m === '1' }, oneWay: ow === '-' ? null : ow, gate: gate === '-' ? null : +gate });
+}
+// ?kind=room:atrium  ?size=room:1.5
+for (const k of q.getAll('kind')) { const [id, kind] = k.split(':'); s.rooms.get(id).kind = kind; }
+for (const k of q.getAll('size')) { const [id, size] = k.split(':'); s.rooms.get(id).size = +size; }
+const canvas = document.getElementById('c');
+const w = new WorldRenderer(canvas, { quality: q.get('quality') ?? 'high', debug: q.has('debug') });
+w.setSize(innerWidth, innerHeight, devicePixelRatio);
+w.sync(s, { chapterId: q.get('style') ?? ch.id, themeName: q.get('theme') ?? ch.theme, plates: ch.plates ?? [] });
+w.setState({ lit: +q.get('lit') || 0 });
+const room = q.get('room') ?? ch.start;
+const yaw = headingYaw(q.get('h') ?? 'N') + (+q.get('yaw') || 0);
+const pos = [(+q.get('x') || 0), 1.65, (+q.get('z') || 0)];
+window.world = w;
+function frame(t) {
+  if (q.get('mode') === 'overview') {
+    w.setLayout('plan');
+    const c = w.extent().getCenter(new (w.camera.position.constructor)());
+    w.renderOverview({ target: [c.x, 0, c.z], azimuth: +q.get('az') || 0.6, elevation: +q.get('el') || 0.8, distance: +q.get('d') || 60 }, t / 1000);
+  } else w.renderWalk({ room, pos, yaw, pitch: +q.get('pitch') || 0 }, t / 1000);
+  document.getElementById('hud').textContent = w.debugLines().join('\n');
+  window.__frames = (window.__frames ?? 0) + 1;
+  if (!q.has('still')) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
