@@ -250,3 +250,26 @@ test('playing a cue with sound off does nothing and does not throw', () => {
   assert.doesNotThrow(() => sound.play('goal'));
   assert.equal(sound.ctx, null, 'no audio context is made while muted');
 });
+
+import { AMBIENCE } from '../src/ui/sound.js';
+import { STYLES } from '../src/render3d/styles.js';
+
+test('every chapter style has a soundscape of finite, audible parameters, and the new cues exist', () => {
+  for (const key of Object.keys(STYLES)) {
+    const a = AMBIENCE[key];
+    assert.ok(a, `${key} has ambience`);
+    assert.ok(a.drones.length >= 2 && a.drones.every((f) => f > 20 && f < 600), key);
+    assert.ok(a.level > 0 && a.level <= 1 && a.noise >= 0 && a.cutoff > 100 && a.drift > 0, key);
+  }
+  assert.ok(CUE_NAMES.includes('cross') && CUE_NAMES.includes('mirror'));
+});
+
+test('ambience stays quiet while sound is off and does not throw without Web Audio', () => {
+  const s = new Sound(null);
+  s.setAmbience('final');
+  s.setVolume(0.5);
+  s.setEnabled(true);
+  s.setAmbience('final');
+  s.setEnabled(false);
+  assert.equal(s.ambience ?? null, null);
+});

@@ -19,6 +19,7 @@ import { SaveSlots, encodeSave, decodeSave } from '../persistence/store.js';
 import { encodeProgress, decodeProgress, SHARE_LIMIT } from '../persistence/share.js';
 import { createPinch } from './pinch.js';
 import { createGlView } from './glview.js';
+import { styleFor } from '../render3d/styles.js';
 import { debugReport } from './debugreport.js';
 import { ACTIONS, loadBindings, saveBindings, rebind, translate } from './keybindings.js';
 import { copyText, canvasRatio } from './platform.js';
@@ -42,6 +43,10 @@ export function boot() {
   const gctx = graph.getContext('2d');
   const slots = new SaveSlots(window.localStorage);
   const glCanvas = $('#gl');
+  // Camera comfort: look sensitivity, field of view, head bob. Remembered between visits.
+  const access = { look: 1, fov: 72, bob: true };
+  try { Object.assign(access, JSON.parse(localStorage.getItem('ia-access') ?? '{}')); } catch { /* defaults */ }
+  const saveAccess = () => { try { localStorage.setItem('ia-access', JSON.stringify(access)); } catch { /* not remembered */ } };
   let bindings = loadBindings(window.localStorage);
   // Rebound keys are translated before any handler sees them (capture phase, first listener).
   window.addEventListener('keydown', (evt) => {
@@ -102,7 +107,7 @@ export function boot() {
     session,
     hud: $('#gl-hud'),
     
-    settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed },
+    settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed, look: () => access.look, fov: () => access.fov, bob: () => access.bob },
     onWalkClick: (zone) => {
       session.fpStopPlay();
       if (zone === 'forward') walkForward();
@@ -111,6 +116,7 @@ export function boot() {
     },
     onSelectRoom: (id) => { session.selectRoom(id); render(); },
     onPickFace: (room, face) => { session.pickFace(room, face); sound.play(session.pendingFace ? 'step' : 'goal'); render(); },
+    onCross: (ev) => sound.play(ev.mirror ? 'mirror' : 'cross'),
     onSelectPortal: (id) => { session.selectPortal(id); render(); },
     onAddRoom: (x, y) => { session.addRoomAt(snapTo(x, 0.5), snapTo(y, 0.5)); render(); },
     onMoveRoom: (id, x, y, phase) => {
@@ -416,6 +422,9 @@ export function boot() {
     $('#set-speed').value = $('#speed').value;
     $('#set-quality').value = savedQuality;
     $('#set-quality').disabled = !gl;
+    $('#set-look').value = String(access.look);
+    $('#set-fov').value = String(access.fov);
+    $('#set-bob').checked = !!access.bob;
     fillKeyList();
   }
 
@@ -589,6 +598,9 @@ export function boot() {
     try { localStorage.setItem('ia-quality', savedQuality); } catch { /* not remembered */ }
     gl?.setQuality(savedQuality === 'auto' ? 'high' : savedQuality);
   });
+  $('#set-look').addEventListener('input', (e) => { access.look = Number(e.target.value); saveAccess(); });
+  $('#set-fov').addEventListener('input', (e) => { access.fov = Number(e.target.value); saveAccess(); });
+  $('#set-bob').addEventListener('change', (e) => { access.bob = e.target.checked; saveAccess(); });
   $('#gl-cutaway').addEventListener('click', () => {
     const on = !gl.cutaway;
     gl.setCutaway(on);
@@ -659,6 +671,7 @@ export function boot() {
       session.justCompleted = null;
       showComplete(done);
     }
+    sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     maybeQueueCard();
     paint(lastTime);
     renderPanel();

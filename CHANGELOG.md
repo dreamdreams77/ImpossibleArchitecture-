@@ -28,7 +28,10 @@ Also in 1.0.0
 - Model view: add rooms, drag rooms (undoable), select passages by their arcs; gates slide open.
 - `tools/solve.mjs`, an exhaustive solver; it exposed three of my new designs that did not need the rule they teach (The Two Doors, The Seam, The Ring Hall), now fixed.
 
-Tests: 336 pass.
+- Chapter soundscapes and crossing/mirror cues; look sensitivity, field of view and head-bob settings.
+- Checked: a 36-room sandbox builds in 25 ms and renders in the model without errors.
+
+Tests: 338 pass.
 
 Known limits are listed in the README.
 

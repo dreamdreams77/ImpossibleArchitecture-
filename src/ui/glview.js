@@ -17,7 +17,7 @@ export function glSupported() {
 }
 
 // Creates the view, or returns null where WebGL is unavailable (the app then keeps its 2D views).
-export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onPickFace, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
+export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onPickFace, onCross, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
   if (!glSupported()) return null;
   const params = new URLSearchParams(globalThis.location?.search ?? '');
   let quality = params.get('quality') ?? settings.quality ?? 'high';
@@ -180,15 +180,16 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     const walkerState = ensureSynced();
     if (canvas.width < 2) resize();
     walker.speed = 6.5 * (settings.speed?.() ?? 1);
+    walker.bobOn = settings.bob?.() ?? true;
     if (mode === 'first') {
       if (!walker.room || !session.structure.rooms.has(walker.room)) walker.key = null;
       walker.sync(session.structure, walkerState, halfOf);
       for (const ev of walker.update(dt)) {
-        if (ev.type === 'cross' && (ev.mirror || ev.turns)) flash = 1;
+        if (ev.type === 'cross') { onCross?.(ev); if (ev.mirror || ev.turns) flash = 1; }
       }
       world.state.flash = flash;
       flash = Math.max(0, flash - dt * 2.4);
-      if (walker.room) world.renderWalk(walker.pose(), t);
+      if (walker.room) world.renderWalk({ ...walker.pose(), fov: settings.fov?.() ?? 72 }, t);
     } else {
       if (fit) fitOrbit();
       if (autoOrbit) { orbit.azimuth += dt * 0.12; orbit.elevation += (0.62 - orbit.elevation) * Math.min(1, dt * 0.8); }
@@ -265,7 +266,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       if (g) { const p = world.worldToPlan(g); onMoveRoom?.(drag.room.id, p.x - drag.room.offX, p.y - drag.room.offY, 'move'); }
       return;
     }
-    if (mode === 'first') walker.look(dx * 0.005, dy * 0.0035);
+    if (mode === 'first') walker.look(dx * 0.005 * (settings.look?.() ?? 1), dy * 0.0035 * (settings.look?.() ?? 1));
     else {
       orbit.azimuth -= dx * 0.006;
       orbit.elevation = clamp(orbit.elevation + dy * 0.005, 0.12, 1.5);

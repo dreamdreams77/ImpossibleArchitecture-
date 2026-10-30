@@ -36,6 +36,7 @@ export class Walker {
     this.key = null;
     this.last = null;
     this.reduceMotion = false;
+    this.bobOn = true;
   }
 
   get busy() {
@@ -201,7 +202,7 @@ export class Walker {
 
   pose() {
     const moving = this.queue.length > 0 && this.queue.some((s) => s.move);
-    const bob = moving ? Math.sin(this.bob) * 0.028 : 0;
+    const bob = moving && this.bobOn ? Math.sin(this.bob) * 0.028 : 0;
     return { room: this.room, pos: [this.x, EYE + bob, this.z], yaw: this.yaw + this.lookYaw, pitch: this.pitch + this.lookPitch };
   }
 }

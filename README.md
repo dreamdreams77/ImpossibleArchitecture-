@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 336 tests over the engine, campaign, renderer maths and walker
+npm test       # 338 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
 ```
@@ -34,7 +34,8 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
   can disagree in plain sight).
 - **Construction in 3D**: in the model, every free face carries a ring. Click one, then another: hovering previews the join, in red with the rule's reason if it is refused.
 - **Free construction** with the same engine, saving, loading, sharing and undo, and **your own challenge**: pick a start, a goal, an optional heading and step limit, and Test construction checks it with the campaign's engine (saved with the construction).
-- **Rebindable keys** in Settings.
+- **Rebindable keys**, camera comfort (look sensitivity, field of view, head bob) and a graphics quality choice in Settings.
+- **A soundscape per chapter**, synthesised in the browser (drones and drifting filtered noise), with cues for crossing a passage and for mirrors. Sound starts off.
 - **Objects**: plates (latch and toggle), gates, one-way passages, mirrors, quarter
   turns, crates, delivery gates and pads. Their state is part of the traversal.
 - **Construction rules** that say why they refuse: sealed faces and forbidden links.
@@ -86,7 +87,7 @@ and [docs/TESTING.md](docs/TESTING.md).
   snaps to the engine's heading on arrival.
 - Objects are plates, gates, crates and pads. Gates slide open when their plate is lit, but crates cannot be
   pushed. Only six actions are rebindable.
-- Sound is a set of short synthesised cues, not a soundscape.
+- The soundscape is simple synthesis, not composed music.
 - Your own challenges are single goals (reach, arrive facing, within N steps): no plates, crates or restrictions. Campaign challenges are data files.
 - Campaign challenges are checked by planted solutions and negative cases, and by `tools/solve.mjs`, an exhaustive
   solver that proves 18 of them solvable and reports their minimum builds. The larger ones (Machine, Wheel, Spiral
