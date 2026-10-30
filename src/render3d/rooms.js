@@ -72,7 +72,7 @@ export function buildRoom(spec, lib) {
   const hw = halfWidth(size);
   const H = roomHeight(style, kind, size);
   const has = new Set(style.features);
-  const b = new Builder(lib, H);
+  const b = new Builder(lib, H, hw);
   const group = new Group();
   group.name = `room:${spec.id}`;
   const animated = [];
@@ -434,7 +434,7 @@ export function buildRoom(spec, lib) {
   lights.push({ x: 0, y: Math.min(1.4, H * 0.3), z: 0, color: style.accent, intensity: style.lampIntensity * 0.12 });
 
   if (has.has('pendants')) {
-    const pg = new Builder(lib, H);
+    const pg = new Builder(lib, H, hw);
     const pos = [[-hw * 0.5, -hw * 0.5], [hw * 0.5, -hw * 0.5], [-hw * 0.5, hw * 0.5], [hw * 0.5, hw * 0.5]];
     for (const [x, z] of pos) {
       pg.cylinder('metal', 0.015, 0.015, 1.4, x, H - 0.7, z, 6, { ao: false });
@@ -498,6 +498,7 @@ export function buildRoom(spec, lib) {
 
   // ---- finalise
   group.add(b.build());
+  group.traverse((o) => { if (o.isMesh && o.material && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } });
   const frames = {};
   for (const f of FACES) frames[f] = doorFrame(f, hw);
   // Roof-flagged children (hoist, sprites above head height) are hidden in the cutaway.

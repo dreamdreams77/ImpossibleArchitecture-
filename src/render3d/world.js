@@ -22,6 +22,7 @@ import { materialsFor } from './materials.js';
 import { styleFor } from './styles.js';
 import { buildRoom } from './rooms.js';
 import { makePortalMaterial } from './portalMaterial.js';
+import { Post } from './post.js';
 import {
   FACES, DOOR_W, DOOR_H, halfWidth, doorFrame, portalLocalTransform, planeBeyond, obliqueProjection,
   headingYaw,
@@ -37,13 +38,17 @@ export const DOOR_COLORS = Object.freeze({
   refuse: '#ff7a3c',
 });
 
+const OVERVIEW_GRADE = { lift: [0.006, 0.008, 0.012], gain: [1, 1, 1.02], tint: [1, 1, 1], saturation: 1.05, contrast: 1.05, vignette: 0.32, exposure: 1.0 };
 const HEAT = ['#33ff88', '#ffe14d', '#ff9a3c', '#ff3355'];
 const ROOM_SPACING = 46;
 
-const QUALITY = {
-  high: { maxDepth: 3, samples: 4, scales: [1, 0.8, 0.62, 0.5], maxPasses: 18, pixelRatio: 1.75, children: [3, 2, 2, 1] },
-  medium: { maxDepth: 2, samples: 2, scales: [1, 0.65, 0.5], maxPasses: 10, pixelRatio: 1.25, children: [3, 2, 1] },
-  low: { maxDepth: 1, samples: 0, scales: [1, 0.5], maxPasses: 4, pixelRatio: 1, children: [2, 1] },
+// Graphics presets. `shadows` is the point-light shadow map size (0 = off) and `shadowDepth` the
+// deepest recursion level that casts them; `bloom` is the bloom strength (0 = off); `samples` is the
+// multisampling of the main image; `scales` shrink each recursion level's render target.
+export const QUALITY = {
+  high: { maxDepth: 4, samples: 4, scales: [1, 0.8, 0.62, 0.5, 0.4], maxPasses: 22, pixelRatio: 2, children: [3, 2, 2, 1, 1], shadows: 1024, shadowDepth: 1, bloom: 0.32, dust: 1 },
+  medium: { maxDepth: 2, samples: 2, scales: [1, 0.65, 0.5], maxPasses: 10, pixelRatio: 1.5, children: [3, 2, 1], shadows: 512, shadowDepth: 0, bloom: 0.22, dust: 0.6 },
+  low: { maxDepth: 1, samples: 0, scales: [1, 0.5], maxPasses: 4, pixelRatio: 1, children: [2, 1], shadows: 0, shadowDepth: 0, bloom: 0, dust: 0.3 },
 };
 
 export function webglAvailable() {
@@ -62,9 +67,12 @@ export class WorldRenderer {
     this.q = QUALITY[this.quality];
     this.debug = debug;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // Tone mapping, grading and the sRGB encode happen in the post chain, so the scene stays linear
+    // through every recursive pass and the portals blend correctly.
+    this.renderer.toneMapping = THREE.NoToneMapping;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.post = new Post(this.renderer);
     this.renderer.info.autoReset = false;
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2('#101018', 0.02);
@@ -95,6 +103,7 @@ export class WorldRenderer {
     this.time = 0;
     this.frame = 0;
     this.stats = { passes: 0, byDepth: [], drawCalls: 0, triangles: 0, rooms: 0, doors: 0, ms: 0 };
+    this.plain = false;
     this.cutY = 2.7;
     this.cutaway = true;
     this.linkGroup = new THREE.Group();
@@ -138,6 +147,8 @@ export class WorldRenderer {
     this.camera.updateProjectionMatrix();
     for (const rt of this.pool.values()) rt.dispose();
     this.pool.clear();
+    const buf = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    this.post.resize(buf.x, buf.y, this.q.samples);
   }
 
   setQuality(name) {
@@ -440,6 +451,7 @@ export class WorldRenderer {
         pad.position.set(-e.built.half + 2, 0.05, e.built.half - 2);
         g.add(pad);
       }
+      g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       e.fixtures = g;
       e.built.group.add(g);
     }
@@ -667,7 +679,7 @@ export class WorldRenderer {
 
   // ---- lighting for the room being drawn ------------------------------------
 
-  _lightFor(entry, W) {
+  _lightFor(entry, W, depth = 0) {
     const s = entry.style;
     const k = s.exposure;
     this.hemi.color.set(s.sky);
@@ -688,6 +700,20 @@ export class WorldRenderer {
       p.color.set(l.color);
       p.intensity = l.intensity * k;
       p.distance = entry.built.height * 3.4 + entry.built.half * 2;
+    }
+    // One soft-shadowed light per drawn room: the lamp at the heart of it. Deeper recursion
+    // levels go without, as the preset says.
+    const cast = this.q.shadows > 0 && depth <= this.q.shadowDepth && entry.built.lights.length > 0;
+    const key = this.points[0];
+    if (key.castShadow !== cast) key.castShadow = cast;
+    if (cast) {
+      if (key.shadow.mapSize.x !== this.q.shadows) { key.shadow.mapSize.set(this.q.shadows, this.q.shadows); key.shadow.map?.dispose(); key.shadow.map = null; }
+      key.shadow.camera.near = 0.3;
+      key.shadow.camera.far = key.distance;
+      key.shadow.bias = -0.0006;
+      key.shadow.normalBias = 0.035;
+      key.shadow.radius = 3;
+      this.renderer.shadowMap.needsUpdate = true;
     }
     this.scene.fog.color.set(s.fog.color);
     this.scene.fog.density = s.fog.density;
@@ -780,13 +806,23 @@ export class WorldRenderer {
     this.stats.passes = 0;
     this.stats.byDepth = [];
     this._passBudget = this.q.maxPasses;
-    this._pass(Wc, entry, 0, null, null, this.baseProjection.clone());
+    this.post.resize(...this._bufSize(), this.q.samples);
+    this._pass(Wc, entry, 0, this.post.sceneTarget, null, this.baseProjection.clone());
     cam.projectionMatrix.copy(this.baseProjection);
+    this.renderer.shadowMap.needsUpdate = false;
+    // `plain` strips bloom, vignette and grading so a test can read the geometry's own pixels.
+    const grade = this.plain ? { ...entry.style.grade, vignette: 0, exposure: 1, saturation: 1, contrast: 1, lift: [0, 0, 0], tint: [1, 1, 1] } : entry.style.grade;
+    this.post.render(grade, { bloom: this.plain ? 0 : this.q.bloom, threshold: 1.25, time });
     this.stats.drawCalls = this.renderer.info.render.calls;
     this.stats.triangles = this.renderer.info.render.triangles;
     this.stats.rooms = this.rooms.size;
     this.stats.doors = this.doors.size;
     this.stats.ms = performance.now() - t0;
+  }
+
+  _bufSize() {
+    const b = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    return [b.x, b.y];
   }
 
   _place(entry, W) {
@@ -866,7 +902,7 @@ export class WorldRenderer {
         u.debugTint.value = 0;
       }
     }
-    this._lightFor(entry, Wc);
+    this._lightFor(entry, Wc, depth);
     for (const o of entry.roofList) o.visible = true;
     this.renderer.setRenderTarget(target);
     this.renderer.render(this.scene, cam);
@@ -939,9 +975,12 @@ export class WorldRenderer {
       this.selectionRing.position.set(sel.x, 0, sel.z);
       this.selectionRing.scale.set(h / 1, 1, h / 1);
     }
-    this.renderer.setRenderTarget(null);
+    this.post.resize(...this._bufSize(), this.q.samples);
+    this.renderer.setRenderTarget(this.post.sceneTarget);
     this.renderer.render(this.scene, cam);
     this.renderer.clippingPlanes = [];
+    this.post.render(OVERVIEW_GRADE, { bloom: this.q.bloom * 0.7, time });
+    this.renderer.setRenderTarget(null);
     this.renderer.autoClear = false;
     this.renderer.clearDepth();
     this.renderer.render(this.overlay, cam);

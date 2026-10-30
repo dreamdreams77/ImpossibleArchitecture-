@@ -5,6 +5,7 @@
 <canvas id="c"></canvas><div id="hud"></div>
 <script type="module">
 // Developer preview of the 3D renderer: /tools/preview.html?chapter=threshold&room=hall&yaw=0&mode=walk
+import * as THREE from '../src/vendor/three/three.module.js';
 import { WorldRenderer } from '../src/render3d/world.js';
 import { CHAPTERS } from '../src/campaign/chapters.js';
 import { Structure } from '../src/topology/graph.js';
@@ -32,6 +33,14 @@ const room = q.get('room') ?? ch.start;
 const yaw = headingYaw(q.get('h') ?? 'N') + (+q.get('yaw') || 0);
 const pos = [(+q.get('x') || 0), 1.65, (+q.get('z') || 0)];
 window.world = w;
+w.plain = q.has('plain');
+// ?marker=roomId puts a bright red sphere in that room, off-centre and off-axis, for the portal check.
+const MARKER = [1.2, 1.5, -1.0];
+if (q.get('marker')) {
+  const mk = new THREE.Mesh(new THREE.SphereGeometry(0.28, 20, 14), new THREE.MeshBasicMaterial({ color: '#ff0022', fog: false }));
+  mk.position.set(...MARKER);
+  w.rooms.get(q.get('marker')).built.group.add(mk);
+}
 function frame(t) {
   if (q.get('mode') === 'overview') {
     w.setLayout('plan');
@@ -40,7 +49,36 @@ function frame(t) {
   } else w.renderWalk({ room, pos, yaw, pitch: +q.get('pitch') || 0 }, t / 1000);
   document.getElementById('hud').textContent = w.debugLines().join('\n');
   window.__frames = (window.__frames ?? 0) + 1;
+  if (q.has('check') && window.__frames === 1) window.__check = runCheck();
   if (!q.has('still')) requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// The independent check: where the marker must appear in the doorway (transform it back through the
+// portal, project it with the camera) against where the renderer actually put it (red pixel centroid).
+function runCheck() {
+  const door = [...w.doors.values()].find((d) => d.room === room && d.destRoom === q.get('marker'));
+  const entry = w.rooms.get(room);
+  const m = new w.camera.position.constructor(...MARKER);
+  m.applyMatrix4(door.place).applyMatrix4(entry.world);           // marker: B-local -> A-local -> world
+  const ndc = m.clone().project(w.camera);
+  const W = canvas.width; const H = canvas.height;
+  const predicted = { x: (ndc.x + 1) / 2 * W, y: (1 - ndc.y) / 2 * H, inFront: ndc.z < 1 };
+  const off = document.createElement('canvas'); off.width = W; off.height = H;
+  const g = off.getContext('2d'); g.drawImage(canvas, 0, 0);
+  const px = g.getImageData(0, 0, W, H).data;
+  // Only the doorway's own screen area counts, so the viewer's room cannot contribute.
+  let x0 = W; let x1 = 0; let y0 = H; let y1 = 0;
+  for (const [cx, cy] of [[-1.2, -1.575], [1.2, -1.575], [1.2, 1.575], [-1.2, 1.575]]) {
+    const c = door.mesh.localToWorld(new w.camera.position.constructor(cx, cy, 0)).project(w.camera);
+    const X = (c.x + 1) / 2 * W; const Y = (1 - c.y) / 2 * H;
+    x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y);
+  }
+  let n = 0; let sx = 0; let sy = 0;
+  for (let y = Math.max(0, Math.floor(y0)); y < Math.min(H, Math.ceil(y1)); y++) for (let x = Math.max(0, Math.floor(x0)); x < Math.min(W, Math.ceil(x1)); x++) {
+    const i = (y * W + x) * 4;
+    if (px[i] - Math.max(px[i + 1], px[i + 2]) > 55) { n++; sx += x; sy += y; }
+  }
+  return { predicted, found: n ? { x: sx / n, y: sy / n, pixels: n } : null, size: [W, H] };
+}
 </script>

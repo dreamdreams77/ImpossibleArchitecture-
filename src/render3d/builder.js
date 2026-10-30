@@ -16,9 +16,12 @@ const _s = new Vector3(1, 1, 1);
 const _p = new Vector3();
 
 export class Builder {
-  constructor(lib, height) {
+  // `half` (the room's interior half-width) switches on analytic ambient occlusion: every
+  // vertex is darkened by its nearness to the floor, ceiling and walls it does not lie on.
+  constructor(lib, height, half = null) {
     this.lib = lib;
     this.height = height;
+    this.half = half;
     this.parts = new Map(); // `${layer}|${mat}` -> geometries
   }
 
@@ -44,11 +47,7 @@ export class Builder {
         uvs[i * 2 + 1] = y * repeat;
       }
       let k = 1;
-      if (ao) {
-        const H = this.height;
-        k = 0.58 + 0.42 * smooth(0, 1.6, y);
-        k *= 1 - 0.28 * smooth(H - 1.4, H, y);
-      }
+      if (ao) k = this.half ? occlusion(x, y, z, this.height, this.half) : legacyAo(y, this.height);
       col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = k;
     }
     g.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
@@ -65,7 +64,9 @@ export class Builder {
     _e.set(0, ry, 0);
     _q.setFromEuler(_e);
     _m.compose(_p.set(x, y, z), _q, _s);
-    return this.add(mat, new BoxGeometry(w, h, d), _m, opts);
+    // Big faces are subdivided so the per-vertex occlusion varies across them.
+    const seg = (n) => (this.half && n > 2.2 ? Math.min(12, Math.ceil(n / 1.1)) : 1);
+    return this.add(mat, new BoxGeometry(w, h, d, seg(w), seg(h), seg(d)), _m, opts);
   }
 
   // A box given by its min/max corners, for walls and slabs.
@@ -130,4 +131,21 @@ export class Builder {
 function smooth(a, b, x) {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
+}
+
+function legacyAo(y, H) {
+  return (0.58 + 0.42 * smooth(0, 1.6, y)) * (1 - 0.28 * smooth(H - 1.4, H, y));
+}
+
+// Occlusion at a point of a room's interior: crevices darken, open floor does not.
+// Each bounding plane contributes unless the point lies on it.
+export function occlusion(x, y, z, H, half) {
+  let occ = 0;
+  if (y > 0.06) occ += 0.30 * Math.exp(-y / 0.75);
+  if (H - y > 0.06) occ += 0.24 * Math.exp(-(H - y) / 0.95);
+  for (const c of [x, z]) {
+    const d = half - Math.abs(c);
+    if (d > 0.06 && d < half + 0.6) occ += 0.26 * Math.exp(-d / 0.75);
+  }
+  return Math.max(0.34, 1 - occ);
 }

@@ -10,6 +10,7 @@ export const STYLES = Object.freeze({
   // I. First Connection: minimal, precise, monumental and legible.
   threshold: {
     key: 'threshold',
+    grade: { lift: [0.008, 0.01, 0.014], tint: [1, 1, 1.01], saturation: 1.0, contrast: 1.03, vignette: 0.22, exposure: 1.05 },
     name: 'First Connection',
     height: 5.2,
     floor: { gen: 'tile', args: { base: '#a9a292', grout: '#6c675b', count: 4, seed: 11 }, repeat: 0.5, metalness: 0.0, env: 0.5 },
@@ -37,6 +38,7 @@ export const STYLES = Object.freeze({
   // II. The Architecture of Return: arcades and recurrence.
   return: {
     key: 'return',
+    grade: { lift: [0.012, 0.008, 0.005], tint: [1.02, 1.0, 0.97], saturation: 0.98, contrast: 1.06, vignette: 0.34, exposure: 0.72 },
     name: 'Architecture of Return',
     height: 5.6,
     floor: { gen: 'stone', args: { base: '#a58a64', joint: '#4f4130', courses: 4, blocks: 4, seed: 21, polish: 0.5 }, repeat: 0.4, metalness: 0, env: 0.5 },
@@ -64,6 +66,7 @@ export const STYLES = Object.freeze({
   // III. Rooms That Should Not Fit: colossal interiors, small doors.
   monument: {
     key: 'monument',
+    grade: { lift: [0.012, 0.01, 0.02], tint: [0.97, 0.97, 1.05], saturation: 1.08, contrast: 1.08, vignette: 0.36, exposure: 1.05 },
     name: 'Rooms That Should Not Fit',
     height: 11,
     floor: { gen: 'polishedDark', args: { base: '#171428', fleck: '#9a8fd0', seed: 31 }, repeat: 0.25, metalness: 0.2, env: 1.2 },
@@ -91,6 +94,7 @@ export const STYLES = Object.freeze({
   // IV. The Mechanical Interior: rails, gears, work lights.
   mechanical: {
     key: 'mechanical',
+    grade: { lift: [0.012, 0.006, 0.002], tint: [1.04, 0.99, 0.93], saturation: 1.02, contrast: 1.1, vignette: 0.38, exposure: 0.9 },
     name: 'The Mechanical Interior',
     height: 6.2,
     floor: { gen: 'grating', args: { base: '#2b2522', seed: 41, cells: 8 }, repeat: 0.5, metalness: 0.8, env: 0.7 },
@@ -118,6 +122,7 @@ export const STYLES = Object.freeze({
   // V. The Structure With Two Truths: one room, two readings.
   twotruths: {
     key: 'twotruths',
+    grade: { lift: [0.008, 0.01, 0.01], tint: [1, 1, 1], saturation: 1.04, contrast: 1.05, vignette: 0.28, exposure: 1.0 },
     name: 'The Structure With Two Truths',
     height: 5.8,
     floor: { gen: 'tile', args: { base: '#e9e4d6', checker: '#17191d', grout: '#555', count: 8, seed: 51 }, repeat: 0.25, metalness: 0.05, env: 0.9 },
@@ -147,6 +152,7 @@ export const STYLES = Object.freeze({
   // VI. The Last Construction: the whole vocabulary at once.
   final: {
     key: 'final',
+    grade: { lift: [0.01, 0.008, 0.006], tint: [1.02, 1.0, 0.97], saturation: 1.0, contrast: 1.1, vignette: 0.32, exposure: 0.95 },
     name: 'The Last Construction',
     height: 9,
     floor: { gen: 'polishedDark', args: { base: '#0f1114', fleck: '#d6a545', seed: 61 }, repeat: 0.25, metalness: 0.3, env: 1.4 },
