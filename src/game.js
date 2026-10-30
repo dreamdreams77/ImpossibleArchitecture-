@@ -10,6 +10,7 @@ import * as C from './topology/construction.js';
 import { History } from './topology/history.js';
 import { findRoute, replay, makeTraveller, step, startingLit, platesLitBy } from './topology/traversal.js';
 import { rotateFace } from './topology/graph.js';
+import { generateChallenge, toChallenge } from './campaign/generate.js';
 import { CHAPTERS, chapterById, chapterStructure, goalSatisfied, goalPredicate, discoveriesIn, rulesFor, bodySolution } from './campaign/chapters.js';
 import { searchCycles, dimensionReport } from './topology/analysis.js';
 import { describeStructure } from './topology/describe.js';
@@ -85,6 +86,7 @@ export class Session {
   }
 
   startSandbox() {
+    this.generated = null;
     this.sandbox = true;
     this.challenge = null;
     this.chapterIdValue = null;
@@ -97,6 +99,7 @@ export class Session {
   // is for the same chapter (or free construction) as now, undo brings the old
   // construction back; otherwise the history starts again.
   loadStructure(structure, chapterId = null, { undoable = false, challenge = null } = {}) {
+    this.generated = null;
     const sameMode = chapterId && chapterById(chapterId)
       ? !this.sandbox && this.chapterIdValue === chapterId
       : this.sandbox && !chapterId;
@@ -115,6 +118,33 @@ export class Session {
   }
 
   // ---- the challenge editor's challenge ---------------------------------------------------------
+
+  // Starts a generated challenge in free construction: its rooms and decoy passages are laid out, its goal
+  // is the sandbox challenge. Returns the generated record (with its hidden solution) for tests and tools.
+  playGenerated(seed, difficulty = 1) {
+    const made = generateChallenge(seed, difficulty);
+    this.startSandbox();
+    this.loadStructure(chapterStructure(made.chapter), null, { challenge: toChallenge(made.chapter) });
+    this.feedback = { kind: 'info', text: `${made.chapter.title}. Reach the ${made.chapter.rooms.find((r) => r.id === made.chapter.goal.to).label}${made.chapter.goal.heading ? ` facing ${made.chapter.goal.heading}` : ''}.` };
+    this.generated = made;
+    return made;
+  }
+
+  // Builds the generated challenge's hidden passages (one undo takes them away again). False when the
+  // current challenge is not a generated one.
+  revealGenerated() {
+    if (!this.sandbox || !this.generated) return false;
+    const next = Structure.fromJSON(this.structure.toJSON());
+    for (const l of this.generated.solution) {
+      if (next.portalAt(l.a, l.aFace) || next.portalAt(l.b, l.bFace)) continue;
+      next.addPortal({ ...l, transform: { ...l.transform } });
+    }
+    const made = this.generated;
+    this.loadStructure(next, null, { undoable: true, challenge: this.challenge });
+    this.generated = made;
+    this.feedback = { kind: 'info', text: 'The solution is built. Undo takes it away; Test checks it.' };
+    return true;
+  }
 
   // Sets (or with null clears) the challenge made in free construction. The value is normalised, so
   // malformed pieces are dropped; the body and any route start again.

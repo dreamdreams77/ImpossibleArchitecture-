@@ -397,6 +397,7 @@ export function boot() {
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
+    if (view === 'pause') for (const id of ['solution', 'easier', 'harder']) $(`#pause-gen-${id}`).hidden = !session.generated;
     $(`#menu-${view}`).querySelector('button, input')?.focus();
   }
 
@@ -587,6 +588,18 @@ export function boot() {
   });
   $('#menu-chapters-open').addEventListener('click', () => showView('chapters'));
   $('#menu-sandbox').addEventListener('click', () => { session.startSandbox(); closeMenu(); render(); });
+  // Generated challenges: a seed from the clock, a difficulty remembered between sessions.
+  const genLevel = () => { try { return Math.max(1, Math.min(5, Number(localStorage.getItem('ia-gen-level')) || 1)); } catch { return 1; } };
+  function newGenerated(delta = 0) {
+    const d = Math.max(1, Math.min(5, genLevel() + delta));
+    try { localStorage.setItem('ia-gen-level', String(d)); } catch { /* storage blocked */ }
+    session.playGenerated(Math.floor(Math.random() * 1e6) + 1, d);
+    closeMenu(); render();
+  }
+  $('#menu-generated').addEventListener('click', () => newGenerated(0));
+  $('#pause-gen-easier').addEventListener('click', () => newGenerated(-1));
+  $('#pause-gen-harder').addEventListener('click', () => newGenerated(1));
+  $('#pause-gen-solution').addEventListener('click', () => { session.revealGenerated(); closeMenu(); render(); });
   $('#menu-settings-open').addEventListener('click', () => showView('settings'));
   $('#menu-credits-open').addEventListener('click', () => showView('credits'));
   $('#pause-resume').addEventListener('click', () => { closeMenu(); render(); });
@@ -1503,7 +1516,7 @@ export function boot() {
   showMenu('title');
   booted = true;
   window.__session = session; // exposed for manual inspection in devtools
-  window.__ia = { showEnding, render, setView, gl }; // and for the end-to-end checks in tools/e2e.mjs
+  window.__ia = { showEnding, render, setView, gl, session }; // and for the end-to-end checks in tools/e2e.mjs
 }
 
 function populateChapters() {
