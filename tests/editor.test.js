@@ -189,3 +189,43 @@ test('gating is refused on fixed passages, in the campaign, and with a nonsense 
   assert.equal(ok.structure.portals.get(pid).gate, 2);
   assert.equal(s.structure.portals.get(pid).gate, null, 'the input is untouched');
 });
+
+import { removeAt as editorRemoveAt, normalizeChallenge as norm, toChapter as chapterOf, emptyChallenge as blank, addTo as add } from '../src/campaign/editor.js';
+import { platesLitBy as lit } from '../src/topology/traversal.js';
+
+test('editor plates can be sequenced, the sequence survives normalising and reaches the engine', () => {
+  let c = blank('a');
+  c = add(c, 'plates', { room: 'a', mode: 'latch', heading: 'N', startsLit: false });
+  c = add(c, 'plates', { room: 'b', mode: 'latch', heading: 'N', startsLit: false, after: 0 });
+  assert.equal(norm(c).plates[1].after, 0);
+  const chapter = chapterOf(norm(c));
+  assert.equal(chapter.plates[1].after, 0);
+  assert.equal(lit(chapter.plates, 'b', 'N', 0), 0, 'dark until plate 1 is lit');
+  assert.equal(lit(chapter.plates, 'b', 'N', 1), 3);
+});
+
+test('removing a plate repairs the sequencing that named it', () => {
+  let c = blank('a');
+  for (const [room, after] of [['a', null], ['b', 0], ['c', 1]]) c = add(c, 'plates', { room, mode: 'latch', heading: 'N', startsLit: false, ...(after != null ? { after } : {}) });
+  const first = editorRemoveAt(c, 'plates', 0);
+  assert.equal(first.plates[0].after, undefined, 'its predecessor is gone, so it is free');
+  assert.equal(first.plates[1].after, 0, 'plate 3 followed plate 2, which is now plate 1');
+  const middle = editorRemoveAt(c, 'plates', 1);
+  assert.equal(middle.plates[1].after, undefined);
+});
+
+test('a second lock can be put on a gate in free construction, and removed', () => {
+  const s = new Session();
+  s.startSandbox();
+  s.addRoomAt(0, 0); s.addRoomAt(3, 0);
+  const [a, b] = [...s.structure.rooms.keys()];
+  s.pickFace(a, 'E'); s.pickFace(b, 'W');
+  s.selectPortal([...s.structure.portals.keys()][0]);
+  assert.ok(s.gateSelectedPortal({ gate: 0, also: [1] }));
+  const p = [...s.structure.portals.values()][0];
+  assert.deepEqual([p.gate, p.also], [0, [1]]);
+  assert.ok(s.gateSelectedPortal({ gate: 0, also: [0, 0] }));
+  assert.deepEqual([...s.structure.portals.values()][0].also, [], 'the first plate is never its own second lock');
+  assert.ok(s.gateSelectedPortal({}));
+  assert.deepEqual([...s.structure.portals.values()][0].also, []);
+});

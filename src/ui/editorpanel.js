@@ -26,7 +26,7 @@ const select = (options, value, onchange, label) => {
 
 export function createEditorPanel({ root, session, render }) {
   // Draft values for the "add" rows live here, not in the session: they are not part of the challenge yet.
-  const draft = { goalKind: 'reach', goalRoom: null, goalHeading: '', goalSteps: '', goalLit: false, goalBlock: '', goalX: 3, goalY: 3, plateMode: 'latch', plateRoom: null, plateHeading: 'N', plateX: 3, plateY: 3, crateRoom: null, padRoom: null, blockRoom: null, blockX: 3, blockY: 3, forbidA: null, forbidB: null };
+  const draft = { goalKind: 'reach', goalRoom: null, goalHeading: '', goalSteps: '', goalLit: false, goalBlock: '', goalX: 3, goalY: 3, plateMode: 'latch', plateAfter: '', gateAlso: '', plateRoom: null, plateHeading: 'N', plateX: 3, plateY: 3, crateRoom: null, padRoom: null, blockRoom: null, blockX: 3, blockY: 3, forbidA: null, forbidB: null };
   let lastKey = '';
 
   const set = (next) => { session.setChallengeObject(next); lastKey = ''; render(); };
@@ -37,7 +37,7 @@ export function createEditorPanel({ root, session, render }) {
     if (!session.sandbox) return;
     const rooms = [...session.structure.rooms.values()];
     const portal = session.selection?.type === 'portal' ? session.selection.id : null;
-    const key = JSON.stringify([rooms.map((r) => [r.id, r.label, r.size]), session.challenge, portal, session.structure.portals.get(portal)?.gate, session.structure.portals.get(portal)?.opensAfter, draft]);
+    const key = JSON.stringify([rooms.map((r) => [r.id, r.label, r.size]), session.challenge, portal, session.structure.portals.get(portal)?.gate, session.structure.portals.get(portal)?.opensAfter, session.structure.portals.get(portal)?.also, draft]);
     if (key === lastKey) return;
     lastKey = key;
     build(rooms, portal);
@@ -88,12 +88,13 @@ export function createEditorPanel({ root, session, render }) {
       }, 'Add goal')),
 
       h('h4', {}, 'Plates'),
-      list(c.plates, (p) => `${p.mode} plate in ${name(p.room)}${p.mode === 'weight' ? ` at ${p.cell}` : ` facing ${p.heading}`}`, (i) => set(removeAt(c, 'plates', i))),
+      list(c.plates, (p) => `${p.mode} plate in ${name(p.room)}${p.mode === 'weight' ? ` at ${p.cell}` : ` facing ${p.heading}${p.after != null ? `, only after plate ${p.after + 1}` : ''}`}`, (i) => set(removeAt(c, 'plates', i))),
       row(
         select([['latch', 'Latch'], ['toggle', 'Toggle'], ['weight', 'Weight']], draft.plateMode, (v) => { draft.plateMode = v; lastKey = ''; sync(); }, 'Plate kind'),
         select(opts, draft.plateRoom, (v) => { draft.plateRoom = v; }, 'Plate room'),
         draft.plateMode === 'weight' ? h('label', { class: 'field' }, 'cell ', num('plateX', 11), num('plateY', 11)) : select(HEADINGS.map((x) => [x, `facing ${x}`]), draft.plateHeading, (v) => { draft.plateHeading = v; }, 'Plate heading'),
-        h('button', { type: 'button', onclick: () => set(addTo({ ...c, start: c.start ?? first }, 'plates', draft.plateMode === 'weight' ? { room: draft.plateRoom, mode: 'weight', cell: [draft.plateX, draft.plateY] } : { room: draft.plateRoom, mode: draft.plateMode, heading: draft.plateHeading, startsLit: false })) }, 'Add'),
+        draft.plateMode === 'weight' ? '' : select([['', 'any time'], ...c.plates.filter((p) => p.mode !== 'weight').map((p) => [c.plates.indexOf(p), `after plate ${c.plates.indexOf(p) + 1}`])], draft.plateAfter, (v) => { draft.plateAfter = v; }, 'Sequence'),
+        h('button', { type: 'button', onclick: () => set(addTo({ ...c, start: c.start ?? first }, 'plates', draft.plateMode === 'weight' ? { room: draft.plateRoom, mode: 'weight', cell: [draft.plateX, draft.plateY] } : { room: draft.plateRoom, mode: draft.plateMode, heading: draft.plateHeading, startsLit: false, ...(draft.plateAfter !== '' ? { after: Number(draft.plateAfter) } : {}) })) }, 'Add'),
       ),
 
       h('h4', {}, 'Crates and pads (carried)'),
@@ -111,7 +112,9 @@ export function createEditorPanel({ root, session, render }) {
       portal
         ? row(select([['', 'open'], ...c.plates.map((_, i) => [`g${i}`, `waits for plate ${i + 1}`]), ...c.cargo.map((_, i) => [`c${i}`, `waits for crate ${i + 1}`])],
           session.structure.portals.get(portal).gate != null ? `g${session.structure.portals.get(portal).gate}` : session.structure.portals.get(portal).opensAfter != null ? `c${session.structure.portals.get(portal).opensAfter}` : '',
-          (v) => { session.gateSelectedPortal(v.startsWith('g') ? { gate: Number(v.slice(1)) } : v.startsWith('c') ? { opensAfter: Number(v.slice(1)) } : {}); lastKey = ''; render(); }, 'Gate'))
+          (v) => { draft.gateAlso = ''; session.gateSelectedPortal(v.startsWith('g') ? { gate: Number(v.slice(1)) } : v.startsWith('c') ? { opensAfter: Number(v.slice(1)) } : {}); lastKey = ''; render(); }, 'Gate'),
+          // A second lock: the gate then opens only while both plates are lit.
+          session.structure.portals.get(portal).gate != null ? select([['', 'no second plate'], ...c.plates.map((_, i) => [i, `and plate ${i + 1}`]).filter(([i]) => i !== session.structure.portals.get(portal).gate)], session.structure.portals.get(portal).also?.[0] ?? '', (v) => { const p = session.structure.portals.get(portal); session.gateSelectedPortal({ gate: p.gate, also: v === '' ? [] : [Number(v)] }); lastKey = ''; render(); }, 'Second plate') : '')
         : h('p', { class: 'muted' }, 'Select a passage (click its arc in the model, or in the plan) to gate it.'),
 
       h('h4', {}, 'Rules'),

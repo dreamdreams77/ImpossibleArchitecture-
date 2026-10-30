@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 408 tests over the engine, campaign, renderer maths and walker
+npm test       # 411 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -44,7 +44,7 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 - **Quick tools on the plan** (Select, Add room, Connect, Undo) so building never needs the side panel, which on a phone sits below the plan.
 - **Cinematic moments** (Settings, on by default): a gentle lift and widening of the walk camera when you make a discovery or finish a challenge. It is layered on your own view, ends the instant you touch anything, and never plays under reduced motion.
 - **Monuments**: the grandest atrium (size 1.5) is taller, with a floor medallion, four slanted shafts of light crossing over it and a centrepiece that differs by chapter (armillary, meshed gears, nested arches, two counter-turning half-rings, a colossal gate-ring) and turns faster for a moment after you cross a passage. Built into the room generator, so it appears wherever you make such a room.
-- **Multi-stage gates**: a gate can wait on several plates at once (`also`), open only while all are lit; The Two-Lock Vault pairs one with a toggle plate that ringing twice undoes.
+- **Multi-stage gates**: a gate can wait on several plates at once (`also`), open only while all are lit (set in the challenge editor: pick a gate, then a second plate; plates can also be sequenced with "after plate N"); The Two-Lock Vault pairs one with a toggle plate that ringing twice undoes.
 - **Sequenced plates**: a plate with `after` lights only once an earlier plate is lit (The Ordered Hall).
 - **A challenge editor** in the sandbox: several goals, optional objectives, plates, gates, crates, pads, heading requirements and step limits, all run on the campaign engine.
 - **Graphics presets** (high, medium, low) with dynamic resolution, shadows, bloom and ACES grading; a built-in benchmark (`?bench` or Settings, Run benchmark) that produces a report. No claim is made here about real phones: the benchmark has only been run on a software renderer in development, so run it on your own device.

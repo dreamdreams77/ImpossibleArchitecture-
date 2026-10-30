@@ -170,7 +170,19 @@ export function toChapter(challenge, themeName = 'slate') {
 const copy = (c) => JSON.parse(JSON.stringify(c));
 export function withStart(c, start) { const n = copy(c); n.start = start; return n; }
 export function addGoal(c, goal) { const n = copy(c); n.goals.push(goal); return n; }
-export function removeAt(c, list, i) { const n = copy(c); n[list].splice(i, 1); return n; }
+export function removeAt(c, list, i) {
+  const n = copy(c);
+  n[list].splice(i, 1);
+  // Plates are referred to by position, so removing one repairs the sequencing that named it.
+  if (list === 'plates') {
+    for (const p of n.plates) {
+      if (p.after == null) continue;
+      if (p.after === i) delete p.after; else if (p.after > i) p.after -= 1;
+    }
+  }
+  return n;
+}
+// A sequenced plate lights only after another plate; `after` is that plate's index, or null.
 export function addTo(c, list, item) { const n = copy(c); n[list].push(item); return n; }
 export function togglePad(c, room) { const n = copy(c); n.pads = n.pads.includes(room) ? n.pads.filter((r) => r !== room) : [...n.pads, room]; return n; }
 export function setRule(c, key, value) { const n = copy(c); n.rules[key] = value; return n; }

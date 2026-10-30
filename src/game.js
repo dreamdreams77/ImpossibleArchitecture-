@@ -192,11 +192,11 @@ export class Session {
   }
 
   // Gates a passage of the player's own on a plate or a crate delivery, in free construction.
-  gateSelectedPortal({ gate = null, opensAfter = null } = {}) {
+  gateSelectedPortal({ gate = null, opensAfter = null, also = [] } = {}) {
     const sel = this.selection;
     if (!this.sandbox || sel?.type !== 'portal') return false;
-    return this.apply(C.setGate(this.structure, sel.id, { gate, opensAfter }, this.ruleset),
-      gate != null ? `The passage now waits for plate ${gate + 1}.` : opensAfter != null ? `The passage now waits for crate ${opensAfter + 1} to be delivered.` : 'The passage is open again.');
+    return this.apply(C.setGate(this.structure, sel.id, { gate, opensAfter, also }, this.ruleset),
+      gate != null ? `The passage now waits for plate${also.length ? 's' : ''} ${[gate, ...also].map((i) => i + 1).join(' and ')}.` : opensAfter != null ? `The passage now waits for crate ${opensAfter + 1} to be delivered.` : 'The passage is open again.');
   }
 
   // Starts the current chapter again. Undo brings back the construction it replaces.
