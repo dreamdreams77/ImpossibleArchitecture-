@@ -407,7 +407,25 @@ export function boot() {
   }
 
   // The Atlas lists what has been found, and for the rest only a question: no recipes.
+  let experimentResult = '';
+  function fillExperiment() {
+    const box = $('#atlas-experiment');
+    const e = session.experiment();
+    if (!e) { experimentResult = ''; box.replaceChildren(document.createTextNode('Experiment: build a loop (join a room to itself, or a ring of rooms) and come back here to predict where it leaves you.')); return; }
+    const done = session.progress.discoveries.includes(e.id);
+    const q = document.createElement('div'); q.textContent = `Experiment${done ? ' (answered)' : ''}: ${e.question}`;
+    const result = document.createElement('div'); result.className = 'muted'; result.textContent = experimentResult;
+    const guess = document.createElement('div'); guess.className = 'guess';
+    for (const h of ['N', 'E', 'S', 'W']) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = h;
+      b.addEventListener('click', () => { const r = session.answerExperiment(h); experimentResult = r.correct ? `Correct: you face ${r.answer}.` : `Not quite: walking it, you face ${r.answer}.`; fillAtlas(); });
+      guess.append(b);
+    }
+    box.replaceChildren(q, guess, result);
+  }
+
   function fillAtlas() {
+    fillExperiment();
     const found = new Set(session.progress.discoveries);
     $('#atlas-count').textContent = `${ATLAS.filter((e) => found.has(e.id)).length} of ${ATLAS.length} phenomena found. Build them anywhere: the campaign, free construction or a generated challenge.`;
     $('#atlas-list').replaceChildren(...ATLAS.map((e) => {
@@ -622,6 +640,7 @@ export function boot() {
   $('#pause-gen-solution').addEventListener('click', () => { session.revealGenerated(); closeMenu(); render(); });
   $('#menu-settings-open').addEventListener('click', () => showView('settings'));
   $('#menu-atlas-open').addEventListener('click', () => showView('atlas'));
+  $('#pause-atlas-open').addEventListener('click', () => showView('atlas'));
   $('#atlas-back').addEventListener('click', () => showView(menuParent));
   $('#menu-credits-open').addEventListener('click', () => showView('credits'));
   $('#pause-resume').addEventListener('click', () => { closeMenu(); render(); });

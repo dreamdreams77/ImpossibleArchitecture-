@@ -11,6 +11,7 @@ import { History } from './topology/history.js';
 import { findRoute, replay, makeTraveller, step, startingLit, platesLitBy } from './topology/traversal.js';
 import { rotateFace } from './topology/graph.js';
 import { atlasIn, atlasById } from './campaign/atlas.js';
+import { loopExperiments, judge } from './campaign/experiments.js';
 import { generateChallenge, toChallenge } from './campaign/generate.js';
 import { CHAPTERS, chapterById, chapterStructure, goalSatisfied, goalPredicate, discoveriesIn, rulesFor, bodySolution } from './campaign/chapters.js';
 import { searchCycles, dimensionReport } from './topology/analysis.js';
@@ -747,6 +748,22 @@ export class Session {
       this.feedback = { kind: 'success', text: `Atlas: ${e.title}. ${e.text}` };
       this.justAtlas = id; // read once by the UI
     }
+  }
+
+  // The loop experiment this construction offers, preferring one not yet answered correctly.
+  experiment() {
+    const all = loopExperiments(this.structure);
+    return all.find((e) => !this.progress.discoveries.includes(e.id)) ?? all[0] ?? null;
+  }
+
+  // Judges a prediction by the engine's own walk. A correct answer is remembered once per loop.
+  answerExperiment(guess) {
+    const e = this.experiment();
+    if (!e) return null;
+    const r = judge(e, guess);
+    if (r.correct && !this.progress.discoveries.includes(e.id)) this.progress.discoveries.push(e.id);
+    this.feedback = { kind: r.correct ? 'success' : 'info', text: r.correct ? `Correct: you face ${r.answer}.` : `Not quite: walking it, you face ${r.answer}.` };
+    return { ...r, experiment: e };
   }
 
   checkCompletion() {

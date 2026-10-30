@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 411 tests over the engine, campaign, renderer maths and walker
+npm test       # 415 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -41,6 +41,7 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 - **Generated challenges** (title menu): seeded, five difficulties, built backwards from a hidden solution and checked by the engine (and, for the small ones, an exhaustive solver). The pause menu can show the solution.
 - **Propagation**: sound and light spread through the real passages, not across the plan. Gates dull them, and rooms borrow glow from connected rooms (`src/topology/propagation.js`).
 - **The Atlas** (title menu): 11 architectural phenomena (self-joined rooms, hall of mirrors, turning and reversing loops, one-way rings, shared loops, plan versus graph distance) found by building them anywhere, shown as questions until found.
+- **Experiments** (Atlas screen, also in the pause menu): the game poses a prediction about your own loop (which way do you face when you come back round?). You answer; the engine walks it and judges. A correct answer is remembered once per loop.
 - **Quick tools on the plan** (Select, Add room, Connect, Undo) so building never needs the side panel, which on a phone sits below the plan.
 - **Cinematic moments** (Settings, on by default): a gentle lift and widening of the walk camera when you make a discovery or finish a challenge. It is layered on your own view, ends the instant you touch anything, and never plays under reduced motion.
 - **Monuments**: the grandest atrium (size 1.5) is taller, with a floor medallion, four slanted shafts of light crossing over it and a centrepiece that differs by chapter (armillary, meshed gears, nested arches, two counter-turning half-rings, a colossal gate-ring) and turns faster for a moment after you cross a passage. Built into the room generator, so it appears wherever you make such a room.

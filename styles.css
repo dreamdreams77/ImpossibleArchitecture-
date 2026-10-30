@@ -218,6 +218,9 @@ body.panel-hidden .ending-screen { inset: 0; }
 .atlas-list li { padding: 8px 10px; border: 1px solid rgba(128,128,128,0.35); border-radius: 8px; font-size: 14px; }
 .atlas-list li.locked { opacity: 0.6; }
 .atlas-list strong { display: block; }
+.atlas-experiment { margin: 0 0 12px; padding: 10px; border: 1px dashed rgba(128,128,128,0.5); border-radius: 8px; font-size: 14px; }
+.atlas-experiment .guess { display: flex; gap: 6px; margin: 8px 0 4px; }
+.atlas-experiment .guess button { flex: 1; }
 /* Quick tools over the plan, so building never depends on scrolling to the side panel */
 .plan-tools { position: absolute; left: 8px; bottom: 34px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; z-index: 3; max-width: calc(100% - 16px); }
 .plan-tools[hidden] { display: none; }
