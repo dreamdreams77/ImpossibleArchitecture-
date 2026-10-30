@@ -65,7 +65,7 @@ export const DISCIPLINES = Object.freeze([
     theme: 'dusk',
     intro: 'Everything you know, in one building. Loops and turns, mirrors and gates, plates and crates. When it stands, it opens the Concordance.',
     outro: 'It stands.',
-    challenges: ['the-sealed-vault', 'the-ring-hall', 'the-mirror-lock', 'the-moving-day', 'final-construction', 'the-last-construction'],
+    challenges: ['the-sealed-vault', 'the-ring-hall', 'the-mirror-lock', 'the-weathervane', 'the-moving-day', 'final-construction', 'the-last-construction'],
   },
 ]);
 

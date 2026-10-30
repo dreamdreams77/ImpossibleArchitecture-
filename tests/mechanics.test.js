@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Structure } from '../src/topology/graph.js';
-import { connect, disconnect, reshapePortal } from '../src/topology/construction.js';
+import { connect, disconnect, reshapePortal, validate } from '../src/topology/construction.js';
 import { findRoute, sightlines } from '../src/topology/traversal.js';
 import { routeSegments, pointAlong } from '../src/render/geometry.js';
 import { chapterById, chapterStructure, goalSatisfied } from '../src/campaign/chapters.js';
@@ -232,4 +232,20 @@ test('The Mirror Lock: unsolved at first, solved by one way back from each dead 
   s.addPortal({ a: 'works', aFace: 'N', b: 'vent', bFace: 'W', transform: { turns: 0, mirror: false } });
   assert.equal(goalSatisfied(s, c), true);
   assert.ok(c.optional[0].check(s), 'this solution already walks it in seven');
+});
+
+test('The Weathervane has exactly one answer: a mirrored passage from the Spire to the Bell', () => {
+  const c = chapterById('the-weathervane');
+  const s = chapterStructure(c);
+  assert.equal(goalSatisfied(s, c), false);
+  s.addPortal({ a: 'c', aFace: 'S', b: 'e', bFace: 'E', transform: { turns: 0, mirror: false } });
+  assert.equal(goalSatisfied(s, c), false, 'the plain passage lands the wrong way');
+  const t = chapterStructure(c);
+  t.addPortal({ a: 'c', aFace: 'S', b: 'e', bFace: 'E', transform: { turns: 0, mirror: true } });
+  assert.equal(goalSatisfied(t, c), true);
+  assert.equal(c.optional[0].check(t), false, 'no loop yet');
+  t.addPortal({ a: 'c', aFace: 'E', b: 'c', bFace: 'W', transform: { turns: 0, mirror: false } }); // the Spire opens onto itself
+  assert.ok(validate(t, c.ruleset).ok, 'the spare passage is legal');
+  assert.equal(goalSatisfied(t, c), true, 'the spare passage does not spoil it');
+  assert.equal(c.optional[0].check(t), true, 'and it is a loop');
 });

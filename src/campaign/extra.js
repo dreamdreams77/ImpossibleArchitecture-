@@ -443,4 +443,38 @@ export const EXTRA = [
       },
     ],
   },
+  {
+    id: 'the-weathervane',
+    theme: 'ash',
+    title: 'The Weathervane',
+    blurb: 'A turned door, a one-way mirror and a gate with two locks. The Spire plate wants an arrival from the north; the Bell plate is a toggle that wants one from the east. One passage joins the Spire to the Bell, and only one way of making it satisfies both.',
+    rooms: [
+      { id: 'a', x: 0, y: 0, label: 'Vane' },
+      { id: 'b', x: 3, y: 0, label: 'Cog' },
+      { id: 'c', x: 3, y: 3, label: 'Spire' },
+      { id: 'e', x: 6, y: 3, label: 'Bell' },
+      { id: 'd', x: 0, y: 3, label: 'Keep' },
+    ],
+    fixed: [
+      { a: { room: 'a', face: 'E' }, b: { room: 'b', face: 'W' }, transform: { turns: 1 } },
+      { a: { room: 'b', face: 'S' }, b: { room: 'c', face: 'N' }, oneWay: 'a', transform: { mirror: true } },
+      { a: { room: 'e', face: 'W' }, b: { room: 'd', face: 'E' }, gate: 0, also: [1] },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 5, maxPortals: 5, forbiddenLinks: [{ a: 'a', b: 'd' }, { a: 'b', b: 'd' }], sealedFaces: sealed(['d', 'N'], ['d', 'S'], ['d', 'W'], ['e', 'N'], ['e', 'S'], ['b', 'N'], ['b', 'E'], ['a', 'N'], ['a', 'W'], ['a', 'S']) },
+    start: 'a',
+    plates: [
+      { room: 'c', heading: 'N' },
+      { room: 'e', heading: 'E', mode: 'toggle', startsLit: false },
+    ],
+    goal: { kind: 'machine', to: 'd' },
+    hint: 'The Spire plate is struck by an arrival facing north, the Bell plate by one facing east, and the Bell is a toggle, so pass it only once. Decide which way the Spire-to-Bell passage must turn, and whether it must be a mirror.',
+    optional: [
+      {
+        id: 'weathervane-circle',
+        title: 'Full circle',
+        text: 'A loop you can walk all the way round, built alongside the solution.',
+        check: (s) => findCycles(s).some((c) => c.walkable) && !!findRoute(s, 'a', (t) => t.room === 'd' && t.lit === 3, { plates: [{ room: 'c', heading: 'N' }, { room: 'e', heading: 'E', mode: 'toggle', startsLit: false }] }),
+      },
+    ],
+  },
 ];
