@@ -490,7 +490,7 @@ export class Session {
             ? 'One way: this passage cannot be crossed from this side.'
             : exit.opensAfter != null
               ? `Shut. It opens once crate ${exit.opensAfter + 1} is delivered.`
-              : `Shut. Its plate (${exit.gate + 1}) is not lit on this walk.`,
+              : `Shut. ${exit.also?.length ? `It needs plates ${[exit.gate, ...exit.also].map((i) => i + 1).join(' and ')} all lit` : `Its plate (${exit.gate + 1}) is not lit`} on this walk.`,
       };
       return false;
     }

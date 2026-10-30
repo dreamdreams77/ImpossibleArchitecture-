@@ -107,6 +107,7 @@ export function problems(challenge, structure) {
   for (const c of challenge.cargo) if (!has(c.room)) out.push('A crate sits in a room that is gone.');
   for (const b of challenge.blocks) if (!has(b.room)) out.push('A block sits in a room that is gone.');
   for (const [i, p] of structure.portals) {
+    if ((p.also ?? []).some((i) => i >= challenge.plates.length)) out.push(`Passage ${i} waits for a plate that does not exist.`);
     if (p.gate != null && p.gate >= challenge.plates.length) out.push(`Passage ${i} waits for plate ${p.gate + 1}, which does not exist.`);
     if (p.opensAfter != null && p.opensAfter >= challenge.cargo.length) out.push(`Passage ${i} waits for crate ${p.opensAfter + 1}, which does not exist.`);
   }

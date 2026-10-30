@@ -24,6 +24,7 @@ import { buildRoom } from './rooms.js';
 import { makePortalMaterial } from './portalMaterial.js';
 import { Post } from './post.js';
 import { ambientFrom } from '../topology/propagation.js';
+import { gateOpen } from '../topology/traversal.js';
 import {
   FACES, DOOR_W, DOOR_H, doorFrame, portalLocalTransform, planeBeyond, obliqueProjection,
   headingYaw,
@@ -280,7 +281,7 @@ export class WorldRenderer {
           id: `${p.id}:${end}`, portalId: p.id, end, room: me.room, face: me.face, destRoom: other.room, destFace: other.face,
           otherId: `${p.id}:${end === 'a' ? 'b' : 'a'}`, mesh, frame, local: T, place: T.clone().invert(),
           turns: p.transform.turns ?? 0, mirror: !!p.transform.mirror,
-          gate: exit?.gate ?? null, opensAfter: exit?.opensAfter ?? null, blocked: !!exit?.blocked,
+          gate: exit?.gate ?? null, also: exit?.also ?? [], opensAfter: exit?.opensAfter ?? null, blocked: !!exit?.blocked,
           oneWay: p.oneWay ?? null, allowedOut: p.oneWay == null ? null : p.oneWay === end,
         };
         if (this._synced && !prevDoors.has(door.id)) { door.reveal = 0; mesh.material.uniforms.reveal.value = 0; }
@@ -295,7 +296,7 @@ export class WorldRenderer {
     const { lit, delivered } = this.state;
     for (const d of this.doors.values()) {
       let shut = false;
-      if (d.gate !== null) shut = (lit & (1 << d.gate)) === 0;
+      if (d.gate !== null) shut = !gateOpen(d, lit);
       else if (d.opensAfter != null) shut = (delivered & (1 << d.opensAfter)) === 0;
       d.shut = shut;
       if (d.slide === undefined) d.slide = shut ? 0 : 1; // a gate already open at load does not play

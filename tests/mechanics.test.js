@@ -193,3 +193,32 @@ test('The Ordered Hall needs a second lap, and is solved by one passage back', (
   assert.equal(ordered.length, 7, 'two laps of the corridor');
   assert.equal(unordered.length, 4, 'one lap if order did not matter');
 });
+
+import { gateOpen, gateMask } from '../src/topology/traversal.js';
+
+test('a multi-stage gate opens only while every plate it waits on is lit', () => {
+  const g = { gate: 0, also: [2] };
+  assert.equal(gateMask(g), 5);
+  assert.equal(gateOpen(g, 0), false);
+  assert.equal(gateOpen(g, 1), false);
+  assert.equal(gateOpen(g, 4), false);
+  assert.equal(gateOpen(g, 5), true);
+  assert.equal(gateOpen({ gate: null }, 0), true);
+  assert.equal(gateOpen({ gate: 1 }, 2), true);
+});
+
+test('The Two-Lock Vault needs a way back, and its second lock changes the answer', () => {
+  const c = chapterById('the-two-lock-vault');
+  const s = chapterStructure(c);
+  assert.equal(goalSatisfied(s, c), false, 'the Bell is a dead end until a way back is built');
+  const single = { ...c, fixed: c.fixed.map(({ also, ...f }) => f), plates: c.plates };
+  assert.equal(goalSatisfied(chapterStructure(single), single), true, 'with one lock the Lamp alone opens it');
+  s.addPortal({ a: 'bell', aFace: 'N', b: 'hall', bFace: 'N', transform: { turns: 0, mirror: false } });
+  assert.equal(goalSatisfied(s, c), true);
+  // The structure survives a save and keeps its second lock.
+  const again = Structure.fromJSON(s.toJSON());
+  assert.deepEqual([...again.portals.values()].find((p) => p.gate === 0).also, [1]);
+  // Passing the Bell twice flips its toggle off again: a route through it twice cannot open the vault.
+  const r = findRoute(s, 'hall', (t) => t.room === 'vault', { plates: c.plates });
+  assert.ok(r.length >= 4);
+});

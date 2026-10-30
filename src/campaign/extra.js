@@ -381,4 +381,30 @@ export const EXTRA = [
     hint: 'The corridor only runs one way: Bell, then Drum. The gate listens to the Bell plate, which lights only once the Drum has been struck, so your first pass did nothing. Build a way back to the Hall and walk the corridor a second time.',
     optional: [],
   },
+  {
+    id: 'the-two-lock-vault',
+    theme: 'verdigris',
+    title: 'The Two-Lock Vault',
+    blurb: 'One gate, two locks: the Vault opens only while the Lamp plate and the Bell plate are both lit. The Bell plate is a toggle: it answers every arrival, so ringing it twice undoes it.',
+    rooms: [
+      { id: 'hall', x: 0, y: 0, label: 'Hall' },
+      { id: 'lamp', x: 3, y: 0, label: 'Lamp Room' },
+      { id: 'bell', x: 6, y: 0, label: 'Bell Room' },
+      { id: 'vault', x: 0, y: 3, label: 'Vault' },
+    ],
+    fixed: [
+      { a: { room: 'hall', face: 'E' }, b: { room: 'lamp', face: 'W' } },
+      { a: { room: 'lamp', face: 'E' }, b: { room: 'bell', face: 'W' }, oneWay: 'a' },
+      { a: { room: 'hall', face: 'S' }, b: { room: 'vault', face: 'N' }, gate: 0, also: [1] },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 5, sealedFaces: sealed(['vault', 'E'], ['vault', 'S'], ['vault', 'W']) },
+    start: 'hall',
+    plates: [
+      { room: 'lamp', heading: 'E' },
+      { room: 'bell', heading: 'E', mode: 'toggle', startsLit: false },
+    ],
+    goal: { kind: 'reach', to: 'vault' },
+    hint: 'Both plates must be lit at once. The corridor from the Lamp to the Bell only runs one way, so you will need a way back to the Hall. Mind how often you pass the Bell.',
+    optional: [],
+  },
 ];

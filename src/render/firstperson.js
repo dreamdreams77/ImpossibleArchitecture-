@@ -13,6 +13,7 @@
 // the side walls recede to it. Nothing here alters topology or traversal.
 
 import { rotateFace } from '../topology/graph.js';
+import { gateOpen } from '../topology/traversal.js';
 import { FACE_DIR, polygon, strokeQuad, shorten, vignette } from './util.js';
 
 
@@ -82,7 +83,7 @@ function wallEntry(structure, room, face, lit, plates, delivered = 0) {
   };
   if (exit.blocked) return { ...base, kind: 'blocked' };
   if (exit.gate !== null) {
-    const open = (lit & (1 << exit.gate)) !== 0;
+    const open = gateOpen(exit, lit);
     const plate = plates[exit.gate];
     return { ...base, kind: open ? 'passage' : 'shut', gate: exit.gate, plateHeading: plate?.heading ?? null };
   }

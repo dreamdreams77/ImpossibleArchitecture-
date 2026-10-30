@@ -93,6 +93,19 @@ export function startingLit(plates, startRoom) {
   return lit;
 }
 
+// A gate may wait on several plates: `gate` and every index in `also`. It is open only while all of them
+// are lit. `g` is a portal or an exit; a passage with no gate is always open.
+export function gateMask(g) {
+  if (g.gate == null) return 0;
+  let m = 1 << g.gate;
+  for (const i of g.also ?? []) m |= 1 << i;
+  return m;
+}
+export function gateOpen(g, lit = 0) {
+  const m = gateMask(g);
+  return (lit & m) === m;
+}
+
 // Attempt to move through `face` of the traveller's current room.
 // Returns a new traveller state, or null if the face is a wall.
 export function step(structure, traveller, face) {
@@ -100,7 +113,7 @@ export function step(structure, traveller, face) {
   if (!exit || exit.blocked) return null;
   // A gate is object state: it is passable only once its plate is lit on this
   // route. `open` lets structural queries ignore gates.
-  if (exit.gate !== null && !traveller.open && !((traveller.lit ?? 0) & (1 << exit.gate))) {
+  if (exit.gate !== null && !traveller.open && !gateOpen(exit, traveller.lit ?? 0)) {
     return null;
   }
   // A delivery gate is object state too: it opens once its crate has been delivered.

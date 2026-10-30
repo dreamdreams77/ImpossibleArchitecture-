@@ -14,7 +14,7 @@ import { Sound } from './sound.js';
 import { ATLAS } from '../campaign/atlas.js';
 import { throughFaces } from '../topology/propagation.js';
 import { fitViewFor, transitionProgress, snapTo } from '../render/view.js';
-import { sightlines } from '../topology/traversal.js';
+import { sightlines, gateOpen } from '../topology/traversal.js';
 import { themeFor } from '../render/themes.js';
 import { sightCardModel, drawSightCards } from '../render/sightcards.js';
 import { SaveSlots, encodeSave, decodeSave } from '../persistence/store.js';
@@ -766,7 +766,7 @@ export function boot() {
       const exit = session.structure.exit(w.room, face);
       if (!exit) continue;
       const rel = ((FACES.indexOf(face) - base + 4) % 4) * (Math.PI / 2);
-      const shut = exit.gate != null && !(((w.lit ?? 0) >> exit.gate) & 1);
+      const shut = exit.gate != null && !gateOpen(exit, w.lit ?? 0);
       list.push({ rel: rel > Math.PI ? rel - 2 * Math.PI : rel, shut: shut || exit.opensAfter != null, blocked: exit.blocked, reach: reach[face] ?? 0 });
     }
     sound.setNeighbours(list);

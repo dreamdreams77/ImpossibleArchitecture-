@@ -590,7 +590,7 @@ export function chapterStructure(chapter) {
   const s = new Structure();
   for (const r of chapter.rooms) s.addRoom({ id: r.id, x: r.x, y: r.y, label: r.label, kind: r.kind, size: r.size });
   for (const f of chapter.fixed ?? []) {
-    s.addPortal({ a: f.a.room, aFace: f.a.face, b: f.b.room, bFace: f.b.face, gate: f.gate ?? null, opensAfter: f.opensAfter ?? null, fixed: true, oneWay: f.oneWay ?? null, transform: f.transform });
+    s.addPortal({ a: f.a.room, aFace: f.a.face, b: f.b.room, bFace: f.b.face, gate: f.gate ?? null, also: f.also ?? [], opensAfter: f.opensAfter ?? null, fixed: true, oneWay: f.oneWay ?? null, transform: f.transform });
   }
   return s;
 }

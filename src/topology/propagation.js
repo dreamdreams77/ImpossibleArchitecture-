@@ -8,6 +8,8 @@
 // distance in hops. The result is a best-path search (the loudest or brightest way wins), so loops
 // and self-connected rooms terminate and a room reached two ways takes the better.
 
+import { gateOpen } from './traversal.js';
+
 const MEDIA = Object.freeze({
   sound: { open: 0.62, shut: 0.14, hopLoss: 0.9, floor: 0.02 },
   light: { open: 0.7, shut: 0.32, hopLoss: 0.85, floor: 0.04 },
@@ -17,7 +19,7 @@ export const MEDIUM_NAMES = Object.freeze(Object.keys(MEDIA));
 
 // Whether a portal currently lets a person through. `lit` is the set of plate bits on, as in the walk.
 export function portalOpen(portal, lit = 0, delivered = 0) {
-  if (portal.gate != null && !((lit >> portal.gate) & 1)) return false;
+  if (!gateOpen(portal, lit)) return false;
   if (portal.opensAfter != null && !((delivered >> portal.opensAfter) & 1)) return false;
   return true;
 }

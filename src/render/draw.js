@@ -285,7 +285,7 @@ function drawPortal(ctx, s, p, toScreen, T, session, time) {
     ctx.fillStyle = T.gate;
     ctx.font = '10px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
-    const tag = p.gate !== null && p.gate !== undefined ? `gate ${p.gate + 1}` : `after crate ${p.opensAfter + 1}`;
+    const tag = p.gate !== null && p.gate !== undefined ? `gate ${[p.gate, ...(p.also ?? [])].map((i) => i + 1).join('+')}` : `after crate ${p.opensAfter + 1}`;
     ctx.fillText(tag, g.x, g.y - len - 4);
     ctx.restore();
   }
@@ -525,7 +525,7 @@ export function drawGraph(ctx, structure, selection, { width, height }, themeNam
     ctx.fillStyle = T.inkDim;
     ctx.font = '11px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
-    const gate = p.gate !== null && p.gate !== undefined ? ` ⚿${p.gate + 1}` : p.opensAfter != null ? ` ⚿c${p.opensAfter + 1}` : '';
+    const gate = p.gate !== null && p.gate !== undefined ? ` ⚿${[p.gate, ...(p.also ?? [])].map((i) => i + 1).join('+')}` : p.opensAfter != null ? ` ⚿c${p.opensAfter + 1}` : '';
     const label = `${p.a.face}→${p.b.face}${p.transform.turns ? ` ↻${p.transform.turns}` : ''}${p.transform.mirror ? ' ⇋' : ''}${gate}`;
     ctx.fillText(label, mx, my - 4);
   }

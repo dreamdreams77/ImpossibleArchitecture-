@@ -89,9 +89,11 @@ export class Structure {
   // construction; they cannot be removed or reshaped.
   // `oneWay` (null, 'a' or 'b') says the passage may only be crossed starting
   // from that end. Crossing from the other end is refused, whatever the plates.
+  // `also` lists further plates a gate needs besides `gate`: a multi-stage gate opens only while every
+  // one of them is lit (see gateOpen in traversal.js).
   // `opensAfter` (optional) is the index of a crate in the chapter. Such a gate can be
   // crossed only once that crate has been delivered on the current route.
-  addPortal({ a, aFace, b, bFace, transform, id, gate = null, opensAfter = null, fixed = false, oneWay = null } = {}) {
+  addPortal({ a, aFace, b, bFace, transform, id, gate = null, opensAfter = null, fixed = false, oneWay = null, also = [] } = {}) {
     if (!this.rooms.has(a) || !this.rooms.has(b)) {
       throw new TopologyError('Portal endpoints must be existing rooms', 'NO_ROOM');
     }
@@ -112,6 +114,7 @@ export class Structure {
       b: { room: b, face: bFace },
       transform: t,
       gate,
+      also: [...also],
       opensAfter,
       fixed,
       oneWay,
@@ -159,6 +162,7 @@ export class Structure {
       transform: t,
       portalId: portal.id,
       gate: portal.gate ?? null,
+      also: portal.also ?? [],
       opensAfter: portal.opensAfter ?? null,
       fixed: portal.fixed ?? false,
       blocked,
@@ -194,7 +198,7 @@ export class Structure {
       })),
       portals: [...this.portals.values()].map((p) => ({
         id: p.id, a: { ...p.a }, b: { ...p.b }, transform: { ...p.transform },
-        gate: p.gate ?? null, opensAfter: p.opensAfter ?? null, fixed: p.fixed ?? false, oneWay: p.oneWay ?? null,
+        gate: p.gate ?? null, also: [...(p.also ?? [])], opensAfter: p.opensAfter ?? null, fixed: p.fixed ?? false, oneWay: p.oneWay ?? null,
       })),
     };
   }
@@ -233,7 +237,7 @@ export class Structure {
       s.portals.set(p.id, {
         id: p.id, a: { ...p.a }, b: { ...p.b },
         transform: { turns: 0, mirror: false, ...p.transform },
-        gate: p.gate ?? null, opensAfter: p.opensAfter ?? null, fixed: p.fixed ?? false, oneWay: p.oneWay ?? null,
+        gate: p.gate ?? null, also: [...(p.also ?? [])], opensAfter: p.opensAfter ?? null, fixed: p.fixed ?? false, oneWay: p.oneWay ?? null,
       });
     }
     return s;
