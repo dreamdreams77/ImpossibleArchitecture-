@@ -204,6 +204,7 @@ export class WorldRenderer {
     this.style = style;
     const lib = materialsFor(style);
     const seen = new Set();
+    const known = new Set(this.rooms.keys());
     for (const [id, r] of structure.rooms) {
       seen.add(id);
       const doors = {};
@@ -220,6 +221,7 @@ export class WorldRenderer {
         this.scene.add(holder);
         entry = { id, sig, built, holder, style, fixtures: null, label: null, doorMeshes: new Map(), animFrame: -1, roofList: built.roofObjects() };
         this.rooms.set(id, entry);
+        if (this._synced && !known.has(id)) entry.rise = 0; // a room you just built rises from the ground
       }
       entry.room = r;
       entry.style = style;
@@ -233,6 +235,7 @@ export class WorldRenderer {
     this._buildFixtures();
     this.linksDirty = true;
     this._buildMarkers();
+    this._synced = true;
   }
 
   _disposeRoom(entry) {
@@ -242,6 +245,7 @@ export class WorldRenderer {
   }
 
   _buildDoors() {
+    const prevDoors = new Set(this.doors.keys());
     for (const d of this.doors.values()) { d.mesh.parent?.remove(d.mesh); d.mesh.material.dispose(); }
     this.doors.clear();
     for (const e of this.rooms.values()) e.doorMeshes.clear();
@@ -267,6 +271,7 @@ export class WorldRenderer {
           gate: exit?.gate ?? null, opensAfter: exit?.opensAfter ?? null, blocked: !!exit?.blocked,
           oneWay: p.oneWay ?? null, allowedOut: p.oneWay == null ? null : p.oneWay === end,
         };
+        if (this._synced && !prevDoors.has(door.id)) { door.reveal = 0; mesh.material.uniforms.reveal.value = 0; }
         this.doors.set(door.id, door);
         A.doorMeshes.set(me.face, door);
       }
@@ -387,64 +392,57 @@ export class WorldRenderer {
     Object.assign(this.state, partial);
     if (this.structure) {
       this._refreshDoorState();
-      this._buildFixtures();
+      this._syncPlates();
+      this._syncObjects();
     }
   }
+
+  // ---- fixtures: plates and pads are built once; their state animates --------------------------
 
   _buildFixtures() {
     const ctx = this.context ?? {};
     const style = this.style;
     if (!style) return;
-    this.pulsers = [];
     for (const e of this.rooms.values()) {
       if (e.fixtures) {
         e.built.group.remove(e.fixtures);
         e.fixtures.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
       }
       const g = new THREE.Group();
+      e.plateViews = [];
       const plates = (ctx.plates ?? []).map((p, i) => ({ ...p, i })).filter((p) => p.room === e.id);
       plates.forEach((p, k) => {
-        const lit = (this.state.lit & (1 << p.i)) !== 0;
         const toggle = p.mode === 'toggle';
-        const color = new THREE.Color(lit ? '#ffd27a' : '#6f6a58');
         const base = new THREE.Mesh(
           new THREE.CylinderGeometry(0.95, 1.05, 0.08, 40),
           new THREE.MeshStandardMaterial({ color: '#2b2b30', metalness: 0.8, roughness: 0.35, envMapIntensity: 1 }),
         );
-        const ringMat = new THREE.MeshStandardMaterial({
-          color: color.clone().multiplyScalar(0.3), emissive: color, emissiveIntensity: lit ? 2.6 : 0.35, metalness: 0.5, roughness: 0.4,
-        });
+        const ringMat = new THREE.MeshStandardMaterial({ color: '#2a2822', emissive: '#6f6a58', emissiveIntensity: 0.35, metalness: 0.5, roughness: 0.4 });
         const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.045, 8, toggle ? 12 : 48), ringMat);
         ring.rotation.x = Math.PI / 2;
         ring.position.y = 0.06;
         // A chevron pointing the heading the plate answers to.
-        const yaw = headingYaw(p.heading);
         const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 3), ringMat);
         arrow.rotation.x = -Math.PI / 2;
         const holder = new THREE.Group();
         arrow.position.set(0, 0.06, -0.38);
         holder.add(arrow);
-        holder.rotation.y = yaw;
+        holder.rotation.y = headingYaw(p.heading);
         const slot = new THREE.Group();
         const off = plates.length > 1 ? 2.1 : 0;
         slot.position.set(Math.cos((k / plates.length) * Math.PI * 2) * off, 0.04, Math.sin((k / plates.length) * Math.PI * 2) * off);
         slot.add(base, ring, holder);
+        // A toggle carries a drum that turns a quarter each time its state flips.
+        let drum = null;
+        if (toggle) {
+          drum = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.05, 6, 4), new THREE.MeshStandardMaterial({ color: style.accent, emissive: style.accent, emissiveIntensity: 0.9, metalness: 0.7, roughness: 0.3 }));
+          drum.rotation.x = Math.PI / 2;
+          drum.position.y = 0.1;
+          slot.add(drum);
+        }
         g.add(slot);
-        if (!lit) this.pulsers.push({ mat: ringMat, base: 0.35, amp: 0.45 });
+        e.plateViews.push({ index: p.i, slot, ringMat, drum, v: null, target: 0, baseY: slot.position.y });
       });
-      for (const [i, c] of (this.state.crates ?? []).entries()) {
-        if (c.room !== e.id || c.carried) continue;
-        const crate = new THREE.Mesh(
-          new THREE.BoxGeometry(0.9, 0.9, 0.9),
-          new THREE.MeshStandardMaterial({ color: '#8a6a3f', roughness: 0.7, metalness: 0.1, envMapIntensity: 0.4 }),
-        );
-        const band = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 0.95), new THREE.MeshStandardMaterial({ color: style.accent, emissive: style.accent, emissiveIntensity: 0.9 }));
-        crate.position.set(e.built.half - 1.6 - (i % 2) * 1.1, 0.45, e.built.half - 1.6 - Math.floor(i / 2) * 1.1);
-        crate.rotation.y = 0.3 + i;
-        band.position.copy(crate.position);
-        band.rotation.copy(crate.rotation);
-        g.add(crate, band);
-      }
       if ((ctx.pads ?? []).includes(e.id)) {
         const pad = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.04, 6, 14), new THREE.MeshStandardMaterial({ color: style.accent, emissive: style.accent, emissiveIntensity: 1.4 }));
         pad.rotation.x = Math.PI / 2;
@@ -454,6 +452,108 @@ export class WorldRenderer {
       g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       e.fixtures = g;
       e.built.group.add(g);
+    }
+    this._syncPlates(true);
+  }
+
+  // Sets each plate's target from the engine's lit state. A plate already lit when it is first
+  // seen (loading a game) snaps; one that changes while you watch presses down.
+  _syncPlates(first = false) {
+    for (const e of this.rooms.values()) {
+      for (const pv of e.plateViews ?? []) {
+        const lit = (this.state.lit & (1 << pv.index)) !== 0;
+        pv.target = lit ? 1 : 0;
+        if (pv.v === null || first) pv.v = pv.target;
+      }
+    }
+  }
+
+  // The objects in the world: crates (and, when present, pushable blocks), by id. Each has a mesh that
+  // moves to the position the engine gives it, and changes room by changing parent.
+  setObjects(list) {
+    this.state.objects = list;
+    this._syncObjects();
+  }
+
+  _syncObjects() {
+    if (!this.style) return;
+    this.objectViews ??= new Map();
+    const list = [...(this.state.objects ?? []), ...(this.state.crates ?? []).map((c, i) => (c.carried ? null : ({
+      id: `crate:${i}`, kind: 'crate', room: c.room,
+      x: (this.rooms.get(c.room)?.built.half ?? 4) - 1.6 - (i % 2) * 1.1, z: (this.rooms.get(c.room)?.built.half ?? 4) - 1.6 - Math.floor(i / 2) * 1.1, yaw: 0.3 + i,
+    }))).filter(Boolean)];
+    const seen = new Set();
+    for (const o of list) {
+      const room = this.rooms.get(o.room);
+      if (!room) continue;
+      seen.add(o.id);
+      let v = this.objectViews.get(o.id);
+      if (!v) {
+        const group = new THREE.Group();
+        const size = o.kind === 'block' ? 0.96 : 0.9;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), new THREE.MeshStandardMaterial({ color: o.kind === 'block' ? '#6c7a86' : '#8a6a3f', roughness: o.kind === 'block' ? 0.45 : 0.7, metalness: o.kind === 'block' ? 0.55 : 0.1, envMapIntensity: 0.6 }));
+        const band = new THREE.Mesh(new THREE.BoxGeometry(size + 0.05, 0.12, size + 0.05), new THREE.MeshStandardMaterial({ color: this.style.accent, emissive: this.style.accent, emissiveIntensity: 0.9 }));
+        body.position.y = size / 2; band.position.y = size / 2;
+        group.add(body, band);
+        group.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+        v = { group, room: null, x: o.x, z: o.z, yaw: o.yaw ?? 0 };
+        group.position.set(o.x, 0, o.z);
+        this.objectViews.set(o.id, v);
+      }
+      if (v.room !== o.room) { // changed room: reparent and jump; the walker and the portal carry the eye across
+        v.group.parent?.remove(v.group);
+        room.built.group.add(v.group);
+        v.room = o.room; v.x = o.x; v.z = o.z; v.yaw = o.yaw ?? 0;
+        v.group.position.set(o.x, o.lift ?? 0, o.z);
+        v.group.rotation.y = v.yaw;
+      }
+      v.tx = o.x; v.tz = o.z; v.tyaw = o.yaw ?? 0; v.tlift = o.lift ?? 0;
+    }
+    for (const [id, v] of [...this.objectViews]) {
+      if (!seen.has(id)) { v.group.parent?.remove(v.group); this.objectViews.delete(id); }
+    }
+  }
+
+  // Per-frame life: plates press, drums turn, objects slide, rooms power up and down, gates slide.
+  _animateWorld(dt, time) {
+    for (const e of this.rooms.values()) {
+      let lit = 0;
+      for (const pv of e.plateViews ?? []) {
+        pv.v += (pv.target - pv.v) * Math.min(1, dt * 7);
+        if (Math.abs(pv.target - pv.v) < 0.002) pv.v = pv.target;
+        pv.slot.position.y = pv.baseY - 0.035 * pv.v;
+        const pulse = 0.5 + 0.5 * Math.sin(time * 2.2);
+        pv.ringMat.emissiveIntensity = 0.35 + 0.4 * pulse * (1 - pv.v) + 2.3 * pv.v;
+        pv.ringMat.emissive.set('#6f6a58').lerp(this._gold ??= new THREE.Color('#ffd27a'), pv.v);
+        if (pv.drum) {
+          const goal = pv.target * (Math.PI / 2);
+          pv.drumAngle = (pv.drumAngle ?? goal) + (goal - (pv.drumAngle ?? goal)) * Math.min(1, dt * 4);
+          pv.drum.rotation.z = pv.drumAngle;
+        }
+        lit += pv.target;
+      }
+      e.energyTarget = lit > 0 ? 1 : 0;
+      e.energy = (e.energy ?? 0) + (e.energyTarget - (e.energy ?? 0)) * Math.min(1, dt * 2);
+      // A room rises out of the ground when it is built.
+      if (e.rise !== undefined && e.rise < 1) e.rise = Math.min(1, e.rise + dt / 0.9);
+    }
+    for (const v of this.objectViews?.values() ?? []) {
+      const k = Math.min(1, dt * 9);
+      v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
+      const dy = Math.atan2(Math.sin(v.tyaw - v.yaw), Math.cos(v.tyaw - v.yaw));
+      v.yaw += dy * k;
+      v.group.position.set(v.x, (v.group.position.y += ((v.tlift ?? 0) - v.group.position.y) * k), v.z);
+      v.group.rotation.y = v.yaw;
+    }
+    for (const d of this.doors.values()) {
+      if (d.reveal !== undefined && d.reveal < 1) {
+        d.reveal = Math.min(1, d.reveal + dt / 1.1);
+        d.mesh.material.uniforms.reveal.value = d.reveal;
+      }
+    }
+    for (const l of this.linkGroup.children) {
+      const u = l.material?.uniforms;
+      if (u?.draw && u.draw.value < 1) u.draw.value = Math.min(1, u.draw.value + dt / 0.9);
     }
   }
 
@@ -534,6 +634,8 @@ export class WorldRenderer {
   }
 
   _buildLinks() {
+    const prevLinks = this._linkIds ?? new Set();
+    this._linkIds = new Set([...this.structure.portals.keys()]);
     for (const c of [...this.linkGroup.children]) { this.linkGroup.remove(c); c.geometry?.dispose(); c.material?.dispose(); }
     this.linkPicks = [];
     for (const p of this.structure.portals.values()) {
@@ -557,11 +659,12 @@ export class WorldRenderer {
       const mat = new THREE.ShaderMaterial({
         uniforms: {
           time: { value: 0 }, color: { value: new THREE.Color(color) }, dir: { value: p.oneWay === 'a' ? 1 : p.oneWay === 'b' ? -1 : 0 },
-          lit: { value: 0 }, count: { value: Math.max(6, dist / 2.2) },
+          lit: { value: 0 }, count: { value: Math.max(6, dist / 2.2) }, draw: { value: this._synced && !prevLinks.has(p.id) ? 0 : 1 },
         },
         vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-        fragmentShader: `uniform float time, dir, lit, count; uniform vec3 color; varying vec2 vUv;
+        fragmentShader: `uniform float time, dir, lit, count, draw; uniform vec3 color; varying vec2 vUv;
           void main(){
+            if (vUv.x > draw) discard;
             float d = dir == 0.0 ? 1.0 : dir;
             float f = fract(vUv.x * count - time * 0.7 * d);
             float dash = smoothstep(0.0, 0.15, f) * smoothstep(0.75, 0.55, f);
@@ -698,7 +801,7 @@ export class WorldRenderer {
       if (!l) { p.intensity = 0; continue; }
       p.position.set(l.x, l.y, l.z).applyMatrix4(W);
       p.color.set(l.color);
-      p.intensity = l.intensity * k;
+      p.intensity = l.intensity * k * (i === 0 ? 0.88 + 0.3 * (entry.energy ?? 0) : 1);
       p.distance = entry.built.height * 3.4 + entry.built.half * 2;
     }
     // One soft-shadowed light per drawn room: the lamp at the heart of it. Deeper recursion
@@ -762,7 +865,9 @@ export class WorldRenderer {
   _animate(entry, t) {
     if (entry.animFrame === this.frame) return;
     entry.animFrame = this.frame;
-    for (const fn of entry.built.animated) fn(t);
+    const dt = Math.min(0.1, Math.max(0, t - (entry.lastAnim ?? t)));
+    entry.lastAnim = t;
+    for (const fn of entry.built.animated) fn(t, { dt, energy: entry.energy ?? 0 });
   }
 
   // ---- walk mode --------------------------------------------------------------
@@ -775,6 +880,7 @@ export class WorldRenderer {
     const dt = Math.min(0.1, Math.max(0, time - (this._lastT ?? time)));
     this._lastT = time;
     this._slideGates(dt);
+    this._animateWorld(dt, time);
     this.time = time;
     this.frame++;
     this.setLayout('walk');
@@ -788,7 +894,6 @@ export class WorldRenderer {
     this.previewGroup.visible = false;
     for (const e of this.rooms.values()) { e.holder.visible = false; }
     for (const d of this.doors.values()) d.mesh.material.uniforms.time.value = time;
-    for (const p of this.pulsers ?? []) p.mat.emissiveIntensity = p.base + p.amp * (0.5 + 0.5 * Math.sin(time * 2.2));
 
     const Wc = entry.world.clone();
     const cam = this.camera;
@@ -804,6 +909,8 @@ export class WorldRenderer {
     cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
     this.baseProjection = cam.projectionMatrix.clone();
     this.stats.passes = 0;
+    this.stats.scissored = 0;
+    this.stats.areaSaved = 0;
     this.stats.byDepth = [];
     this._passBudget = this.q.maxPasses;
     this.post.resize(...this._bufSize(), this.q.samples);
@@ -820,6 +927,21 @@ export class WorldRenderer {
     this.stats.ms = performance.now() - t0;
   }
 
+  // The doorway's screen rectangle in normalised device coordinates, or null if it cannot be bounded.
+  _doorRect(Df, pv) {
+    let x0 = Infinity; let x1 = -Infinity; let y0 = Infinity; let y1 = -Infinity;
+    const v = new THREE.Vector3();
+    for (const [x, y] of [[-1.2, 0], [1.2, 0], [1.2, DOOR_H], [-1.2, DOOR_H]]) {
+      v.set(x, y, 0).applyMatrix4(Df);
+      const c = new THREE.Vector4(v.x, v.y, v.z, 1).applyMatrix4(pv);
+      if (c.w <= 0.05) return null; // a corner behind the eye: no safe bound
+      x0 = Math.min(x0, c.x / c.w); x1 = Math.max(x1, c.x / c.w);
+      y0 = Math.min(y0, c.y / c.w); y1 = Math.max(y1, c.y / c.w);
+    }
+    x0 = Math.max(-1, x0); y0 = Math.max(-1, y0); x1 = Math.min(1, x1); y1 = Math.min(1, y1);
+    return x1 > x0 && y1 > y0 ? { x0, y0, x1, y1 } : null;
+  }
+
   _bufSize() {
     const b = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     return [b.x, b.y];
@@ -830,7 +952,7 @@ export class WorldRenderer {
     entry.holder.updateMatrixWorld(true);
   }
 
-  _pass(Wc, entry, depth, target, entryDoor, proj) {
+  _pass(Wc, entry, depth, target, entryDoor, proj, rect = null) {
     const cam = this.camera;
     const { frustum, pv, c, n, cam: camPos, fwd } = this._tmp;
     this.stats.passes++;
@@ -855,7 +977,7 @@ export class WorldRenderer {
       if (toCam.dot(out) > 0.02) continue;     // looking at its back
       if (!frustum.intersectsSphere(new THREE.Sphere(m.clone(), 2.1))) continue;
       const score = fwd.dot(m.clone().sub(camPos).normalize()) / Math.max(1, toCam.length());
-      candidates.push({ d, score, Df });
+      candidates.push({ d, score, Df, rect: this._doorRect(Df, pv) });
     }
     candidates.sort((a, b) => b.score - a.score);
 
@@ -865,7 +987,7 @@ export class WorldRenderer {
     if (depth < this.q.maxDepth) {
       const limit = this.q.children[Math.min(depth, this.q.children.length - 1)];
       let slot = 0;
-      for (const { d, Df } of candidates) {
+      for (const { d, Df, rect: dr } of candidates) {
         if (slot >= limit || this._passBudget <= 0) break;
         const dest = this.rooms.get(d.destRoom);
         if (!dest) continue;
@@ -874,7 +996,7 @@ export class WorldRenderer {
         const childProj = this.baseProjection.clone();
         obliqueProjection(childProj, cam.matrixWorld, planeBeyond(Df));
         const rt = this._rt(depth + 1, slot++);
-        this._pass(Wb, dest, depth + 1, rt, this.doors.get(d.otherId), childProj);
+        this._pass(Wb, dest, depth + 1, rt, this.doors.get(d.otherId), childProj, dr);
         views.set(d, rt);
       }
     }
@@ -904,8 +1026,21 @@ export class WorldRenderer {
     }
     this._lightFor(entry, Wc, depth);
     for (const o of entry.roofList) o.visible = true;
+    // A child pass only ever matters inside its doorway: scissor it to that screen rectangle.
+    if (target && rect) {
+      const px = (n, size) => ((n + 1) / 2) * size;
+      const x0 = Math.max(0, Math.floor(px(rect.x0, target.width)) - 3);
+      const x1 = Math.min(target.width, Math.ceil(px(rect.x1, target.width)) + 3);
+      const y0 = Math.max(0, Math.floor(px(rect.y0, target.height)) - 3);
+      const y1 = Math.min(target.height, Math.ceil(px(rect.y1, target.height)) + 3);
+      target.scissor.set(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+      target.scissorTest = true;
+      this.stats.scissored = (this.stats.scissored ?? 0) + 1;
+      this.stats.areaSaved = (this.stats.areaSaved ?? 0) + (1 - ((x1 - x0) * (y1 - y0)) / (target.width * target.height));
+    } else if (target) target.scissorTest = false;
     this.renderer.setRenderTarget(target);
     this.renderer.render(this.scene, cam);
+    if (target) target.scissorTest = false;
     entry.holder.visible = false;
   }
 
@@ -914,6 +1049,10 @@ export class WorldRenderer {
   // orbit: { target:[x,y,z], azimuth, elevation, distance }
   renderOverview(orbit, time = 0) {
     const t0 = performance.now();
+    const odt = Math.min(0.1, Math.max(0, time - (this._lastT ?? time)));
+    this._lastT = time;
+    this._slideGates(odt);
+    this._animateWorld(odt, time);
     this.time = time;
     this.frame++;
     this.setLayout('plan');
@@ -952,7 +1091,8 @@ export class WorldRenderer {
     }
     for (const e of this.rooms.values()) {
       this._animate(e, time);
-      this._place(e, e.world);
+      const rz = e.rise ?? 1;
+      this._place(e, rz >= 1 ? e.world : e.world.clone().multiply(new THREE.Matrix4().makeScale(1, Math.max(0.02, 1 - Math.pow(1 - rz, 3)), 1)));
       e.holder.visible = true;
       for (const o of e.roofList) o.visible = !this.cutaway;
       const p = this.positions.get(e.id);
@@ -1040,7 +1180,7 @@ export class WorldRenderer {
   debugLines() {
     const s = this.stats;
     return [
-      `passes ${s.passes}  depth ${s.byDepth.join('/')}  budget ${this.q.maxPasses}`,
+      `passes ${s.passes}  depth ${s.byDepth.join('/')}  budget ${this.q.maxPasses}  scissored ${s.scissored ?? 0} (saved ${((s.areaSaved ?? 0) / Math.max(1, s.scissored ?? 0) * 100).toFixed(0)}% of pixels)`,
       `draw calls ${s.drawCalls}  tris ${s.triangles}  frame ${s.ms.toFixed(1)} ms`,
       `rooms ${s.rooms}  doorways ${s.doors}  quality ${this.quality}  rt ${this.pool.size}`,
     ];

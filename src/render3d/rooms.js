@@ -81,6 +81,11 @@ export function buildRoom(spec, lib) {
   const split = has.has('split');
   const dw = DOOR_W;
   const dh = DOOR_H;
+  // Rooms of one style are not copies of each other: a few features vary with the room's identity.
+  const seed = hash(spec.id);
+  const ceilingVariant = kind === 'chamber' || kind === 'atrium' ? seed % 3 : 0; // coffers, radial ribs, louvres
+  const floorVariant = (seed >> 3) % 3;                                           // rings, diagonals, cross-hatch
+  const furnish = (seed >> 5) % 2 === 0;
 
   // ---- wall-aligned box: a along the wall, y up, d outward from the interior plane.
   const wallMat = (face, wx) => {
@@ -132,6 +137,38 @@ export function buildRoom(spec, lib) {
     const len = hw - 1.5;
     const cz = 1.5 + len / 2;
     b.box('inlay', 0.08, 0.012, len, cz * Math.sin(th), 0.006, cz * Math.cos(th), th, { ao: false });
+  }
+  if (floorVariant === 1) {
+    // Diagonals: inlay lines at 45 degrees across the floor.
+    for (let k = -2; k <= 2; k++) {
+      const off = k * (hw * 0.62);
+      b.box('inlay', 2 * hw * 1.5, 0.012, 0.045, off * 0.7071, 0.006, -off * 0.7071, Math.PI / 4, { ao: false });
+    }
+  } else if (floorVariant === 2) {
+    // Cross-hatch: a fine square lattice.
+    for (let k = -3; k <= 3; k++) {
+      const o = k * (hw / 3.6);
+      b.span('inlay', -hw + 0.6, 0, o - 0.015, hw - 0.6, 0.01, o + 0.015, { ao: false });
+      b.span('inlay', o - 0.015, 0, -hw + 0.6, o + 0.015, 0.01, hw - 0.6, { ao: false });
+    }
+  }
+  // Furniture and sculpture keep to the corners, clear of the walker's lines to the doors.
+  if (furnish && !has.has('gears')) {
+    const cx = hw - 1.5;
+    for (const [sx, sz, kindOf] of [[-1, 1, 'bench'], [1, -1, 'plinth']]) {
+      const x = sx * cx; const z = sz * cx;
+      if (kindOf === 'bench') {
+        b.box('trim', 1.7, 0.1, 0.5, x, 0.46, z);
+        b.box('metal', 0.08, 0.42, 0.42, x - 0.7, 0.21, z);
+        b.box('metal', 0.08, 0.42, 0.42, x + 0.7, 0.21, z);
+      } else {
+        b.box('trim', 0.7, 0.9, 0.7, x, 0.45, z);
+        b.box('metal', 0.78, 0.06, 0.78, x, 0.93, z);
+        // A sculpture in a glass case.
+        b.box('accent', 0.22, 0.22, 0.22, x, 1.18, z, Math.PI / 4, { ao: false });
+        b.box('glass', 0.5, 0.55, 0.5, x, 1.24, z, 0, { ao: false });
+      }
+    }
   }
   // The plate pad lives at the centre; leave the medallion otherwise clear.
 
@@ -313,6 +350,23 @@ export function buildRoom(spec, lib) {
       b.span('beam', t - 0.22, H - 0.7, -hw, t + 0.22, H, hw, roof);
     }
     for (const s of [-1, 1]) for (const z of [-1, 1]) b.box('beam', 1.1, H, 1.1, s * (hw - 0.55), H / 2, z * (hw - 0.55));
+  } else if (ceilingVariant === 1) {
+    // Radial ribs fanning from the lamp, closed by a ring.
+    const ribs = 12;
+    for (let i = 0; i < ribs; i++) {
+      const a = (i / ribs) * Math.PI;
+      b.box('beam', 2 * hw * 1.42, 0.5, 0.3, 0, H - 0.25, 0, a, roof);
+    }
+    b.torus('beam', hw * 0.55, 0.14, 0, H - 0.3, 0, Math.PI / 2, roof);
+    b.torus('metal', hw * 0.9, 0.06, 0, H - 0.2, 0, Math.PI / 2, { layer: 'roof', ao: false });
+  } else if (ceilingVariant === 2) {
+    // Louvres: close-set fins with light slots between them.
+    const fins = Math.round(hw * 2.4);
+    for (let i = 0; i <= fins; i++) {
+      const z = -hw + (i * 2 * hw) / fins;
+      b.span('beam', -hw, H - 0.55, z - 0.06, hw, H - 0.1, z + 0.06, roof);
+    }
+    for (const sx of [-1, 1]) b.span('metal', sx * hw - 0.08, H - 0.6, -hw, sx * hw + 0.08, H - 0.05, hw, { layer: 'roof', ao: false });
   } else {
     for (let i = 0; i <= nb; i++) {
       const t = -hw + i * bs;
@@ -325,6 +379,7 @@ export function buildRoom(spec, lib) {
   if (lw > 0) {
     b.span('trim', -lw - 0.22, H - 0.7, -lw - 0.22, lw + 0.22, H - 0.5, lw + 0.22, roof);
     b.span('lamp', -lw, H - 0.55, -lw, lw, H - 0.5, lw, { layer: 'roof', ao: false });
+    b.span('glass', -lw, H - 0.62, -lw, lw, H - 0.6, lw, { layer: 'roof', ao: false });
     for (const s of [-1, 1]) {
       b.span('trim', -lw - 0.22, H - 0.7, s * lw - 0.04, lw + 0.22, H - 0.45, s * lw + 0.04, roof);
       b.span('trim', s * lw - 0.04, H - 0.7, -lw - 0.22, s * lw + 0.04, H - 0.45, lw + 0.22, roof);
@@ -365,7 +420,8 @@ export function buildRoom(spec, lib) {
     hoist.position.set(0, H - 1.25, -hw * 0.42);
     hoist.userData.roof = true;
     group.add(hoist);
-    animated.push((t) => { hoist.position.x = Math.sin(t * 0.35) * (hw - 1.6); });
+    let hoistPhase = 0;
+    animated.push((t, c) => { hoistPhase += c.dt * (0.35 + 1.1 * c.energy); hoist.position.x = Math.sin(hoistPhase) * (hw - 1.6); });
   }
 
   const gearGroups = [];
@@ -386,7 +442,7 @@ export function buildRoom(spec, lib) {
         holder.add(mesh);
         group.add(holder);
         gearGroups.push(mesh);
-        animated.push((t) => { mesh.rotation.z = dir * t * speed; });
+        animated.push((t, c) => { mesh.rotation.z += dir * c.dt * speed * (0.25 + 1.6 * c.energy); });
         return mesh;
       };
       mk(1.5, 20, 2.6, -0.9 + n, 1, 0.22);
@@ -483,7 +539,7 @@ export function buildRoom(spec, lib) {
     const points = new Points(geo, pm);
     points.frustumCulled = false;
     group.add(points);
-    animated.push((t) => {
+    animated.push((t, c) => {
       const a = geo.attributes.position;
       for (let i = 0; i < dustN; i++) {
         const sx = seed[i * 3]; const sy = seed[i * 3 + 1]; const sz = seed[i * 3 + 2];

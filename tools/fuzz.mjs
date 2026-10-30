@@ -14,6 +14,7 @@ await page.waitForSelector('#menu-new');
 await page.click('#menu-new');
 await page.evaluate(() => { document.getElementById('menu').hidden = true; document.getElementById('chapter-card').hidden = true; });
 const seed = Number(process.env.SEED ?? 1);
+if (!(await page.evaluate(() => !!window.__ia?.gl))) { console.error('the 3D view failed to initialise (the app fell back to 2D)'); process.exit(1); }
 const log = await page.evaluate(async ({ rounds, seed }) => {
   const { CHAPTERS } = await import('/src/campaign/chapters.js');
   let a = seed;

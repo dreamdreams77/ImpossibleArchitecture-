@@ -33,6 +33,7 @@ uniform float arrow;     // 0 none, 1 chevrons pointing out of the room, -1 poin
 uniform float fade;      // 0..1, darkening with recursion depth
 uniform float debugTint; // recursion depth heat, 0 off
 uniform float flash;     // crossing pulse
+uniform float reveal;    // 0..1, a doorway being built opens like an iris
 uniform float retract;   // 0 bars across, 1 bars drawn back (a gate opening)
 uniform vec3 rim;
 uniform vec3 fogColor;
@@ -52,7 +53,17 @@ void main() {
   if (mode < 0.5) {
     vec2 suv = gl_FragCoord.xy / res;
     col = texture2D(map, suv).rgb;
-    col *= 1.0 - 0.5 * fade;
+    // Deeper levels recede: darker, drawn toward the destination's fog, and the hue turns a little
+    // each level, so a room that opens onto itself reads as a spectrum in the distance.
+    float a = fade * 0.9;
+    mat3 yiq = mat3(0.299, 0.596, 0.211, 0.587, -0.274, -0.523, 0.114, -0.322, 0.312);
+    mat3 rgb = mat3(1.0, 1.0, 1.0, 0.956, -0.272, -1.106, 0.621, -0.647, 1.703);
+    vec3 q = yiq * col;
+    float ca = cos(a); float sa = sin(a);
+    q.yz = mat2(ca, -sa, sa, ca) * q.yz;
+    col = rgb * q;
+    col = mix(col, fogColor * 0.9, fade * 0.3);
+    col *= 1.0 - 0.45 * fade;
   } else if (mode < 1.5) {
     float g = smoothstep(0.0, 3.2, p.y);
     col = mix(fogColor * 0.5, fogColor * 1.6, g);
@@ -63,10 +74,18 @@ void main() {
     alpha = 0.55;
   }
 
+  if (reveal < 1.0) {
+    vec2 q = vec2(p.x / 1.2, (p.y - SIZE.y * 0.5) / (SIZE.y * 0.5));
+    float r = length(q);
+    float iris = reveal * 1.55;
+    float ring = exp(-abs(r - iris) * 14.0) * (1.0 - reveal);
+    col = r > iris ? rim * 0.1 : col;
+    col += rim * ring * 2.4;
+  }
   // Edge glow, breathing slowly. Wider for the colour that carries meaning.
   float breathe = 0.7 + 0.3 * sin(time * 1.6 + p.y * 2.0);
   float glow = exp(-edge * 16.0);
-  col += rim * glow * 0.9 * breathe;
+  col += rim * glow * (0.9 + fade * 1.2) * breathe;
   col += rim * exp(-edge * 60.0) * 2.2;
 
   // A turning passage: spiral arms of light round the edge.
@@ -125,6 +144,7 @@ export function makePortalMaterial() {
       debugTint: { value: 0 },
       flash: { value: 0 },
       retract: { value: 0 },
+      reveal: { value: 1 },
       rim: { value: new Color('#6fd6ff') },
       fogColor: { value: new Color('#202030') },
       heat: { value: new Color('#ff3366') },

@@ -31,6 +31,7 @@ await page.waitForSelector('#complete:not([hidden])');
 expect(await page.evaluate(() => window.__session.progress.completed.includes('threshold')), 'connecting the first doorway completes the challenge');
 await page.click('#complete-stay');
 
+expect(await page.evaluate(() => !!window.__ia?.gl), 'the 3D renderer initialised');
 await page.click('#view-first');
 await page.waitForTimeout(1500);
 expect(await page.evaluate(() => !document.getElementById('gl').hidden), 'the 3D walk is showing');
