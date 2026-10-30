@@ -218,6 +218,13 @@ export function boot() {
     return gateBefore ? 'gate' : 'step';
   }
 
+  // A plate being struck sounds the plate, then the gates it opens sliding back.
+  function playStep(gateBefore, litBefore) {
+    const cue = stepCue(gateBefore, litBefore);
+    sound.play(cue);
+    if (cue === 'plate') { sound.play('plateDown'); setTimeout(() => sound.play('slide'), 160); }
+  }
+
   // One walk forward, with its cue: a step, a gate, a bump into a wall or a shut
   // gate, a one-way refusal, or a plate being struck.
   function walkForward() {
@@ -230,7 +237,7 @@ export function boot() {
     } else if (session.lastBody?.push) {
       sound.play('push');
     } else {
-      sound.play(stepCue(gateBefore, litBefore));
+      playStep(gateBefore, litBefore);
     }
     return ok;
   }
@@ -707,6 +714,27 @@ export function boot() {
     $('#debug-panel').textContent = lines.join('\n');
   }
 
+  // Tells the sound what the walker can hear: the room's size and kind for the reverb, and the room
+  // beyond each doorway, panned by direction and dulled if its gate is shut or the passage is one-way.
+  function updateSpatialAudio() {
+    if (!sound.enabled) return;
+    const w = session.fp;
+    const room = w ? session.structure.rooms.get(w.room) : null;
+    if (!room) { sound.setNeighbours([]); return; }
+    sound.setRoom(room.size, room.kind);
+    const FACES = ['N', 'E', 'S', 'W'];
+    const base = FACES.indexOf(w.heading);
+    const list = [];
+    for (const face of FACES) {
+      const exit = session.structure.exit(w.room, face);
+      if (!exit) continue;
+      const rel = ((FACES.indexOf(face) - base + 4) % 4) * (Math.PI / 2);
+      const shut = exit.gate != null && !(((w.lit ?? 0) >> exit.gate) & 1);
+      list.push({ rel: rel > Math.PI ? rel - 2 * Math.PI : rel, shut: shut || exit.opensAfter != null, blocked: exit.blocked });
+    }
+    sound.setNeighbours(list);
+  }
+
   function render() {
     if (session.justCompleted) {
       const done = session.justCompleted;
@@ -714,6 +742,7 @@ export function boot() {
       showComplete(done);
     }
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
+    updateSpatialAudio();
     maybeQueueCard();
     paint(lastTime);
     renderPanel();
@@ -741,7 +770,7 @@ export function boot() {
       const gateBefore = gateAhead();
       const litBefore = session.fp?.lit ?? 0;
       const more = session.fpPlayTick();
-      sound.play(stepCue(gateBefore, litBefore));
+      playStep(gateBefore, litBefore);
       if (!more && session.feedback?.kind === 'success') sound.play('goal');
       render();
     }

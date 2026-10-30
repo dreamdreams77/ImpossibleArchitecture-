@@ -226,9 +226,10 @@ test('every sound cue has notes with sensible pitch, timing and shape', () => {
     const notes = cueSpec(name);
     assert.ok(notes.length > 0, `${name} has notes`);
     for (const n of notes) {
-      assert.ok(n.freq > 50 && n.freq < 2000, `${name} pitch ${n.freq}`);
+      // Noise bursts (footsteps, sliding) are described by a filter centre, not a pitch.
+      assert.ok(n.freq > 50 && n.freq < (n.noise ? 6000 : 2000), `${name} pitch ${n.freq}`);
       assert.ok(n.dur > 0 && n.at >= 0, `${name} timing`);
-      assert.ok(['sine', 'triangle', 'square', 'sawtooth'].includes(n.type), `${name} waveform`);
+      assert.ok(n.noise || ['sine', 'triangle', 'square', 'sawtooth'].includes(n.type), `${name} waveform`);
     }
   }
   assert.deepEqual(cueSpec('no-such-cue'), []);
