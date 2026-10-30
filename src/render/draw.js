@@ -58,6 +58,44 @@ export function drawPlan(ctx, view, session, { width, height }, time = 0) {
     drawWalker(ctx, s, route, session.walk, toScreen, T);
   }
 
+  drawDrafting(ctx, view, session, width, height, T);
+  ctx.restore();
+}
+
+// The drawing's own furniture, in the manner of an architect's sheet: a north arrow, a scale bar (one
+// plan unit is one grid square) and a title block naming what is drawn. The plan has no real scale,
+// which is the point of the game, so the bar says "plan unit" and not metres.
+function drawDrafting(ctx, view, session, width, height, T) {
+  const { scale } = view;
+  if (width < 220 || height < 160) return;
+  ctx.save();
+  ctx.strokeStyle = T.ink;
+  ctx.fillStyle = T.ink;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1;
+  ctx.font = '10px ui-monospace, Menlo, monospace';
+  // North arrow, top right.
+  const nx = width - 28; const ny = 38;
+  ctx.beginPath(); ctx.arc(nx, ny, 14, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(nx, ny - 12); ctx.lineTo(nx - 5, ny + 8); ctx.lineTo(nx, ny + 4); ctx.lineTo(nx + 5, ny + 8); ctx.closePath(); ctx.fill();
+  ctx.textAlign = 'center'; ctx.fillText('N', nx, ny - 18);
+  // Scale bar, bottom left: two plan units, alternately filled.
+  const bx = 14; const by = height - 22;
+  for (let i = 0; i < 2; i++) {
+    ctx.fillStyle = i % 2 ? T.paper : T.ink;
+    ctx.fillRect(bx + i * scale, by, scale, 4);
+    ctx.strokeRect(bx + i * scale, by, scale, 4);
+  }
+  ctx.fillStyle = T.ink; ctx.textAlign = 'left';
+  ctx.fillText('0', bx - 2, by - 3); ctx.fillText('2 plan units', bx + 2 * scale + 6, by + 5);
+  // Title block, bottom right.
+  const title = session.chapter?.title ?? 'Free construction';
+  const rooms = session.structure.rooms.size; const portals = session.structure.portals.size;
+  const lines = [title.toUpperCase(), `${rooms} rooms · ${portals} passages · plan ≠ graph`];
+  ctx.textAlign = 'right';
+  const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16;
+  ctx.strokeRect(width - w - 10, height - 44, w, 32);
+  lines.forEach((l, i) => ctx.fillText(l, width - 18, height - 28 + i * 13));
   ctx.restore();
 }
 
