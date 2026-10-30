@@ -26,6 +26,7 @@ export class Session {
       time: { ...(progress.time ?? {}) },         // chapter id -> milliseconds spent
     };
     this.sandbox = false;
+    this.challenge = null; // a goal the player set in free construction: { start, to, heading, maxSteps }
     this.feedback = null; // { kind: 'info'|'error'|'success', text }
     this.selection = null; // { type: 'room', id } | { type: 'portal', id } | null
     this.pendingFace = null; // { room, face } while connecting
@@ -77,6 +78,7 @@ export class Session {
 
   startSandbox() {
     this.sandbox = true;
+    this.challenge = null;
     this.chapterIdValue = null;
     this.history = new History(new Structure());
     this.clearTransient();
@@ -86,7 +88,7 @@ export class Session {
   // Replaces the construction with a loaded one. With `undoable`, and when the load
   // is for the same chapter (or free construction) as now, undo brings the old
   // construction back; otherwise the history starts again.
-  loadStructure(structure, chapterId = null, { undoable = false } = {}) {
+  loadStructure(structure, chapterId = null, { undoable = false, challenge = null } = {}) {
     const sameMode = chapterId && chapterById(chapterId)
       ? !this.sandbox && this.chapterIdValue === chapterId
       : this.sandbox && !chapterId;
@@ -99,8 +101,40 @@ export class Session {
     }
     if (undoable && sameMode) this.history.push(structure);
     else this.history = new History(structure);
+    this.challenge = this.sandbox ? challenge : null;
     this.clearTransient();
     this.feedback = { kind: 'success', text: 'Structure loaded.' };
+  }
+
+  // A goal of the player's own, set in free construction. Tested by the same engine as
+  // the campaign: a route search over the real graph.
+  setChallenge({ start, to, heading = null, maxSteps = null }) {
+    if (!this.sandbox) return false;
+    if (!this.structure.rooms.has(start) || !this.structure.rooms.has(to)) {
+      this.feedback = { kind: 'error', text: 'A challenge needs a start room and a goal room that exist.' };
+      return false;
+    }
+    if (start === to && !heading) {
+      this.feedback = { kind: 'error', text: 'Start and goal are the same room; give a heading or choose another room.' };
+      return false;
+    }
+    this.challenge = { start, to, heading, maxSteps };
+    this.routeHighlight = null;
+    this.feedback = { kind: 'info', text: `Challenge set: reach ${this.structure.rooms.get(to).label || to} from ${this.structure.rooms.get(start).label || start}${heading ? `, facing ${heading}` : ''}${maxSteps ? `, in at most ${maxSteps} step${maxSteps === 1 ? '' : 's'}` : ''}. Test construction checks it.` };
+    return true;
+  }
+
+  clearChallenge() {
+    this.challenge = null;
+    this.routeHighlight = null;
+  }
+
+  // The challenge as a chapter-shaped record, so every campaign check applies unchanged.
+  challengeAsChapter() {
+    const c = this.challenge;
+    if (!c) return null;
+    const kind = c.heading ? 'arrive' : c.maxSteps ? 'shortcut' : 'reach';
+    return { id: 'sandbox-challenge', title: 'Your challenge', start: c.start, plates: [], cargo: [], pads: [], ruleset: C.UNRESTRICTED, hint: 'Join the rooms so that a route exists.', goal: { kind, to: c.to, heading: c.heading ?? undefined, maxSteps: c.maxSteps ?? undefined } };
   }
 
   // Starts the current chapter again. Undo brings back the construction it replaces.
@@ -516,6 +550,22 @@ export class Session {
     if (!this.sandbox && this.chapter) {
       const id = this.chapter.id;
       this.progress.attempts[id] = (this.progress.attempts[id] ?? 0) + 1;
+    }
+    if (this.sandbox && this.challenge) {
+      const pseudo = this.challengeAsChapter();
+      if (!this.structure.rooms.has(pseudo.start) || !this.structure.rooms.has(pseudo.goal.to)) {
+        this.challenge = null;
+        this.feedback = { kind: 'error', text: 'The challenge named a room that is gone, so it was cleared.' };
+        return;
+      }
+      if (goalSatisfied(this.structure, pseudo)) {
+        this.routeHighlight = routeFor(this.structure, pseudo);
+        this.feedback = { kind: 'success', text: 'Your challenge is solved by this construction.' };
+      } else {
+        this.routeHighlight = null;
+        this.feedback = { kind: 'error', text: `Your challenge is not solved. ${diagnose(this.structure, pseudo).join(' ')}` };
+      }
+      return;
     }
     if (this.sandbox) {
       const rooms = [...this.structure.rooms.keys()];

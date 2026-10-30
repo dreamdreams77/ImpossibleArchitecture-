@@ -18,7 +18,14 @@ Campaign
 Tools
 - F3 developer report; `tools/e2e.mjs`; `tools/preview.html` renderer preview.
 
-Tests: 326 pass.
+Also in 1.0.0
+- Construction in the model view (face markers, hover preview with the engine's verdict).
+- Sandbox challenges (start, goal, heading, step limit), saved with the construction.
+- Rebindable keys; carried crate shown in the walk; route playback waits for the walker;
+  fallback to the 2D views if the WebGL context is lost; `tools/fuzz.mjs`.
+- Fixed: the chapter card could stack on the title menu at first load.
+
+Tests: 334 pass.
 
 Known limits are listed in the README.
 

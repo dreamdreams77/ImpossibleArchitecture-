@@ -7,6 +7,7 @@ import { Walker } from '../render3d/walker.js';
 import { halfWidth } from '../render3d/frames.js';
 import { rulesFor } from '../campaign/chapters.js';
 import { fpZoneFor } from '../render/firstperson.js';
+import { connect } from '../topology/construction.js';
 import { createPinch } from './pinch.js';
 
 const QUALITY_ORDER = ['high', 'medium', 'low'];
@@ -16,7 +17,7 @@ export function glSupported() {
 }
 
 // Creates the view, or returns null where WebGL is unavailable (the app then keeps its 2D views).
-export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onLost, onRestored, settings = {} }) {
+export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onPickFace, onLost, onRestored, settings = {} }) {
   if (!glSupported()) return null;
   const params = new URLSearchParams(globalThis.location?.search ?? '');
   let quality = params.get('quality') ?? settings.quality ?? 'high';
@@ -60,13 +61,13 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function context() {
     const chapter = session.chapter;
     const rules = chapter ? rulesFor(chapter) : { plates: [], cargo: [], pads: [] };
-    return { chapterId: chapter?.id ?? null, discipline: chapter?.discipline ?? null, themeName: session.themeName, plates: rules.plates, cargo: rules.cargo, pads: rules.pads };
+    return { sealed: session.ruleset?.sealedFaces ?? [], chapterId: chapter?.id ?? null, discipline: chapter?.discipline ?? null, themeName: session.themeName, plates: rules.plates, cargo: rules.cargo, pads: rules.pads };
   }
 
   function routePortals() {
     const set = new Set();
     const route = session.routeHighlight;
-    const chapter = session.chapter;
+    const chapter = session.chapter ?? session.challengeAsChapter?.();
     if (!route || !chapter) return set;
     let room = chapter.start;
     for (const face of route.faces) {
@@ -97,6 +98,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       world.setState({ lit: walkerState?.lit ?? 0, delivered: walkerState?.delivered ?? 0, crates, routePortals: route });
     }
     world.setSelection(session.selection?.type === 'room' ? session.selection.id : null);
+    if (mode === 'model') world.setMarkerState(session.pendingFace, world.markerState.hover);
     return walkerState;
   }
 
@@ -107,7 +109,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     const c = box.getCenter(new box.min.constructor());
     const s = box.getSize(new box.min.constructor());
     orbit.target = [c.x, 0, c.z];
-    orbit.distance = Math.max(34, Math.max(s.x, s.z) * 1.25 + 12);
+    orbit.distance = Math.max(34, Math.max(s.x, s.z) * 0.95 + 10);
     fit = false;
   }
 
@@ -145,7 +147,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function updateHud(walkerState) {
     if (!hud) return;
     const room = walkerState && session.structure.rooms.get(walkerState.room);
-    const key = `${mode}|${walkerState?.room}|${walkerState?.heading}|${room?.label}|${walkerState?.carry}`;
+    const key = `${mode}|${previewNote}|${session.pendingFace?.room}${session.pendingFace?.face}|${walkerState?.room}|${walkerState?.heading}|${room?.label}|${walkerState?.carry}`;
     if (key === hudKey) return;
     hudKey = key;
     const chips = LEGEND.map(([c, t]) => `<span class="chip"><i style="background:${c}"></i>${t}</span>`).join('');
@@ -156,7 +158,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     } else {
       hud.innerHTML = '<div class="gl-place"><strong>Architect’s model</strong><span>rooms at their plan positions · arcs are the real connections</span></div>'
         + `<div class="gl-legend">${chips}</div>`
-        + '<div class="gl-hint">drag to orbit · wheel to zoom · click a room to select it</div>';
+        + `<div class="gl-hint">${previewNote ? `<strong>${esc(previewNote)}</strong> · ` : ''}click a doorway ring, then another, to join them · drag to orbit · wheel to zoom · click a room to select it</div>`;
     }
   }
 
@@ -210,7 +212,30 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     canvas.setPointerCapture?.(evt.pointerId);
     walker.dragging = true;
   });
+  // Model view: hovering a free face while another is picked previews the join, with
+  // the engine's own verdict. Nothing is built until the second click.
+  let previewKey = '';
+  function updateHover(evt) {
+    const r = canvas.getBoundingClientRect();
+    const hit = world.pickMarker(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
+    const pending = session.pendingFace;
+    world.setMarkerState(pending, hit);
+    canvas.style.cursor = hit ? 'pointer' : '';
+    let key = '';
+    let note = '';
+    if (pending && hit && !(hit.room === pending.room && hit.face === pending.face)) {
+      const res = connect(session.structure, { a: pending.room, aFace: pending.face, b: hit.room, bFace: hit.face }, session.ruleset);
+      const ok = !res.error;
+      key = `${pending.room}${pending.face}${hit.room}${hit.face}${ok}`;
+      note = ok ? 'Click to join these faces.' : (res.violations?.[0]?.message ?? res.message ?? 'That cannot be built.');
+      if (key !== previewKey) world.setPreview(pending, hit, ok);
+    } else if (previewKey) world.setPreview(null, null);
+    previewKey = key;
+    if (previewNote !== note) { previewNote = note; hudKey = ''; }
+  }
+  let previewNote = '';
   canvas.addEventListener('pointermove', (evt) => {
+    if (mode === 'model' && !drag?.moved) updateHover(evt);
     const pz = pinch.move(evt.pointerId, evt.clientX, evt.clientY);
     if (pz && mode === 'model') { orbit.distance = clamp(orbit.distance / pz.factor, 14, 320); return; }
     if (pinch.active() || !drag || drag.id !== evt.pointerId) return;
@@ -233,6 +258,8 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       const r = canvas.getBoundingClientRect();
       if (mode === 'first') onWalkClick?.(fpZoneFor(evt.clientX - r.left, r.width));
       else {
+        const face = world.pickMarker(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
+        if (face) { onPickFace?.(face.room, face.face); previewKey = ''; world.setPreview(null, null); drag = null; return; }
         const id = world.pickRoom(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
         onSelectRoom?.(id);
       }

@@ -8,12 +8,13 @@ import { Structure } from '../topology/graph.js';
 
 const SAVE_VERSION = 1;
 
-export function encodeSave({ chapterId, structure, progress }) {
+export function encodeSave({ chapterId, structure, progress, challenge = null }) {
   return JSON.stringify({
     game: 'impossible-architecture',
     saveVersion: SAVE_VERSION,
     chapterId,
     structure: structure.toJSON(),
+    challenge: challenge ? { start: challenge.start, to: challenge.to, heading: challenge.heading ?? null, maxSteps: challenge.maxSteps ?? null } : null,
     progress: {
       completed: [...(progress?.completed ?? [])],
       discoveries: [...(progress?.discoveries ?? [])],
@@ -37,11 +38,20 @@ export function decodeSave(text) {
   return {
     chapterId: data.chapterId,
     structure: Structure.fromJSON(data.structure),
+    challenge: validChallenge(data.challenge),
     progress: {
       completed: data.progress?.completed ?? [],
       discoveries: data.progress?.discoveries ?? [],
     },
   };
+}
+
+// A sandbox challenge is { start, to, heading, maxSteps }. Anything malformed is dropped.
+export function validChallenge(c) {
+  if (!c || typeof c.start !== 'string' || typeof c.to !== 'string') return null;
+  const heading = ['N', 'E', 'S', 'W'].includes(c.heading) ? c.heading : null;
+  const maxSteps = Number.isInteger(c.maxSteps) && c.maxSteps > 0 ? c.maxSteps : null;
+  return { start: c.start, to: c.to, heading, maxSteps };
 }
 
 // Thin wrapper over any key-value store with getItem/setItem/removeItem.

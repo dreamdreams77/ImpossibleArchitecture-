@@ -110,6 +110,7 @@ export function boot() {
       render();
     },
     onSelectRoom: (id) => { session.selectRoom(id); render(); },
+    onPickFace: (room, face) => { session.pickFace(room, face); sound.play(session.pendingFace ? 'step' : 'goal'); render(); },
     onLost: () => { session.feedback = { kind: 'error', text: 'The 3D view lost its graphics context. Showing the 2D views until it returns.' }; setView(viewMode); },
     onRestored: () => { session.feedback = { kind: 'info', text: 'The 3D view is back.' }; setView(viewMode); },
   });
@@ -598,6 +599,34 @@ export function boot() {
   });
   $('#complete-stay').addEventListener('click', () => { closeComplete(); render(); });
 
+  // Free construction can set a goal of its own, tested by the campaign's engine.
+  let challengeKey = '';
+  function syncChallengeBox() {
+    const box = $('#challenge-box');
+    box.hidden = !session.sandbox;
+    if (!session.sandbox) return;
+    const rooms = [...session.structure.rooms.values()];
+    const key = rooms.map((r) => `${r.id}:${r.label}`).join('|') + JSON.stringify(session.challenge);
+    if (key === challengeKey) return;
+    challengeKey = key;
+    for (const id of ['#ch-start', '#ch-goal']) {
+      const sel = $(id);
+      const keep = sel.value;
+      sel.replaceChildren(...rooms.map((r) => new Option(r.label || r.id, r.id)));
+      if (rooms.some((r) => r.id === keep)) sel.value = keep;
+    }
+    const c = session.challenge;
+    if (c) { $('#ch-start').value = c.start; $('#ch-goal').value = c.to; $('#ch-heading').value = c.heading ?? ''; $('#ch-steps').value = String(c.maxSteps ?? ''); }
+    $('#ch-clear').disabled = !c;
+    $('#ch-status').textContent = c ? 'Challenge set. Test construction checks it.' : 'No challenge. Pick rooms and set one.';
+  }
+  $('#ch-set').addEventListener('click', () => {
+    session.setChallenge({ start: $('#ch-start').value, to: $('#ch-goal').value, heading: $('#ch-heading').value || null, maxSteps: Number($('#ch-steps').value) || null });
+    challengeKey = '';
+    render();
+  });
+  $('#ch-clear').addEventListener('click', () => { session.clearChallenge(); challengeKey = ''; render(); });
+
   // Developer overlay (F3): the engine's own account of the world, plus renderer stats.
   let debugOn = false;
   let debugAt = 0;
@@ -750,6 +779,7 @@ export function boot() {
       stage.classList.add('enter');
     }
     $('#portal-actions').hidden = !(sel && sel.type === 'portal');
+    syncChallengeBox();
     $('#feedback').textContent = session.feedback?.text ?? '';
     $('#feedback').dataset.kind = session.feedback?.kind ?? 'info';
     $('#next').hidden = !(session.chapter && session.progress.completed.includes(session.chapter.id) && session.nextChapterId());
@@ -1078,6 +1108,7 @@ export function boot() {
       chapterId: session.sandbox ? null : session.chapter.id,
       structure: session.structure,
       progress: session.progress,
+      challenge: session.challenge,
     });
     session.feedback = { kind: 'success', text: `Saved to slot "${name}".` };
     render();
@@ -1100,7 +1131,7 @@ export function boot() {
       if (!data) { session.feedback = { kind: 'error', text: `No save in slot "${name}".` }; }
       else {
         if (session.structure.rooms.size > 0 && !confirm('Replace the current construction with this save? Undo brings it back.')) return;
-        session.loadStructure(data.structure, data.chapterId, { undoable: true });
+        session.loadStructure(data.structure, data.chapterId, { undoable: true, challenge: data.challenge });
         session.progress = data.progress;
       }
     } catch (e) {
@@ -1150,7 +1181,7 @@ export function boot() {
         evt.target.value = '';
         return;
       }
-      session.loadStructure(data.structure, data.chapterId, { undoable: true });
+      session.loadStructure(data.structure, data.chapterId, { undoable: true, challenge: data.challenge });
       session.progress = data.progress;
     } catch (e) {
       session.feedback = { kind: 'error', text: e.message };
@@ -1501,7 +1532,7 @@ function persistWork() {
   const s = window.__session;
   if (!s) return;
   try {
-    const text = encodeSave({ chapterId: s.sandbox ? null : s.chapter.id, structure: s.structure, progress: s.progress });
+    const text = encodeSave({ chapterId: s.sandbox ? null : s.chapter.id, structure: s.structure, progress: s.progress, challenge: s.challenge });
     if (text === lastWork) return;
     lastWork = text;
     localStorage.setItem(WORK_KEY, text);
@@ -1519,7 +1550,7 @@ function restoreWork(session) {
   } catch { return; }
   if (data.chapterId === null) {
     session.startSandbox();
-    session.loadStructure(data.structure, null);
+    session.loadStructure(data.structure, null, { challenge: data.challenge });
   } else if (data.chapterId === session.chapter?.id) {
     session.loadStructure(data.structure, data.chapterId);
   } else {

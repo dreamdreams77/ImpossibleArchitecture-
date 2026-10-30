@@ -15,8 +15,9 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 326 tests over the engine, campaign, renderer maths and walker
+npm test       # 334 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
+npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
 ```
 
 ## What is in it
@@ -31,7 +32,9 @@ npm run e2e    # optional: drives the real game in headless Chromium (needs Play
   person, with recursive portal rendering) and the *model* (an architect's cutaway
   with a glowing arc for every real connection, so plan distance and graph distance
   can disagree in plain sight).
-- **Free construction** with the same engine, saving, loading, sharing and undo.
+- **Construction in 3D**: in the model, every free face carries a ring. Click one, then another: hovering previews the join, in red with the rule's reason if it is refused.
+- **Free construction** with the same engine, saving, loading, sharing and undo, and **your own challenge**: pick a start, a goal, an optional heading and step limit, and Test construction checks it with the campaign's engine (saved with the construction).
+- **Rebindable keys** in Settings.
 - **Objects**: plates (latch and toggle), gates, one-way passages, mirrors, quarter
   turns, crates, delivery gates and pads. Their state is part of the traversal.
 - **Construction rules** that say why they refuse: sealed faces and forbidden links.
@@ -75,15 +78,15 @@ and [docs/TESTING.md](docs/TESTING.md).
   times there say nothing about real GPUs. The renderer is built to be cheap (merged
   geometry, about 35 to 130 draw calls a frame, bounded recursion with adaptive quality)
   but it has not been profiled on real hardware.
-- Construction (rooms, connecting faces, editing transforms) happens in the plan view,
-  not in 3D. The walk and model reflect every edit at once.
+- In 3D you can join faces (model view) but adding, moving and resizing rooms and editing
+  a passage's turn, mirror and direction still happen in the plan view.
 - A twisting passage does not bend the doorway's view; it turns the traveller as they
   cross, like a revolving door. A mirroring passage reflects the view and the walker
   snaps to the engine's heading on arrival.
-- Objects are plates, gates, crates and pads. Doors do not slide, crates cannot be
-  pushed, and key bindings cannot be changed.
+- Objects are plates, gates, crates and pads. Doors do not slide and crates cannot be
+  pushed. Only six actions are rebindable.
 - Sound is a set of short synthesised cues, not a soundscape.
-- There is no editor for authoring new challenges in-game; challenges are data files.
+- Your own challenges are single goals (reach, arrive facing, within N steps): no plates, crates or restrictions. Campaign challenges are data files.
 - Campaign challenges were checked by explicit planted solutions and negative cases in
   the tests, not by exhaustive search, so unintended solutions may exist.
 

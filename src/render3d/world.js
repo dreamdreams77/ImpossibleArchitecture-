@@ -109,6 +109,15 @@ export class WorldRenderer {
     this.ground.visible = false;
     this.scene.add(this.ground);
     this.planScale = 15;
+    // Construction in the model: a marker on every free face, and a preview of a join.
+    this.markerGroup = new THREE.Group();
+    this.markerGroup.visible = false;
+    this.scene.add(this.markerGroup);
+    this.previewGroup = new THREE.Group();
+    this.scene.add(this.previewGroup);
+    this.markers = [];
+    this.markerState = { pending: null, hover: null };
+    this.sealed = [];
     this.selectionRing = this._makeSelectionRing();
     this.selectionRing.visible = false;
     this.overlay.add(this.selectionRing);
@@ -177,6 +186,7 @@ export class WorldRenderer {
   sync(structure, ctx = {}) {
     this.structure = structure;
     this.context = ctx;
+    this.sealed = ctx.sealed ?? [];
     const style = styleFor(ctx.themeName, ctx.chapterId, ctx.discipline);
     this.style = style;
     const lib = materialsFor(style);
@@ -209,6 +219,7 @@ export class WorldRenderer {
     this._buildLabels();
     this._buildFixtures();
     this.linksDirty = true;
+    this._buildMarkers();
   }
 
   _disposeRoom(entry) {
@@ -280,6 +291,7 @@ export class WorldRenderer {
     this.layoutMode = mode;
     this._layout();
     this.linksDirty = true;
+    this._buildMarkers();
   }
 
   _layout() {
@@ -545,6 +557,78 @@ export class WorldRenderer {
     this.linksDirty = false;
   }
 
+  // ---- construction in the model ---------------------------------------------
+
+  _buildMarkers() {
+    for (const m of this.markers) { this.markerGroup.remove(m.ring); this.markerGroup.remove(m.pick); m.ring.geometry.dispose(); m.ring.material.dispose(); m.pick.geometry.dispose(); m.pick.material.dispose(); }
+    this.markers = [];
+    const ringGeo = new THREE.TorusGeometry(0.95, 0.12, 8, 28);
+    const pickGeo = new THREE.SphereGeometry(1.5, 8, 6);
+    for (const [id, e] of this.rooms) {
+      for (const face of FACES) {
+        if (this.structure.portalAt(id, face)) continue;
+        const frame = doorFrame(face, e.built.half);
+        const pos = new THREE.Vector3(0, 1.5, 0).applyMatrix4(frame).applyMatrix4(e.world);
+        const ring = new THREE.Mesh(ringGeo.clone(), new THREE.MeshBasicMaterial({ color: '#6fd6ff', transparent: true, opacity: 0.8, toneMapped: false, fog: false, depthTest: false }));
+        ring.position.copy(pos);
+        ring.quaternion.setFromRotationMatrix(new THREE.Matrix4().extractRotation(frame));
+        ring.renderOrder = 6;
+        const pick = new THREE.Mesh(pickGeo.clone(), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+        pick.position.copy(pos);
+        this.markerGroup.add(ring, pick);
+        const sealed = this.sealed.some((s) => s.room === id && s.face === face);
+        this.markers.push({ room: id, face, ring, pick, pos, sealed });
+      }
+    }
+    ringGeo.dispose();
+    pickGeo.dispose();
+    this._paintMarkers();
+  }
+
+  _paintMarkers() {
+    const { pending, hover } = this.markerState;
+    for (const m of this.markers) {
+      const isPending = pending && pending.room === m.room && pending.face === m.face;
+      const isHover = hover && hover.room === m.room && hover.face === m.face;
+      m.ring.material.color.set(m.sealed ? '#ff6a5a' : isPending ? '#f2c879' : isHover ? '#ffffff' : '#6fd6ff');
+      m.ring.material.opacity = isPending || isHover ? 1 : m.sealed ? 0.35 : 0.7;
+      m.ring.scale.setScalar(isPending ? 1.35 : isHover ? 1.2 : 1);
+    }
+  }
+
+  // pending: { room, face } | null, hover: { room, face } | null
+  setMarkerState(pending, hover) {
+    const same = (a, b) => (a?.room === b?.room && a?.face === b?.face);
+    if (same(pending, this.markerState.pending) && same(hover, this.markerState.hover)) return;
+    this.markerState = { pending: pending ?? null, hover: hover ?? null };
+    this._paintMarkers();
+  }
+
+  pickMarker(ndcX, ndcY) {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const hits = ray.intersectObjects(this.markers.map((m) => m.pick), false);
+    if (!hits.length) return null;
+    const m = this.markers.find((x) => x.pick === hits[0].object);
+    return m ? { room: m.room, face: m.face } : null;
+  }
+
+  // A ghost arc between two free faces. `ok` false draws it red.
+  setPreview(a, b, ok = true) {
+    for (const c of [...this.previewGroup.children]) { this.previewGroup.remove(c); c.geometry?.dispose(); c.material?.dispose(); }
+    if (!a || !b) return;
+    const ma = this.markers.find((m) => m.room === a.room && m.face === a.face);
+    const mb = this.markers.find((m) => m.room === b.room && m.face === b.face);
+    if (!ma || !mb) return;
+    const mid = ma.pos.clone().add(mb.pos).multiplyScalar(0.5);
+    mid.y += 3 + ma.pos.distanceTo(mb.pos) * 0.25;
+    const geo = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(ma.pos, mid, mb.pos), 40, 0.11, 6, false);
+    const mat = new THREE.MeshBasicMaterial({ color: ok ? '#9dffc0' : '#ff6a5a', transparent: true, opacity: 0.75, toneMapped: false, fog: false, depthTest: false });
+    const tube = new THREE.Mesh(geo, mat);
+    tube.renderOrder = 7;
+    this.previewGroup.add(tube);
+  }
+
   _doorWorld(d) {
     const e = this.rooms.get(d.room);
     return new THREE.Vector3(0, DOOR_H / 2, 0).applyMatrix4(d.frame).applyMatrix4(e.world);
@@ -640,6 +724,8 @@ export class WorldRenderer {
     this.labelGroup.visible = false;
     this.selectionRing.visible = false;
     this.ground.visible = false;
+    this.markerGroup.visible = false;
+    this.previewGroup.visible = false;
     for (const e of this.rooms.values()) { e.holder.visible = false; }
     for (const d of this.doors.values()) d.mesh.material.uniforms.time.value = time;
     for (const p of this.pulsers ?? []) p.mat.emissiveIntensity = p.base + p.amp * (0.5 + 0.5 * Math.sin(time * 2.2));
@@ -787,6 +873,8 @@ export class WorldRenderer {
     this.linkGroup.visible = true;
     this.labelGroup.visible = true;
     this.ground.visible = true;
+    this.markerGroup.visible = true;
+    this.previewGroup.visible = true;
     this.ground.material.uniforms.unit.value = this.planScale;
     const route = this.state.routePortals;
     for (const c of this.linkGroup.children) {
