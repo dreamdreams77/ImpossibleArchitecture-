@@ -37,7 +37,7 @@ Current coverage focus:
 - `bench.test.js`: benchmark statistics and preset recommendation.
 - `spatial-sound.test.js`: room acoustics, neighbour mix and a fake AudioContext.
 
-Total: 379 tests. Browser tools (need Playwright, server on port 8080):
+Total: 393 tests. Browser tools (need Playwright, server on port 8080):
 `npm run e2e` (drives the real UI and asserts WebGL initialised), `npm run fuzz`
 (random edits and views in every challenge), `npm run portalcheck` (analytic
 marker projections against the rendered portals, within 4 px).

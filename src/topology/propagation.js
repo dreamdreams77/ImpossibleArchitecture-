@@ -18,7 +18,7 @@ export const MEDIUM_NAMES = Object.freeze(Object.keys(MEDIA));
 // Whether a portal currently lets a person through. `lit` is the set of plate bits on, as in the walk.
 export function portalOpen(portal, lit = 0, delivered = 0) {
   if (portal.gate != null && !((lit >> portal.gate) & 1)) return false;
-  if (portal.opensAfter != null && delivered <= portal.opensAfter) return false;
+  if (portal.opensAfter != null && !((delivered >> portal.opensAfter) & 1)) return false;
   return true;
 }
 

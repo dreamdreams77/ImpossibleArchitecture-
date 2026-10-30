@@ -43,7 +43,7 @@ export function normalizeChallenge(raw) {
     for (const p of raw.plates ?? []) {
       if (typeof p?.room !== 'string') continue;
       if (p.mode === 'weight' && isCell(p.cell)) out.plates.push({ room: p.room, mode: 'weight', cell: [...p.cell] });
-      else if (heading(p.heading)) out.plates.push({ room: p.room, mode: p.mode === 'toggle' ? 'toggle' : 'latch', heading: p.heading, startsLit: !!p.startsLit });
+      else if (heading(p.heading)) out.plates.push({ room: p.room, mode: p.mode === 'toggle' ? 'toggle' : 'latch', heading: p.heading, startsLit: !!p.startsLit, ...(Number.isInteger(p.after) && p.after >= 0 ? { after: p.after } : {}) });
     }
     for (const c of raw.cargo ?? []) if (typeof c?.room === 'string') out.cargo.push({ room: c.room });
     out.pads = [...new Set((raw.pads ?? []).filter((r) => typeof r === 'string'))];
@@ -124,7 +124,7 @@ export function toChapter(challenge, themeName = 'slate') {
   if (!challenge) return null;
   if (memo.has(challenge)) return memo.get(challenge);
   const physical = challenge.blocks.length > 0 || challenge.plates.some((p) => p.mode === 'weight');
-  const plates = challenge.plates.map((p) => (p.mode === 'weight' ? { room: p.room, mode: 'weight', cell: p.cell } : { room: p.room, heading: p.heading, ...(p.mode === 'toggle' ? { mode: 'toggle', startsLit: !!p.startsLit } : {}) }));
+  const plates = challenge.plates.map((p) => (p.mode === 'weight' ? { room: p.room, mode: 'weight', cell: p.cell } : { room: p.room, heading: p.heading, ...(p.mode === 'toggle' ? { mode: 'toggle', startsLit: !!p.startsLit } : {}), ...(p.after != null ? { after: p.after } : {}) }));
   const goals = [];
   for (const g of challenge.goals) {
     if (g.kind === 'place') goals.push({ kind: 'place', targets: g.targets.map((t) => ({ room: t.room, cell: t.cell, ...(t.block != null ? { block: t.block } : {}) })) });

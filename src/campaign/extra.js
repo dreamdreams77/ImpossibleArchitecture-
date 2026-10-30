@@ -355,4 +355,30 @@ export const EXTRA = [
       },
     ],
   },
+  {
+    id: 'the-ordered-hall',
+    theme: 'copper',
+    title: 'The Ordered Hall',
+    blurb: 'A one-way corridor carries you past the Bell and then the Drum. The gate answers the Bell plate, which answers only after the Drum has been struck. You passed them in the wrong order.',
+    rooms: [
+      { id: 'hall', x: 0, y: 0, label: 'Hall' },
+      { id: 'bell', x: 3, y: 0, label: 'Bell Room' },
+      { id: 'drum', x: 6, y: 0, label: 'Drum Room' },
+      { id: 'vault', x: 0, y: 3, label: 'Vault' },
+    ],
+    fixed: [
+      { a: { room: 'hall', face: 'E' }, b: { room: 'bell', face: 'W' }, oneWay: 'a' },
+      { a: { room: 'bell', face: 'E' }, b: { room: 'drum', face: 'W' }, oneWay: 'a' },
+      { a: { room: 'hall', face: 'S' }, b: { room: 'vault', face: 'N' }, gate: 1 },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 5, sealedFaces: sealed(['vault', 'E'], ['vault', 'S'], ['vault', 'W']) },
+    start: 'hall',
+    plates: [
+      { room: 'drum', heading: 'E' },
+      { room: 'bell', heading: 'E', after: 0 },
+    ],
+    goal: { kind: 'machine', to: 'vault' },
+    hint: 'The corridor only runs one way: Bell, then Drum. The gate listens to the Bell plate, which lights only once the Drum has been struck, so your first pass did nothing. Build a way back to the Hall and walk the corridor a second time.',
+    optional: [],
+  },
 ];

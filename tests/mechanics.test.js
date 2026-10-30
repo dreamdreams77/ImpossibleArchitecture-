@@ -170,3 +170,26 @@ test('retargetPortal refuses fixed passages', () => {
   s.addPortal({ id: 'f', a, aFace: 'E', b, bFace: 'W', fixed: true });
   assert.equal(retargetPortal(s, 'f', 'b', a, 'N').error, 'FIXED');
 });
+
+import { platesLitBy as litBy } from '../src/topology/traversal.js';
+
+test('a sequenced plate answers only after the plate it follows', () => {
+  const plates = [{ room: 'a', heading: 'N' }, { room: 'b', heading: 'N', after: 0 }];
+  assert.equal(litBy(plates, 'b', 'N', 0), 0, 'struck first, it does nothing');
+  assert.equal(litBy(plates, 'a', 'N', 0), 1);
+  assert.equal(litBy(plates, 'b', 'N', 1), 3, 'struck after, it lights');
+  assert.equal(litBy(plates, 'b', 'N', 2), 2, 'a lit plate stays lit');
+});
+
+test('The Ordered Hall needs a second lap, and is solved by one passage back', () => {
+  const c = chapterById('the-ordered-hall');
+  const s = chapterStructure(c);
+  assert.equal(goalSatisfied(s, c), false);
+  s.addPortal({ a: 'hall', aFace: 'N', b: 'drum', bFace: 'N', transform: { turns: 0, mirror: false } });
+  assert.equal(goalSatisfied(s, c), true);
+  const goal = (t) => t.room === 'vault' && t.lit === 3;
+  const ordered = findRoute(s, 'hall', goal, { plates: c.plates });
+  const unordered = findRoute(s, 'hall', goal, { plates: c.plates.map(({ after, ...p }) => p) });
+  assert.equal(ordered.length, 7, 'two laps of the corridor');
+  assert.equal(unordered.length, 4, 'one lap if order did not matter');
+});

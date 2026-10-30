@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 379 tests over the engine, campaign, renderer maths and walker
+npm test       # 393 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -23,7 +23,7 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 
 ## What is in it
 
-- **A campaign of six chapters and 35 challenges (the original 31 plus four physical ones)**, each chapter one discipline:
+- **A campaign of six chapters and 36 challenges (the original 31 plus four physical ones and a sequenced-plate puzzle)**, each chapter one discipline:
   The First Connection, The Architecture of Return, The Rooms That Should Not Fit,
   The Mechanical Interior, The Structure With Two Truths, The Last Construction.
   Every goal is checked by searching the real graph, not by triggers, and most have
@@ -38,6 +38,9 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 - **Rebindable keys**, camera comfort (look sensitivity, field of view, head bob) and a graphics quality choice in Settings.
 - **A soundscape per chapter**, synthesised in the browser (drones and drifting filtered noise), with cues for crossing a passage and for mirrors. Sound starts off. It is spatial: each room has a reverb set by its size and kind, the rooms beyond the doorways murmur from their direction (muffled when a gate is shut or a passage refuses you, clearer once a plate opens it), footsteps follow the chapter's floor material, and plates and sliding gates have their own sounds.
 - **Physical challenges**: you walk as a body on a grid, push crates (they cross passages, mirrored and turned with them), stand on weight plates and deliver crates to pads. The solver verifies them by searching pushes.
+- **Generated challenges** (title menu): seeded, five difficulties, built backwards from a hidden solution and checked by the engine (and, for the small ones, an exhaustive solver). The pause menu can show the solution.
+- **Propagation**: sound and light spread through the real passages, not across the plan. Gates dull them, and rooms borrow glow from connected rooms (`src/topology/propagation.js`).
+- **Sequenced plates**: a plate with `after` lights only once an earlier plate is lit (The Ordered Hall).
 - **A challenge editor** in the sandbox: several goals, optional objectives, plates, gates, crates, pads, heading requirements and step limits, all run on the campaign engine.
 - **Graphics presets** (high, medium, low) with dynamic resolution, shadows, bloom and ACES grading; a built-in benchmark (`?bench` or Settings, Run benchmark) that produces a report. No claim is made here about real phones: the benchmark has only been run on a software renderer in development, so run it on your own device.
 - **Objects**: plates (latch and toggle), gates, one-way passages, mirrors, quarter

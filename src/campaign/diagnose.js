@@ -45,7 +45,8 @@ export function diagnose(structure, chapter) {
     reasons.push(`No passage leads to ${name(to)} from ${name(start)} yet.`);
   }
 
-  for (const p of plates) {
+  for (const [i, p] of plates.entries()) {
+    if (p.after != null && plates[p.after]) reasons.push(`Plate ${i + 1} answers only once plate ${p.after + 1} has been struck.`);
     const facing = (t) => t.room === p.room && t.heading === p.heading;
     const ignoringGates = findRoute(structure, start, facing, { open: true, plates });
     if (!ignoringGates) {

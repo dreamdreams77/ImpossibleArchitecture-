@@ -45,7 +45,7 @@ export const DISCIPLINES = Object.freeze([
     theme: 'copper',
     intro: 'Some rooms do things. The building has hands now: plates that wait to be struck, gates that wait to be opened, crates that must be carried and set down.',
     outro: 'A mechanism is a route taken in the right order, facing the right way. Your constructions no longer only connect: they work.',
-    challenges: ['the-machine', 'sealed-wing', 'the-first-push', 'revolving-house', 'the-wheel', 'the-weighted-gate', 'the-freight', 'the-pad-room'],
+    challenges: ['the-machine', 'sealed-wing', 'the-ordered-hall', 'the-first-push', 'revolving-house', 'the-wheel', 'the-weighted-gate', 'the-freight', 'the-pad-room'],
   },
   {
     no: 5,

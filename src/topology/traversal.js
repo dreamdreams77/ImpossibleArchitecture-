@@ -61,12 +61,16 @@ function touchObjects(t) {
 //                      gives the building configurations that change as the
 //                      traveller moves through it.
 // `startsLit` sets the initial state of a toggle plate.
+// `after` (a plate index) makes a plate sequential: it lights only while that earlier plate is lit.
 // `lit` is a bitmask over the chapter's plate list, so a search can require a
 // particular sequence of arrivals without storing history.
 export function platesLitBy(plates, room, heading, lit = 0) {
   let out = lit;
   plates.forEach((p, i) => {
     if (p.room !== room || p.heading !== heading) return;
+    // A sequenced plate answers only once the plate it follows is lit: the order of arrivals is part
+    // of the state, carried in the same bitmask, so searches and replays need no history.
+    if (p.after != null && !(out & (1 << p.after))) return;
     const bit = 1 << i;
     if (p.mode === 'toggle') out ^= bit;
     else out |= bit;
