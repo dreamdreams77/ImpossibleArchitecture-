@@ -23,6 +23,7 @@ import { styleFor } from './styles.js';
 import { buildRoom } from './rooms.js';
 import { makePortalMaterial } from './portalMaterial.js';
 import { Post } from './post.js';
+import { ambientFrom } from '../topology/propagation.js';
 import {
   FACES, DOOR_W, DOOR_H, doorFrame, portalLocalTransform, planeBeyond, obliqueProjection,
   headingYaw,
@@ -809,12 +810,28 @@ export class WorldRenderer {
 
   // ---- lighting for the room being drawn ------------------------------------
 
+  // Light a room borrows from the lamps of the other rooms, 0..1, along the real passages: a room that
+  // opens onto others glows a little with them, an isolated one stands darker. Recomputed only when
+  // the set of passages changes.
+  _spill(roomId) {
+    const st = this.structure;
+    if (!st) return 0;
+    const sig = [...st.portals.values()].map((p) => `${p.id}${p.gate ?? ''}`).join(',') + `|${st.rooms.size}`;
+    if (this._spillSig !== sig) {
+      this._spillSig = sig;
+      this._spillMap = new Map();
+      const all = [...st.rooms.keys()];
+      for (const id of all) this._spillMap.set(id, ambientFrom(st, id, all.filter((r) => r !== id)));
+    }
+    return this._spillMap.get(roomId) ?? 0;
+  }
+
   _lightFor(entry, W, depth = 0) {
     const s = entry.style;
     const k = s.exposure;
     this.hemi.color.set(s.sky);
     this.hemi.groundColor.set(s.ground);
-    this.hemi.intensity = s.ambient * 0.9 * k;
+    this.hemi.intensity = s.ambient * 0.9 * k * (0.85 + 0.3 * this._spill(entry.id));
     const dir = new THREE.Vector3(...s.sun.dir).normalize().transformDirection(W);
     const center = new THREE.Vector3().setFromMatrixPosition(W);
     this.sun.color.set(s.sun.color);

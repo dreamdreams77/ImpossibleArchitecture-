@@ -56,9 +56,12 @@ export function roomAcoustics(size = 1, kind = 'chamber') {
 // listener faces and the door (0 straight ahead, positive to the right). An open doorway lets the next
 // room through clearly; a shut gate or a refused one-way passage muffles it, which is how the sound
 // tells you the building has changed when a plate lights.
-export function neighbourMix({ shut = false, blocked = false, rel = 0 } = {}) {
+export function neighbourMix({ shut = false, blocked = false, rel = 0, reach = null } = {}) {
   const open = !shut && !blocked;
   let gain = open ? 0.5 : blocked ? 0.07 : 0.14;
+  // With a propagation result, everything beyond the doorway counts, not only the next room: a long
+  // open enfilade carries more than a single closet, and a deep room behind a shut gate carries nothing.
+  if (reach != null) gain = Math.min(0.7, gain * (0.5 + 1.2 * reach));
   const cutoff = open ? 2600 : blocked ? 380 : 520;
   if (Math.cos(rel) < 0) gain *= 0.7; // behind you
   return { gain, cutoff, pan: Math.max(-0.9, Math.min(0.9, Math.sin(rel) * 0.9)) };

@@ -11,6 +11,7 @@ import { drawPlan, drawGraph } from '../render/draw.js';
 import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, describeFirstPerson, fpZoneFor } from '../render/firstperson.js';
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
+import { throughFaces } from '../topology/propagation.js';
 import { fitViewFor, transitionProgress, snapTo } from '../render/view.js';
 import { sightlines } from '../topology/traversal.js';
 import { themeFor } from '../render/themes.js';
@@ -737,13 +738,14 @@ export function boot() {
     sound.setRoom(room.size, room.kind);
     const FACES = ['N', 'E', 'S', 'W'];
     const base = FACES.indexOf(w.heading);
+    const reach = throughFaces(session.structure, w.room, 'sound', { lit: w.lit ?? 0 });
     const list = [];
     for (const face of FACES) {
       const exit = session.structure.exit(w.room, face);
       if (!exit) continue;
       const rel = ((FACES.indexOf(face) - base + 4) % 4) * (Math.PI / 2);
       const shut = exit.gate != null && !(((w.lit ?? 0) >> exit.gate) & 1);
-      list.push({ rel: rel > Math.PI ? rel - 2 * Math.PI : rel, shut: shut || exit.opensAfter != null, blocked: exit.blocked });
+      list.push({ rel: rel > Math.PI ? rel - 2 * Math.PI : rel, shut: shut || exit.opensAfter != null, blocked: exit.blocked, reach: reach[face] ?? 0 });
     }
     sound.setNeighbours(list);
   }
