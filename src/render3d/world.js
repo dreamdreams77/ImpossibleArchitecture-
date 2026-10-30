@@ -864,6 +864,13 @@ export class WorldRenderer {
     ];
   }
 
+  // After a context loss: GPU-side resources made from render targets are gone.
+  recover() {
+    this.envs.clear();
+    for (const rt of this.pool.values()) rt.dispose();
+    this.pool.clear();
+  }
+
   dispose() {
     for (const rt of this.pool.values()) rt.dispose();
     for (const e of this.rooms.values()) this._disposeRoom(e);

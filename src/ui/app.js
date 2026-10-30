@@ -20,6 +20,7 @@ import { encodeProgress, decodeProgress, SHARE_LIMIT } from '../persistence/shar
 import { createPinch } from './pinch.js';
 import { createGlView } from './glview.js';
 import { debugReport } from './debugreport.js';
+import { ACTIONS, loadBindings, saveBindings, rebind, translate } from './keybindings.js';
 import { copyText, canvasRatio } from './platform.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -41,6 +42,18 @@ export function boot() {
   const gctx = graph.getContext('2d');
   const slots = new SaveSlots(window.localStorage);
   const glCanvas = $('#gl');
+  let bindings = loadBindings(window.localStorage);
+  // Rebound keys are translated before any handler sees them (capture phase, first listener).
+  window.addEventListener('keydown', (evt) => {
+    if (typeof capturing !== 'undefined' && capturing) return;
+    if (evt.ctrlKey || evt.metaKey || evt.altKey || evt.key.length !== 1 || evt.isTrusted === false) return;
+    if (evt.target.matches?.('input, textarea, select')) return;
+    const mapped = translate(bindings, evt.key);
+    if (mapped === evt.key) return;
+    evt.stopImmediatePropagation();
+    evt.preventDefault();
+    if (mapped) (evt.target ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: mapped, bubbles: true, cancelable: true, repeat: evt.repeat, shiftKey: evt.shiftKey }));
+  }, true);
 
   const saved = loadProgress();
   const session = new Session({ chapterId: saved?.lastChapter ?? CHAPTERS[0].id, progress: saved?.progress });
@@ -97,8 +110,10 @@ export function boot() {
       render();
     },
     onSelectRoom: (id) => { session.selectRoom(id); render(); },
+    onLost: () => { session.feedback = { kind: 'error', text: 'The 3D view lost its graphics context. Showing the 2D views until it returns.' }; setView(viewMode); },
+    onRestored: () => { session.feedback = { kind: 'info', text: 'The 3D view is back.' }; setView(viewMode); },
   });
-  const glMode = () => gl && (viewMode === 'first' || viewMode === 'model');
+  const glMode = () => gl && !gl.lost && (viewMode === 'first' || viewMode === 'model');
 
   populateChapters();
 
@@ -132,7 +147,7 @@ export function boot() {
     viewMode = mode;
     try { localStorage.setItem('ia-view', mode); } catch { /* not remembered */ }
     plan.hidden = mode !== 'plan';
-    const useGl = !!gl && (mode === 'first' || mode === 'model');
+    const useGl = !!gl && !gl.lost && (mode === 'first' || mode === 'model');
     fpCanvas.hidden = useGl || mode !== 'first';
     modelCanvas.hidden = useGl || mode !== 'model';
     gl?.setVisible(useGl);
@@ -391,7 +406,43 @@ export function boot() {
     $('#set-speed').value = $('#speed').value;
     $('#set-quality').value = savedQuality;
     $('#set-quality').disabled = !gl;
+    fillKeyList();
   }
+
+  // The key bindings list in Settings: press a button, then the new key.
+  let capturing = null;
+  function fillKeyList() {
+    const box = $('#key-list');
+    box.innerHTML = '';
+    for (const a of ACTIONS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'keybind';
+      b.dataset.action = a.id;
+      b.textContent = capturing === a.id ? `${a.label}: press a key…` : `${a.label}: ${bindings[a.id].toUpperCase()}`;
+      b.addEventListener('click', () => { capturing = a.id; $('#key-note').textContent = ''; fillKeyList(); b.focus(); });
+      box.appendChild(b);
+    }
+  }
+  window.addEventListener('keydown', (evt) => {
+    if (!capturing) return;
+    evt.preventDefault();
+    evt.stopImmediatePropagation();
+    if (evt.key === 'Escape') { capturing = null; fillKeyList(); return; }
+    const r = rebind(bindings, capturing, evt.key);
+    if (r.error) { $('#key-note').textContent = r.error; return; }
+    bindings = r.bindings;
+    saveBindings(window.localStorage, bindings);
+    capturing = null;
+    $('#key-note').textContent = '';
+    fillKeyList();
+  }, true);
+  $('#key-reset').addEventListener('click', () => {
+    bindings = loadBindings(null);
+    saveBindings(window.localStorage, bindings);
+    capturing = null;
+    fillKeyList();
+  });
 
   function showComplete(chapterId) {
     if (session.isFinished() && !session.sandbox) { showEnding(); return; }
@@ -592,7 +643,7 @@ export function boot() {
       lastSaveAt = now;
       render(); // also saves the time spent so far
     }
-    if (session.fpPlay && now - fpTickAt > 650 / walkSpeed) {
+    if (session.fpPlay && now - fpTickAt > 650 / walkSpeed && !(glMode() && gl.walkerBusy)) {
       fpTickAt = now;
       const gateBefore = gateAhead();
       const litBefore = session.fp?.lit ?? 0;

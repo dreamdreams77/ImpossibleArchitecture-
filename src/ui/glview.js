@@ -16,7 +16,7 @@ export function glSupported() {
 }
 
 // Creates the view, or returns null where WebGL is unavailable (the app then keeps its 2D views).
-export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, settings = {} }) {
+export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onLost, onRestored, settings = {} }) {
   if (!glSupported()) return null;
   const params = new URLSearchParams(globalThis.location?.search ?? '');
   let quality = params.get('quality') ?? settings.quality ?? 'high';
@@ -47,6 +47,11 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   let slow = 0;
   let debugOn = world.debug;
   const pinch = createPinch();
+  let lost = false;
+  // A lost context cannot draw. Say so, let the app fall back to the 2D views, and
+  // rebuild the renderer's GPU resources if the browser gives the context back.
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; hud && (hud.hidden = true); onLost?.(); });
+  canvas.addEventListener('webglcontextrestored', () => { world.recover(); lastStructure = null; lost = false; onRestored?.(); });
 
   function halfOf(id) {
     return halfWidth(session.structure.rooms.get(id)?.size ?? 1);
@@ -140,12 +145,12 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function updateHud(walkerState) {
     if (!hud) return;
     const room = walkerState && session.structure.rooms.get(walkerState.room);
-    const key = `${mode}|${walkerState?.room}|${walkerState?.heading}|${room?.label}`;
+    const key = `${mode}|${walkerState?.room}|${walkerState?.heading}|${room?.label}|${walkerState?.carry}`;
     if (key === hudKey) return;
     hudKey = key;
     const chips = LEGEND.map(([c, t]) => `<span class="chip"><i style="background:${c}"></i>${t}</span>`).join('');
     if (mode === 'first') {
-      hud.innerHTML = `<div class="gl-place"><strong>${esc(room?.label || walkerState?.room || '')}</strong><span>facing ${walkerState?.heading ?? ''}</span></div>`
+      hud.innerHTML = `<div class="gl-place"><strong>${esc(room?.label || walkerState?.room || '')}</strong><span>facing ${walkerState?.heading ?? ''}</span>${walkerState?.carry >= 0 ? `<span class="carry">carrying crate ${walkerState.carry + 1}</span>` : ''}</div>`
         + `<div class="gl-legend">${chips}</div>`
         + '<div class="gl-hint">drag to look · arrows or click the edges to turn · up or click the middle to walk</div>';
     } else {
@@ -248,6 +253,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     world,
     walker,
     get mode() { return mode; },
+    get lost() { return lost; },
     setMode,
     setVisible,
     resize,
