@@ -534,7 +534,8 @@ export function buildRoom(spec, lib) {
     lampSprites.push(s);
     return s;
   };
-  for (const [x, y, z] of sconces) addGlow(x, y, z, style.lamp, 0.9, 0.45);
+  // Sconces glow in the style's accent, a second colour against the lamp's, so a room is never one hue.
+  for (const [x, y, z] of sconces) addGlow(x, y, z, style.accent, 1.0, 0.5);
   if (split) {
     lights.push({ x: -hw * 0.5, y: lampY, z: 0, color: style.warm, intensity: style.lampIntensity * 0.9 });
     lights.push({ x: hw * 0.5, y: lampY, z: 0, color: style.cool, intensity: style.lampIntensity * 0.9 });
