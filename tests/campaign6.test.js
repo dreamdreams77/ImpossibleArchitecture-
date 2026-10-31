@@ -91,9 +91,13 @@ test('The Seam: the forbidden link is refused, and the hub with a returning pass
   assert.equal(direct.error, 'FORBIDDEN_LINK');
   assert.match(direct.violations[0].message, /never be joined/);
   // Two passages, each doing two jobs: strike a plate, and return to the Seam facing south.
-  const links = [['seam', 'N', 'warm', 'N', 1, true], ['seam', 'E', 'cool', 'N', 3, true]];
+  const links = [['seam', 'N', 'warm', 'N', 3], ['seam', 'E', 'cool', 'N', 1]];
   assert.ok(solves('the-seam', links));
-  assert.deepEqual(discoveriesIn(...(() => { const r = build('the-seam', links); return [r.s, r.c]; })()), ['two-routes']);
+  assert.deepEqual(discoveriesIn(...(() => { const r = build('the-seam', links); return [r.s, r.c]; })()), []);
+  // A mirror on the warm passage still solves it (a reflected twist turns the same way back) and earns the discovery.
+  const mirrored = [['seam', 'N', 'warm', 'N', 3, true], links[1]];
+  assert.ok(solves('the-seam', mirrored));
+  assert.deepEqual(discoveriesIn(...(() => { const r = build('the-seam', mirrored); return [r.s, r.c]; })()), ['two-routes']);
   // The same faces with no turn or mirror light the plates but leave you facing the wrong way.
   assert.equal(solves('the-seam', [['seam', 'N', 'warm', 'N'], ['seam', 'E', 'cool', 'N']]), false);
   // One passage cannot serve both wings.

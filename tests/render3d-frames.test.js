@@ -29,11 +29,14 @@ test('geometry agrees with the engine entry heading for every face pair, turn an
     const engine = s.exit('a', fa).entryHeading;
     const T = portalLocalTransform({ faceA: fa, halfA: 4, faceB: fb, halfB: 4, mirror });
     const geo = geometricArrivalHeading(fa, T);
-    // The geometry looks straight into the room; the engine adds the quarter turns and the mirror reflection.
-    const reflect = { N: 'N', S: 'S', E: 'W', W: 'E' };
-    const turned = rotateFace(geo, turns);
-    assert.equal(mirror ? reflect[turned] : turned, engine, `${fa}->${fb} turns ${turns} mirror ${mirror}`);
-    assert.equal(yawHeading(headingYaw(geo) + arrivalTurn(turns)), turned);
+    // The geometry carries the traveller straight in (a mirror reflects across the line of travel, so it
+    // never turns them round); the engine then adds the quarter turns.
+    assert.equal(rotateFace(geo, turns), engine, `${fa}->${fb} turns ${turns} mirror ${mirror}`);
+    assert.equal(yawHeading(headingYaw(geo) + arrivalTurn(turns)), engine);
+    // And from the other end, with the inverse transform and the turns the engine applies that way.
+    const back = s.exit('b', fb);
+    const Tb = portalLocalTransform({ faceA: fb, halfA: 4, faceB: fa, halfB: 4, mirror });
+    assert.equal(yawHeading(headingYaw(geometricArrivalHeading(fb, Tb)) + arrivalTurn(back.turnsApplied)), back.entryHeading, `back ${fb}->${fa}`);
     checked++;
   }
   assert.equal(checked, 128);

@@ -12,15 +12,34 @@ walk from one room to another is decided by portals alone.
 
 ## Traversal
 
-The traveller's state is `(room, heading)`. Walking through a face follows the
-portal attached to that face. On arrival, the heading is the opposite of the
-entry face, rotated by the portal's turns, and reflected if the portal is mirrored.
+The traveller's state is `(room, heading, mirrored)`: where they are, which way they face, and their
+reflection parity (whether their left and right are exchanged).
 
-Because the arrival heading comes from the portal, not from how you approached,
-the same portal always produces the same heading. A loop with a quarter-turn
-therefore returns you to its own room facing a fixed, different direction. You
-cannot spin the loop to change your heading. You change it by reshaping the
-portal, which is what the Twisted Stair and Closing Construction chapters ask for.
+Each portal is a map between the two rooms' compasses, an element of the symmetry group of the square:
+
+- **Straight in.** Leaving through face `f` of A, the traveller enters B through the portal's face `g`
+  and faces straight into the room: the opposite of `g`.
+- **Mirror.** A mirrored portal reflects across the line of travel. The traveller still walks straight
+  in (a mirror never turns anyone round), but their handedness flips: `mirrored` toggles. In the walk
+  view the picture is shown as its mirror image from that moment, and turning left or right goes the
+  other way round the compass, so what you saw through the mirrored doorway is exactly what you see
+  once through it. A second mirror restores you.
+- **Turns.** The traveller is then turned by the portal's quarter turns (clockwise seen from above).
+
+Crossing from the portal's `b` end applies the inverse map. For a plain twisted portal that means the
+turn is undone on the way back (`-turns`); a reflection combined with a rotation is its own inverse, so a
+mirrored twisted portal turns the same way from either end. Walking through a portal and back through it
+is therefore always the identity on the traveller's frame, and a chain of crossings composes as the
+product of the maps, with parity the product of their signs.
+
+`tests/passage-algebra.test.js` checks all of this against an independent model (compass vectors and 2x2
+matrices), for every face pair, turn and mirror, both directions, self-loops, random chains, and the 3D
+crossing matrices the walk view uses (whose determinant is negative exactly when the portal mirrors).
+
+Because the arrival heading comes from the portal, not from how you approached, the same portal always
+produces the same heading. A loop with a quarter-turn therefore returns you to its own room facing a fixed,
+different direction, and a loop with one mirror returns you as your own reflection. Goals and plates may
+ask for a heading, a parity, or both.
 
 ## Verifying a construction
 

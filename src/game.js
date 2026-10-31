@@ -471,7 +471,9 @@ export class Session {
 
   fpTurn(dir) {
     if (!this.fpEnsure()) return false;
-    this.fp = { ...this.fp, heading: rotateFace(this.fp.heading, dir === 'right' ? 1 : -1) };
+    // A reflected traveller's right is the world's left: their turns go the other way round the compass.
+    const cw = (dir === 'right') !== !!this.fp.mirrored;
+    this.fp = { ...this.fp, heading: rotateFace(this.fp.heading, cw ? 1 : -1) };
     return true;
   }
 
@@ -495,7 +497,7 @@ export class Session {
       };
       return false;
     }
-    next.lit = platesLitBy(plates, next.room, next.heading, next.lit);
+    next.lit = platesLitBy(plates, next.room, next.heading, next.lit, next.mirrored);
     this.fp = next;
     this.feedback = { kind: 'info', text: `In ${this.structure.rooms.get(next.room).label || next.room}, facing ${next.heading}.` };
     const deed = cargoEventText(this.structure, this.active, next.events);

@@ -974,7 +974,7 @@ export class WorldRenderer {
     cam.projectionMatrix.copy(this.baseProjection);
     // `plain` strips bloom, vignette and grading so a test can read the geometry's own pixels.
     const grade = this.plain ? { ...entry.style.grade, vignette: 0, exposure: 1, saturation: 1, contrast: 1, lift: [0, 0, 0], tint: [1, 1, 1] } : entry.style.grade;
-    this.post.render(grade, { bloom: this.plain ? 0 : this.q.bloom, threshold: 1.25, time });
+    this.post.render(grade, { bloom: this.plain ? 0 : this.q.bloom, threshold: 1.25, time, flip: !!pose.mirrored });
     this.stats.drawCalls = this.renderer.info.render.calls;
     this.stats.triangles = this.renderer.info.render.triangles;
     this.stats.rooms = this.rooms.size;

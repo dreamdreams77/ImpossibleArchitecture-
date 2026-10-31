@@ -255,3 +255,4 @@ body.panel-hidden .ending-screen { inset: 0; }
 .objective { font-size: 13px; }
 .perf { display: grid; gap: 6px; margin-top: 8px; }
 .bench-text { margin: 0 0 10px; max-height: 50vh; overflow: auto; white-space: pre-wrap; font: 11px/1.45 ui-monospace, Menlo, monospace; }
+.gl-place .reflected { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: rgba(176, 140, 255, 0.28); border: 1px solid rgba(196, 170, 255, 0.6); opacity: 1; }

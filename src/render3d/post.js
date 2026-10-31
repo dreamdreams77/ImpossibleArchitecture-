@@ -37,13 +37,16 @@ const COMPOSE = /* glsl */`
 uniform sampler2D tScene; uniform sampler2D tBloom0; uniform sampler2D tBloom1; uniform sampler2D tBloom2;
 uniform float bloom; uniform float exposure; uniform vec3 lift; uniform vec3 gain; uniform vec3 tint;
 uniform float saturation; uniform float contrast; uniform float vignette; uniform float seed; uniform vec2 res;
+uniform float flipX;
 varying vec2 vUv;
 vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
 vec3 toSrgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
 float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + seed) * 43758.5453); }
 void main(){
-  vec3 c = texture2D(tScene, vUv).rgb;
-  vec3 b = texture2D(tBloom0, vUv).rgb * 0.5 + texture2D(tBloom1, vUv).rgb * 0.35 + texture2D(tBloom2, vUv).rgb * 0.25;
+  // A reflected traveller sees the world mirrored left to right: the whole picture is flipped.
+  vec2 uv = vec2(mix(vUv.x, 1.0 - vUv.x, flipX), vUv.y);
+  vec3 c = texture2D(tScene, uv).rgb;
+  vec3 b = texture2D(tBloom0, uv).rgb * 0.5 + texture2D(tBloom1, uv).rgb * 0.35 + texture2D(tBloom2, uv).rgb * 0.25;
   c += b * bloom;
   c *= exposure;
   c = aces(c);
@@ -81,7 +84,7 @@ export class Post {
       tScene: { value: null }, tBloom0: { value: null }, tBloom1: { value: null }, tBloom2: { value: null },
       bloom: { value: 0.3 }, exposure: { value: 1 }, lift: { value: new Vector3() }, gain: { value: new Vector3(1, 1, 1) },
       tint: { value: new Vector3(1, 1, 1) }, saturation: { value: 1 }, contrast: { value: 1 }, vignette: { value: 0.3 },
-      seed: { value: 0 }, res: { value: new Vector2(1, 1) },
+      seed: { value: 0 }, res: { value: new Vector2(1, 1) }, flipX: { value: 0 },
     });
   }
 
@@ -112,7 +115,7 @@ export class Post {
   }
 
   // Draws the scene target to the screen. `grade` is a style's grade; `bloom` 0 skips the chain.
-  render(grade = DEFAULT_GRADE, { bloom = 0.3, threshold = 1.0, time = 0 } = {}) {
+  render(grade = DEFAULT_GRADE, { bloom = 0.3, threshold = 1.0, time = 0, flip = false } = {}) {
     const t = this.targets;
     const g = { ...DEFAULT_GRADE, ...grade };
     let b0 = t.a[0]; let b1 = t.a[1]; let b2 = t.a[2];
@@ -143,6 +146,7 @@ export class Post {
     u.saturation.value = g.saturation; u.contrast.value = g.contrast; u.vignette.value = g.vignette;
     u.seed.value = (time * 17.0) % 100;
     u.res.value.set(this.size.x, this.size.y);
+    u.flipX.value = flip ? 1 : 0;
     this.fullscreen(this.compose, null);
   }
 

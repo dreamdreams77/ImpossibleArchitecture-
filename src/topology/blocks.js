@@ -153,9 +153,10 @@ export function move(structure, state, dir, ctx) {
     out.room = p.exit.room;
     out.cell = arrive;
     out.heading = p.exit.entryHeading;
+    out.mirrored = !!state.mirrored !== !!p.exit.mirror;
     out.trail = [...state.trail, p.exit.room];
     // Arrival can strike or flip an ordinary plate; a weight plate has no heading and ignores arrivals.
-    out.lit = platesLitBy(ctx.plates.map((q) => (q.mode === 'weight' ? { ...q, heading: null } : q)), p.exit.room, p.exit.entryHeading, state.lit);
+    out.lit = platesLitBy(ctx.plates.map((q) => (q.mode === 'weight' ? { ...q, heading: null } : q)), p.exit.room, p.exit.entryHeading, state.lit, out.mirrored);
     return { state: out, push: pushed ?? undefined, crossed: { from: state.room, to: p.exit.room, face: dir, toFace: p.exit.face } };
   }
 

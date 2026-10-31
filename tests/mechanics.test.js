@@ -234,14 +234,14 @@ test('The Mirror Lock: unsolved at first, solved by one way back from each dead 
   assert.ok(c.optional[0].check(s), 'this solution already walks it in seven');
 });
 
-test('The Weathervane has exactly one answer: a mirrored passage from the Spire to the Bell', () => {
+test('The Weathervane has exactly one answer: a mirrored quarter-turn passage from the Spire to the Bell', () => {
   const c = chapterById('the-weathervane');
   const s = chapterStructure(c);
   assert.equal(goalSatisfied(s, c), false);
-  s.addPortal({ a: 'c', aFace: 'S', b: 'e', bFace: 'E', transform: { turns: 0, mirror: false } });
-  assert.equal(goalSatisfied(s, c), false, 'the plain passage lands the wrong way');
+  s.addPortal({ a: 'c', aFace: 'S', b: 'e', bFace: 'E', transform: { turns: 1, mirror: false } });
+  assert.equal(goalSatisfied(s, c), false, 'without the mirror the walk back undoes the turn the wrong way');
   const t = chapterStructure(c);
-  t.addPortal({ a: 'c', aFace: 'S', b: 'e', bFace: 'E', transform: { turns: 0, mirror: true } });
+  t.addPortal({ a: 'c', aFace: 'S', b: 'e', bFace: 'E', transform: { turns: 1, mirror: true } });
   assert.equal(goalSatisfied(t, c), true);
   assert.equal(c.optional[0].check(t), false, 'no loop yet');
   t.addPortal({ a: 'c', aFace: 'E', b: 'c', bFace: 'W', transform: { turns: 0, mirror: false } }); // the Spire opens onto itself

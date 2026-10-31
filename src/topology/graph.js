@@ -146,20 +146,22 @@ export class Structure {
     const dest = end === 'a' ? portal.b : portal.a;
     const blocked = portal.oneWay != null && portal.oneWay !== end;
     const t = portal.transform;
-    // Heading on entry is the opposite of the exit face, rotated by the
-    // portal's turns, and mirrored if the portal reflects space.
-    let entryFace = OPPOSITE[dest.face];
-    entryFace = rotateFace(entryFace, t.turns);
-    if (t.mirror) {
-      // Reflection across the vertical axis of the crossing frame.
-      if (entryFace === 'E') entryFace = 'W';
-      else if (entryFace === 'W') entryFace = 'E';
-    }
+    // A passage is a map between the two rooms' frames: carry the traveller straight in through the
+    // destination face, then turn them by the passage's quarter turns. Crossing from the b end applies
+    // the inverse map, so a twist is undone on the way back. A mirror reflects across the line of
+    // travel: the traveller still faces straight in, but their left and right are exchanged (tracked as
+    // parity by the traveller and the walk view). Reflection-with-rotation is its own inverse, so a
+    // mirrored passage turns the same way from either end.
+    const forward = end === 'a';
+    const applied = t.mirror || forward ? t.turns : -t.turns;
+    const entryFace = rotateFace(OPPOSITE[dest.face], applied);
     return {
       room: dest.room,
       face: dest.face,
       entryHeading: entryFace,
       transform: t,
+      turnsApplied: ((applied % 4) + 4) % 4,
+      mirror: !!t.mirror,
       portalId: portal.id,
       gate: portal.gate ?? null,
       also: portal.also ?? [],

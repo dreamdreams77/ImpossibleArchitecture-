@@ -63,6 +63,15 @@ export function diagnose(structure, chapter) {
     }
   }
 
+  if (reachable && goal.mirrored != null) {
+    const parity = findRoute(structure, start, (t) => t.room === to && !!t.mirrored === !!goal.mirrored, { open: true, plates });
+    if (!parity) {
+      reasons.push(goal.mirrored
+        ? `${name(to)} must be entered as your own reflection: an odd number of mirrored passages on the way.`
+        : `${name(to)} must be entered unreflected: an even number of mirrored passages on the way.`);
+    }
+  }
+
   // Delivery gates: a passage that waits for a crate to be delivered.
   const pred = goalPredicate(chapter);
   const gated = [...structure.portals.values()].filter((p) => p.opensAfter != null);

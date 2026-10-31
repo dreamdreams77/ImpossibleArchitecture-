@@ -183,12 +183,12 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function updateHud(walkerState) {
     if (!hud) return;
     const room = walkerState && session.structure.rooms.get(walkerState.room);
-    const key = `${mode}|${session.physical}|${previewNote}|${session.pendingFace?.room}${session.pendingFace?.face}|${walkerState?.room}|${walkerState?.heading}|${room?.label}|${walkerState?.carry}`;
+    const key = `${mode}|${session.physical}|${previewNote}|${session.pendingFace?.room}${session.pendingFace?.face}|${walkerState?.room}|${walkerState?.heading}|${room?.label}|${walkerState?.carry}|${walkerState?.mirrored}`;
     if (key === hudKey) return;
     hudKey = key;
     const chips = LEGEND.map(([c, t]) => `<span class="chip"><i style="background:${c}"></i>${t}</span>`).join('');
     if (mode === 'first') {
-      hud.innerHTML = `<div class="gl-place"><strong>${esc(room?.label || walkerState?.room || '')}</strong><span>facing ${walkerState?.heading ?? ''}</span>${walkerState?.carry >= 0 ? `<span class="carry">carrying crate ${walkerState.carry + 1}</span>` : ''}</div>`
+      hud.innerHTML = `<div class="gl-place"><strong>${esc(room?.label || walkerState?.room || '')}</strong><span>facing ${walkerState?.heading ?? ''}</span>${walkerState?.mirrored ? '<span class="reflected" title="An odd number of mirrored passages: your left and right are exchanged. Another mirror restores you.">reflected</span>' : ''}${walkerState?.carry >= 0 ? `<span class="carry">carrying crate ${walkerState.carry + 1}</span>` : ''}</div>`
         + `<div class="gl-legend">${chips}</div>`
         + `<div class="gl-hint">${session.physical ? 'push blocks, never pull · ▲ walk · ▼ step back · ◀ ▶ turn · a lit plate holds its gate open' : 'drag to look · arrows or click the edges to turn · up or click the middle to walk'}</div>`;
     } else {
@@ -315,7 +315,8 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       if (g) { const p = world.worldToPlan(g); onMoveRoom?.(drag.room.id, p.x - drag.room.offX, p.y - drag.room.offY, 'move'); }
       return;
     }
-    if (mode === 'first') walker.look(dx * 0.005 * (settings.look?.() ?? 1), dy * 0.0035 * (settings.look?.() ?? 1));
+    // A reflected traveller's screen is mirrored, so a drag to the right must turn the world the other way.
+    if (mode === 'first') walker.look((walker.mirrored ? -1 : 1) * dx * 0.005 * (settings.look?.() ?? 1), dy * 0.0035 * (settings.look?.() ?? 1));
     else {
       orbit.azimuth -= dx * 0.006;
       orbit.elevation = clamp(orbit.elevation + dy * 0.005, 0.12, 1.5);

@@ -44,8 +44,9 @@ export class Walker {
   }
 
   // Put the walker at rest in the middle of a room, facing a heading.
-  snap(room, heading) {
+  snap(room, heading, mirrored = this.mirrored ?? false) {
     this.room = room;
+    this.mirrored = !!mirrored;
     this.x = 0;
     this.z = 0;
     this.yaw = headingYaw(heading);
@@ -70,7 +71,7 @@ export class Walker {
     this.key = key;
     this.last = { room: state.room, heading: state.heading, steps: state.steps ?? 0 };
     if (!prev || this.room == null || this.reduceMotion) {
-      this.snap(state.room, state.heading);
+      this.snap(state.room, state.heading, state.mirrored);
       return;
     }
     this.finish();
@@ -92,7 +93,7 @@ export class Walker {
       }
     }
     if (exit) this._planStep(face, prev, exit, state, halfOf);
-    else this.snap(state.room, state.heading);
+    else this.snap(state.room, state.heading, state.mirrored);
   }
 
   // ---- physical play: the body moves a cell at a time --------------------------------------
@@ -110,7 +111,7 @@ export class Walker {
     };
     const [tx, tz] = at(state.room, state.cell);
     if (!prev || this.room == null || this.reduceMotion || !prev.cell) {
-      this.snap(state.room, state.heading);
+      this.snap(state.room, state.heading, state.mirrored);
       this.x = tx; this.z = tz;
       return;
     }
@@ -120,7 +121,7 @@ export class Walker {
       this.queue.push({ room: state.room, to: { x: this.x, z: this.z, yaw: target }, dur: 0.22, ease: smooth });
       return;
     }
-    if (state.steps !== prev.steps + 1) { this.snap(state.room, state.heading); this.x = tx; this.z = tz; return; }
+    if (state.steps !== prev.steps + 1) { this.snap(state.room, state.heading, state.mirrored); this.x = tx; this.z = tz; return; }
     if (state.room === prev.room) { // one cell, keeping the way the body faces
       this.queue.push({ room: state.room, to: { x: tx, z: tz, yaw: this.yaw }, dur: 0.17, ease: smooth, move: true });
       return;
@@ -128,7 +129,7 @@ export class Walker {
     // Through a doorway: out along the door's line to the portal surface, across, in to the cell.
     const face = state.lastDir;
     const exit = face && structure.exit(prev.room, face);
-    if (!exit || exit.room !== state.room) { this.snap(state.room, state.heading); this.x = tx; this.z = tz; return; }
+    if (!exit || exit.room !== state.room) { this.snap(state.room, state.heading, state.mirrored); this.x = tx; this.z = tz; return; }
     const hA = halfOf(prev.room); const hB = halfOf(state.room);
     const n = FACE_NORMAL[face];
     const reach = hA + WALL_T;
@@ -227,6 +228,8 @@ export class Walker {
       const seg = this.queue[0];
       if (seg.cross) {
         seg.apply();
+        // A mirrored crossing reflects the traveller: from here the view is the mirror image.
+        if (seg.mirror) this.mirrored = !this.mirrored;
         events.push({ type: 'cross', mirror: seg.mirror, turns: seg.turns });
         this.queue.shift();
         continue;
@@ -260,6 +263,6 @@ export class Walker {
   pose() {
     const moving = this.queue.length > 0 && this.queue.some((s) => s.move);
     const bob = moving && this.bobOn ? Math.sin(this.bob) * 0.028 : 0;
-    return { room: this.room, pos: [this.x, EYE + bob, this.z], yaw: this.yaw + this.lookYaw, pitch: this.pitch + this.lookPitch };
+    return { room: this.room, pos: [this.x, EYE + bob, this.z], yaw: this.yaw + this.lookYaw, pitch: this.pitch + this.lookPitch, mirrored: !!this.mirrored };
   }
 }

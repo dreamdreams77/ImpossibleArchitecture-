@@ -58,12 +58,12 @@ test('the machine: plates must be struck on a single route, not separately', () 
   assert.equal(goalSatisfied(separate, c), false);
 });
 
-test('mirrored gallery: the second portal must reflect to face west', () => {
+test('mirrored gallery: the Gallery must be entered reflected', () => {
   const c = chapterById('mirrored-gallery');
   let s = build(c);
   s = join(s, { a: 'atrium', aFace: 'E', b: 'wing', bFace: 'W' });
   s = join(s, { a: 'wing', aFace: 'E', b: 'gallery', bFace: 'W' });
-  assert.equal(goalSatisfied(s, c), false, 'unmirrored arrival faces east');
+  assert.equal(goalSatisfied(s, c), false, 'unmirrored arrival is not reflected');
   const pid = [...s.portals.values()].find((p) => p.a.room === 'wing').id;
   s = reshapePortal(s, pid, { mirror: true }).structure;
   assert.equal(goalSatisfied(s, c), true);
@@ -256,7 +256,7 @@ test('the Cistern: the discovery needs the shaft to be passable, not just the pl
 test('the Reflecting Vault: a mirrored passage from the east lights the plate and opens the way', () => {
   const c = chapterById('reflecting-vault');
   let s = chapterStructure(c);
-  s = join(s, { a: 'hall', aFace: 'E', b: 'mirror-room', bFace: 'E', transform: { mirror: true } });
+  s = join(s, { a: 'hall', aFace: 'E', b: 'mirror-room', bFace: 'W', transform: { mirror: true } });
   s = join(s, { a: 'mirror-room', aFace: 'S', b: 'treasury', bFace: 'W' });
   assert.equal(goalSatisfied(s, c), true);
 });
@@ -264,9 +264,9 @@ test('the Reflecting Vault: a mirrored passage from the east lights the plate an
 test('the Reflecting Vault: the same passage without a mirror does not light the plate', () => {
   const c = chapterById('reflecting-vault');
   let s = chapterStructure(c);
-  s = join(s, { a: 'hall', aFace: 'E', b: 'mirror-room', bFace: 'E' });
+  s = join(s, { a: 'hall', aFace: 'E', b: 'mirror-room', bFace: 'W' });
   s = join(s, { a: 'mirror-room', aFace: 'S', b: 'treasury', bFace: 'W' });
-  assert.equal(goalSatisfied(s, c), false);
+  assert.equal(goalSatisfied(s, c), false, 'facing east but not reflected');
 });
 
 test('the Reflecting Vault: a loop with one mirror reveals the mirror-pair discovery', () => {
@@ -342,16 +342,16 @@ test('the Mirror Archive: the Stacks plate, the gate, and a reflected passage ar
   const c = chapterById('mirror-archive');
   let s = chapterStructure(c);
   s = join(s, { a: 'reading', aFace: 'S', b: 'stacks', bFace: 'S' });   // Stacks faces N: plate lit
-  s = join(s, { a: 'vault', aFace: 'N', b: 'archive', bFace: 'W', transform: { mirror: true } });
+  s = join(s, { a: 'vault', aFace: 'N', b: 'archive', bFace: 'E', transform: { mirror: true } });
   assert.equal(goalSatisfied(s, c), true);
   assert.equal(routeFor(s, c).headings.at(-1), 'W');
 });
 
-test('the Mirror Archive: without the mirror the Archive is reached facing east', () => {
+test('the Mirror Archive: without the mirror the Archive is reached facing west but unreflected', () => {
   const c = chapterById('mirror-archive');
   let s = chapterStructure(c);
   s = join(s, { a: 'reading', aFace: 'S', b: 'stacks', bFace: 'S' });
-  s = join(s, { a: 'vault', aFace: 'N', b: 'archive', bFace: 'W' });
+  s = join(s, { a: 'vault', aFace: 'N', b: 'archive', bFace: 'E' });
   assert.equal(goalSatisfied(s, c), false);
 });
 

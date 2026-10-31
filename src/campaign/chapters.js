@@ -99,7 +99,7 @@ const RAW = [
     id: 'mirrored-gallery',
     theme: 'verdigris',
     title: 'V. The Mirrored Gallery',
-    blurb: 'Two doorways, one reflection. The last room must be entered facing west.',
+    blurb: 'Two doorways, one reflection. Enter the Gallery as your own reflection.',
     rooms: [
       { id: 'atrium', x: 0, y: 0, label: 'Atrium' },
       { id: 'wing', x: 2, y: 0, label: 'Wing' },
@@ -107,8 +107,8 @@ const RAW = [
     ],
     ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 2 },
     start: 'atrium',
-    goal: { kind: 'arrive', to: 'gallery', heading: 'W' },
-    hint: 'Entering the Gallery from its west face faces you east. A mirror on that portal reflects the heading.',
+    goal: { kind: 'reach', to: 'gallery', mirrored: true },
+    hint: 'A mirror does not turn you round: you still walk straight in, but your left and right are exchanged. Select either passage and press Mirror.',
     optional: [],
   },
   {
@@ -266,10 +266,10 @@ const RAW = [
     ],
     ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 3 },
     start: 'hall',
-    // Starts unlit. Entering from the east faces west; a mirror turns that to east.
-    plates: [{ room: 'mirror-room', heading: 'E', mode: 'toggle', startsLit: false }],
+    // Starts unlit, and answers only a reflected traveller arriving facing east.
+    plates: [{ room: 'mirror-room', heading: 'E', mode: 'toggle', startsLit: false, mirrored: true }],
     goal: { kind: 'machine', to: 'treasury' },
-    hint: 'Entering the Mirror Room from the east faces west. A mirrored passage reflects that to east, which lights the plate.',
+    hint: 'Arrive in the Mirror Room facing east, reflected. A mirrored passage into its west face does both; mind that the plate is a toggle.',
     optional: [
       {
         id: 'mirror-pair',
@@ -326,7 +326,7 @@ const RAW = [
     id: 'mirror-archive',
     theme: 'copper',
     title: 'XV. The Mirror Archive',
-    blurb: 'The gate opens for the Stacks\' plate. The Vault\'s passage to the Archive reflects you, so you arrive facing west.',
+    blurb: 'The gate opens for the Stacks\' plate. Arrive in the Archive facing west, as your own reflection.',
     rooms: [
       { id: 'reading', x: 0, y: 0, label: 'Reading' },
       { id: 'stacks', x: 0, y: 3, label: 'Stacks' },
@@ -339,8 +339,8 @@ const RAW = [
     ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 3 },
     start: 'reading',
     plates: [{ room: 'stacks', heading: 'N' }],
-    goal: { kind: 'machine', to: 'archive', heading: 'W' },
-    hint: 'Enter the Stacks from the south so you face north, then take the gate east. From the Vault, a mirrored passage to the Archive\'s west face comes out facing west.',
+    goal: { kind: 'machine', to: 'archive', heading: 'W', mirrored: true },
+    hint: 'Enter the Stacks from the south so you face north, then take the gate east. From the Vault, a mirrored passage into the Archive\'s east face brings you in facing west, reflected.',
     optional: [],
   },
   {
@@ -445,7 +445,7 @@ const RAW = [
     id: 'the-long-corridor',
     theme: 'ash',
     title: 'XX. The Long Corridor',
-    blurb: 'The passage down from the Bank is one way. The last door must be mirrored to arrive facing east.',
+    blurb: 'The passage down from Turn is one way. Arrive at the End facing east, as your own reflection.',
     rooms: [
       { id: 'start', x: 0, y: 0, label: 'Start' },
       { id: 'turn', x: 3, y: 0, label: 'Turn' },
@@ -459,8 +459,8 @@ const RAW = [
     ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 3 },
     start: 'start',
     plates: [],
-    goal: { kind: 'machine', to: 'end', heading: 'E' },
-    hint: 'Connect Start to Turn on Start\'s east side, then Far to End on Far\'s west side with a mirror: the mirror turns the arrival around to face east.',
+    goal: { kind: 'machine', to: 'end', heading: 'E', mirrored: true },
+    hint: 'Connect Start to Turn on Start\'s east side, then Far to End\'s west face with a mirror: you walk in facing east, reflected.',
     optional: [],
   },
   {
@@ -622,7 +622,16 @@ export function bodySolution(structure, chapter, maxStates = 250000) {
   return per.get(chapter.id);
 }
 
+// A goal may also ask for a reflection parity (`mirrored: true` means the traveller must arrive as their
+// own reflection, false that they must not), on top of whatever else it asks.
 export function goalPredicate(chapter) {
+  const base = basePredicate(chapter);
+  const m = chapter.goal?.mirrored;
+  if (!base || m == null) return base;
+  return (t) => !!t.mirrored === !!m && base(t);
+}
+
+function basePredicate(chapter) {
   if (chapter.physical) return null; // judged by bodySolution, not by a traveller state
   const g = chapter.goal;
   const plates = chapter.plates ?? [];

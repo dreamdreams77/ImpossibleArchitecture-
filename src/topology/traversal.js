@@ -18,7 +18,7 @@ import { FACES } from './graph.js';
 // Each arrival records what happened in `events` for the walker and the route text.
 export function makeTraveller(roomId, heading = 'N', { open = false, cargo = [], depot = null, pads = [] } = {}) {
   const t = {
-    room: roomId, heading, steps: 0, trail: [roomId], headings: [heading], portals: [], lit: 0, open,
+    room: roomId, heading, mirrored: false, steps: 0, trail: [roomId], headings: [heading], portals: [], lit: 0, open,
     cargo, depot, pads, carry: -1, delivered: 0, events: [],
     where: cargo.map((c) => c.room), // the room each crate lies in, or null while carried or delivered
   };
@@ -61,13 +61,16 @@ function touchObjects(t) {
 //                      gives the building configurations that change as the
 //                      traveller moves through it.
 // `startsLit` sets the initial state of a toggle plate.
+// `mirrored` (optional) makes a plate answer only a traveller whose reflection parity matches.
 // `after` (a plate index) makes a plate sequential: it lights only while that earlier plate is lit.
 // `lit` is a bitmask over the chapter's plate list, so a search can require a
 // particular sequence of arrivals without storing history.
-export function platesLitBy(plates, room, heading, lit = 0) {
+export function platesLitBy(plates, room, heading, lit = 0, mirrored = false) {
   let out = lit;
   plates.forEach((p, i) => {
     if (p.room !== room || p.heading !== heading) return;
+    // A plate may answer only a reflected traveller (or only an unreflected one).
+    if (p.mirrored != null && !!p.mirrored !== !!mirrored) return;
     // A sequenced plate answers only once the plate it follows is lit: the order of arrivals is part
     // of the state, carried in the same bitmask, so searches and replays need no history.
     if (p.after != null && !(out & (1 << p.after))) return;
@@ -123,6 +126,8 @@ export function step(structure, traveller, face) {
   return touchObjects({
     room: exit.room,
     heading: exit.entryHeading,
+    // Reflection parity: each mirrored crossing exchanges the traveller's left and right.
+    mirrored: !!traveller.mirrored !== !!exit.mirror,
     steps: traveller.steps + 1,
     trail: [...traveller.trail, exit.room],
     headings: [...(traveller.headings ?? []), exit.entryHeading],
@@ -172,7 +177,7 @@ export function openFaces(structure, roomId) {
 // special cases. A visited set over (room, heading) guarantees termination
 // even when the graph contains spatial loops.
 export function findRoute(structure, startRoom, goal, { maxStates = 10000, plates = [], open = false, cargo = [], depot = null, pads = [] } = {}) {
-  const key = (t) => `${t.room}|${t.heading}|${t.lit}|${t.carry ?? -1}|${t.delivered ?? 0}|${(t.where ?? []).join(',')}`;
+  const key = (t) => `${t.room}|${t.heading}|${t.mirrored ? 1 : 0}|${t.lit}|${t.carry ?? -1}|${t.delivered ?? 0}|${(t.where ?? []).join(',')}`;
   const start = makeTraveller(startRoom, 'N', { open, cargo, depot, pads });
   start.lit = startingLit(plates, startRoom);
   const queue = [{ traveller: start, route: [] }];
@@ -185,7 +190,7 @@ export function findRoute(structure, startRoom, goal, { maxStates = 10000, plate
     for (const face of openFaces(structure, traveller.room)) {
       const moved = step(structure, traveller, face);
       if (!moved) continue;
-      moved.lit = platesLitBy(plates, moved.room, moved.heading, moved.lit);
+      moved.lit = platesLitBy(plates, moved.room, moved.heading, moved.lit, moved.mirrored);
       const k = key(moved);
       if (seen.has(k)) continue;
       seen.add(k);
@@ -214,7 +219,7 @@ export function replay(structure, startRoom, route, { plates = [], open = false,
   for (const face of route) {
     const next = step(structure, t, face);
     if (!next) return { ok: false, traveller: t, failedAt: face };
-    next.lit = platesLitBy(plates, next.room, next.heading, next.lit);
+    next.lit = platesLitBy(plates, next.room, next.heading, next.lit, next.mirrored);
     t = next;
   }
   return { ok: true, traveller: t };

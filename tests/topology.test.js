@@ -47,15 +47,19 @@ test('the portal fixes the entry heading, independent of approach', () => {
   assert.equal(twice.heading, 'E');
 });
 
-test('mirror transform reflects the heading across the crossing axis', () => {
+test('a mirror reflects across the line of travel: you still walk straight in, reflected', () => {
   const s = new Structure();
   const a = s.addRoom({ x: 0, y: 0 });
   const b = s.addRoom({ x: 0, y: 0 });
-  // Entering b through its W face; heading would be E, mirror makes it W.
+  // Entering b through its W face: the heading is E with or without the mirror; the mirror flips parity.
   s.addPortal({ a, aFace: 'E', b, bFace: 'W', transform: { mirror: true } });
   const t = step(s, makeTraveller(a, 'N'), 'E');
   assert.equal(t.room, b);
-  assert.equal(t.heading, 'W');
+  assert.equal(t.heading, 'E');
+  assert.equal(t.mirrored, true);
+  const back = step(s, t, 'W');
+  assert.equal(back.heading, 'W');
+  assert.equal(back.mirrored, false, 'a second reflection restores the traveller');
 });
 
 test('walls block movement', () => {

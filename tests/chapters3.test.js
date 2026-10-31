@@ -27,22 +27,22 @@ test('The Stillwater: the Reeds entered from the north stay dark, and the gate s
   assert.ok(diagnose(s, c).some((r) => /plate is shut by a gate/.test(r) || /face E in Reeds/.test(r)), diagnose(s, c).join(' | '));
 });
 
-test('The Long Corridor: with the mirror on the last door the far room is reached facing east', () => {
+test('The Long Corridor: with the mirror on the last door the end is reached facing east, reflected', () => {
   const c = chapterById('the-long-corridor');
   let s = chapterStructure(c);
   s = join(s, { a: 'start', aFace: 'E', b: 'turn', bFace: 'W' });
-  s = join(s, { a: 'far', aFace: 'W', b: 'end', bFace: 'E', transform: { mirror: true } });
+  s = join(s, { a: 'far', aFace: 'W', b: 'end', bFace: 'W', transform: { mirror: true } });
   assert.equal(goalSatisfied(s, c), true);
   assert.equal(routeFor(s, c).headings.at(-1), 'E');
 });
 
-test('The Long Corridor: without the mirror the end is reached facing west, and the goal is not met', () => {
+test('The Long Corridor: without the mirror the end is reached unreflected, and the goal is not met', () => {
   const c = chapterById('the-long-corridor');
   let s = chapterStructure(c);
   s = join(s, { a: 'start', aFace: 'E', b: 'turn', bFace: 'W' });
-  s = join(s, { a: 'far', aFace: 'W', b: 'end', bFace: 'E' });
+  s = join(s, { a: 'far', aFace: 'W', b: 'end', bFace: 'W' });
   assert.equal(goalSatisfied(s, c), false);
-  assert.ok(diagnose(s, c).some((r) => /must face E/.test(r)), diagnose(s, c).join(' | '));
+  assert.ok(diagnose(s, c).some((r) => /own reflection/.test(r)), diagnose(s, c).join(' | '));
 });
 
 test('The Long Corridor: the fixed one-way drop from Turn to Far cannot be climbed back', () => {

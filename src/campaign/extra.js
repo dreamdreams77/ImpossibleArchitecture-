@@ -204,7 +204,7 @@ export const EXTRA = [
     // gate to the Depot that waits for the Well and mirrors whoever passes, facing them east.
     fixed: [
       { a: { room: 'cellar', face: 'W' }, b: { room: 'loft', face: 'E' }, oneWay: 'a' },
-      { a: { room: 'loft', face: 'S' }, b: { room: 'depot', face: 'E' }, gate: 0, oneWay: 'a', transform: { mirror: true } },
+      { a: { room: 'loft', face: 'S' }, b: { room: 'depot', face: 'W' }, gate: 0, oneWay: 'a', transform: { mirror: true } },
     ],
     ruleset: { ...UNRESTRICTED, maxRooms: 6, maxPortals: 8 },
     start: 'foundation',
@@ -447,7 +447,7 @@ export const EXTRA = [
     id: 'the-weathervane',
     theme: 'ash',
     title: 'The Weathervane',
-    blurb: 'A turned door, a one-way mirror and a gate with two locks. The Spire plate wants an arrival from the north; the Bell plate is a toggle that wants one from the east. One passage joins the Spire to the Bell, and only one way of making it satisfies both.',
+    blurb: 'A turned door, a one-way mirror and a gate with two locks. The Spire plate wants an arrival facing east; the Bell plate is a toggle that wants one facing north. One passage joins the Spire to the Bell, and only one way of making it satisfies both.',
     rooms: [
       { id: 'a', x: 0, y: 0, label: 'Vane' },
       { id: 'b', x: 3, y: 0, label: 'Cog' },
@@ -463,17 +463,17 @@ export const EXTRA = [
     ruleset: { ...UNRESTRICTED, maxRooms: 5, maxPortals: 5, forbiddenLinks: [{ a: 'a', b: 'd' }, { a: 'b', b: 'd' }], sealedFaces: sealed(['d', 'N'], ['d', 'S'], ['d', 'W'], ['e', 'N'], ['e', 'S'], ['b', 'N'], ['b', 'E'], ['a', 'N'], ['a', 'W'], ['a', 'S']) },
     start: 'a',
     plates: [
-      { room: 'c', heading: 'N' },
-      { room: 'e', heading: 'E', mode: 'toggle', startsLit: false },
+      { room: 'c', heading: 'E' },
+      { room: 'e', heading: 'N', mode: 'toggle', startsLit: false },
     ],
     goal: { kind: 'machine', to: 'd' },
-    hint: 'The Spire plate is struck by an arrival facing north, the Bell plate by one facing east, and the Bell is a toggle, so pass it only once. Decide which way the Spire-to-Bell passage must turn, and whether it must be a mirror.',
+    hint: 'The Spire plate is struck by an arrival facing east, the Bell plate by one facing north, and the Bell is a toggle, so pass it only once. Work out where the Spire-to-Bell passage must start, which way it must turn, and whether it must be a mirror.',
     optional: [
       {
         id: 'weathervane-circle',
         title: 'Full circle',
         text: 'A loop you can walk all the way round, built alongside the solution.',
-        check: (s) => findCycles(s).some((c) => c.walkable) && !!findRoute(s, 'a', (t) => t.room === 'd' && t.lit === 3, { plates: [{ room: 'c', heading: 'N' }, { room: 'e', heading: 'E', mode: 'toggle', startsLit: false }] }),
+        check: (s) => findCycles(s).some((c) => c.walkable) && !!findRoute(s, 'a', (t) => t.room === 'd' && t.lit === 3, { plates: [{ room: 'c', heading: 'E' }, { room: 'e', heading: 'N', mode: 'toggle', startsLit: false }] }),
       },
     ],
   },
