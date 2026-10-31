@@ -70,7 +70,7 @@
       <section>
         <h3>View</h3>
         <div class="toolrow">
-          <button id="view-plan" type="button" aria-pressed="true">Plan</button>
+          <button id="view-plan" title="The drawing: build rooms and passages here" type="button" aria-pressed="true">Plan</button>
           <button id="view-first" type="button" aria-pressed="false" title="Walk the building in 3D">Walk</button>
           <button id="view-model" type="button" aria-pressed="false" title="The architect's model in 3D">Model</button>
         </div>
@@ -85,7 +85,7 @@
           <button id="fp-left" type="button" title="Left arrow or Q">Turn left</button>
           <button id="fp-forward" type="button" title="Up arrow">Forward</button>
           <button id="fp-right" type="button" title="Right arrow or E">Turn right</button>
-          <button id="fp-reset" type="button">Back to start</button>
+          <button id="fp-reset" title="Stand at the start again" type="button">Back to start</button>
           <button id="fp-play" type="button" disabled title="Walk the last passing route">Play route</button>
         </div>
         <div id="gl-model-controls" class="toolrow" hidden>
@@ -98,9 +98,9 @@
       <section>
         <h3>Tools</h3>
         <div class="toolrow">
-          <button type="button" data-tool="select" aria-pressed="true">Select &amp; move</button>
-          <button type="button" data-tool="add">Add room</button>
-          <button type="button" data-tool="connect">Connect faces</button>
+          <button type="button" data-tool="select" aria-pressed="true" title="Select a room or passage; drag a room to move it">Select &amp; move</button>
+          <button type="button" data-tool="add" title="Click empty grid to place a room">Add room</button>
+          <button type="button" data-tool="connect" title="Click a face dot on one room, then on another, to join them">Connect faces</button>
         </div>
         <div class="toolrow">
           <button id="undo" type="button" title="Ctrl/Cmd-Z">Undo</button>
@@ -134,8 +134,8 @@
       </section>
 
       <section>
-        <button id="test" type="button" class="primary">Test construction</button>
-        <button id="walk" type="button" disabled>Walk the route</button>
+        <button id="test" title="Check every goal with the engine and show the route it finds" type="button" class="primary">Test construction</button>
+        <button id="walk" title="Play the found route, step by step" type="button" disabled>Walk the route</button>
         <label class="field">Speed
           <select id="speed" aria-label="Walk and playback speed">
             <option value="0.5">½×</option>
@@ -143,7 +143,7 @@
             <option value="2">2×</option>
           </select>
         </label>
-        <button id="hint" type="button">Show hint</button>
+        <button id="hint" title="Show the next hint for this challenge" type="button">Show hint</button>
         <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
         <button id="prev" type="button" hidden>← Previous chapter</button>
         <button id="next" type="button" hidden>Next chapter →</button>
@@ -165,8 +165,8 @@
         <div class="toolrow">
           <select id="slot-list" aria-label="saved slots"><option value="">saved slots</option></select>
           <input id="slot-name" type="text" placeholder="slot name" aria-label="save slot name" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
-          <button id="save" type="button">Save</button>
-          <button id="load" type="button">Load</button>
+          <button id="save" title="Save the construction to this browser under the name above" type="button">Save</button>
+          <button id="load" title="Load the selected saved construction" type="button">Load</button>
           <button id="delete-slot" type="button" title="Delete the save with this name">Delete</button>
         </div>
         <div class="toolrow">
@@ -175,13 +175,13 @@
           <button id="restore-progress" type="button">Restore</button>
         </div>
         <div class="toolrow">
-          <button id="export" type="button">Export JSON</button>
+          <button id="export" title="Copy the construction as JSON" type="button">Export JSON</button>
           <label class="filebtn">Import JSON<input id="import" type="file" accept="application/json"></label>
         </div>
         <div class="toolrow">
           <button id="share" type="button" title="Put this construction in a link">Share link</button>
         </div>
-        <button id="reset" type="button">Restart chapter</button>
+        <button id="reset" title="Put the challenge back as it started (undo brings your construction back)" type="button">Restart chapter</button>
         <button id="reset-progress" type="button" title="Forget completed chapters, discoveries, tests and time">Reset campaign progress</button>
         </details>
       </section>
@@ -209,9 +209,9 @@
             <button id="menu-continue" type="button" class="primary">Continue</button>
             <button id="menu-new" type="button">New game</button>
             <button id="menu-chapters-open" type="button">Chapters</button>
-            <button id="menu-demos-open" type="button">Demonstrations</button>
+            <button id="menu-demos-open" title="Small buildings that show what the architecture can do" type="button">Demonstrations</button>
             <button id="menu-sandbox" type="button">Free construction</button>
-            <button id="menu-generated" type="button">Generated challenge</button>
+            <button id="menu-generated" title="A new puzzle built from a seed, checked solvable by the engine" type="button">Generated challenge</button>
             <button id="menu-settings-open" type="button">Settings</button>
             <button id="menu-atlas-open" type="button">Atlas</button>
             <button id="menu-credits-open" type="button">Credits</button>
@@ -377,10 +377,10 @@
       <canvas id="plan" aria-label="Plan view of the construction"></canvas>
       <canvas id="gl" aria-label="Three-dimensional view of the construction" hidden></canvas>
       <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Quick tools">
-        <button type="button" data-tool="select">Select</button>
-        <button type="button" data-tool="add">Add room</button>
-        <button type="button" data-tool="connect">Connect</button>
-        <button type="button" id="plan-undo">Undo</button>
+        <button type="button" data-tool="select" title="Select a room or passage; drag a room to move it">Select</button>
+        <button type="button" data-tool="add" title="Tap empty grid to place a room">Add room</button>
+        <button type="button" data-tool="connect" title="Tap a face dot on one room, then on another, to join them">Connect</button>
+        <button type="button" id="plan-undo" title="Undo the last change (Ctrl+Z)">Undo</button>
         <span id="plan-hint" class="plan-hint"></span>
       </div>
       <div id="gl-hud" class="gl-hud" hidden></div>

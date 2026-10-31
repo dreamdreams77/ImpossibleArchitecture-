@@ -96,6 +96,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     return set;
   }
 
+  let lastWalked = 0;
   function ensureSynced() {
     const chapterId = session.chapter?.id ?? null;
     if (session.structure !== lastStructure || chapterId !== lastChapter || session.themeName !== lastTheme) {
@@ -113,10 +114,14 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     // In a physical challenge the plates held down by weight count as lit, and the blocks are objects.
     const lit = session.physical && walkerState ? litBits(walkerState, bodyContext(session.active)) : (walkerState?.lit ?? 0);
     const blocks = session.physical ? session.bodyBlocks() : [];
-    const key = `${lit}|${walkerState?.delivered ?? 0}|${JSON.stringify(crates)}|${[...route].join(',')}|${JSON.stringify(blocks)}`;
+    // The passages walked on this walk, and the one just crossed (which flashes in the model).
+    const walked = walkerState?.portals ?? [];
+    if (walked.length && walked.length !== lastWalked) world.flashLink(walked[walked.length - 1]);
+    lastWalked = walked.length;
+    const key = `${lit}|${walkerState?.delivered ?? 0}|${JSON.stringify(crates)}|${[...route].join(',')}|${JSON.stringify(blocks)}|${walked.length}`;
     if (key !== stateKey) {
       stateKey = key;
-      world.setState({ lit, delivered: walkerState?.delivered ?? 0, crates, routePortals: route });
+      world.setState({ lit, delivered: walkerState?.delivered ?? 0, crates, routePortals: route, walkedPortals: new Set(walked) });
       world.setObjects(blocks.map((b, i) => blockObject(b, i)));
     }
     world.setSelection(session.selection?.type === 'room' ? session.selection.id : null, session.selection?.type === 'portal' ? session.selection.id : null);
@@ -145,7 +150,14 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     const c = box.getCenter(new box.min.constructor());
     const s = box.getSize(new box.min.constructor());
     orbit.target = [c.x, 0, c.z];
-    orbit.distance = Math.max(34, Math.max(s.x, s.z) * 0.95 + 10);
+    // Fit the whole building inside the view cone: the radius of its footprint (plus head room for the
+    // arcs) against the narrower of the camera's two angles of view.
+    // The model is always drawn at 42 degrees (see renderOverview), whatever the walk last used.
+    const vfov = (42 * Math.PI) / 180;
+    const aspect = world.size?.w && world.size?.h ? world.size.w / world.size.h : 1;
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+    const radius = Math.hypot(s.x, s.z) / 2 + 6;
+    orbit.distance = Math.max(34, (radius / Math.sin(Math.min(vfov, hfov) / 2)) * 0.92);
     fit = false;
   }
 

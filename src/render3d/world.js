@@ -97,7 +97,8 @@ export class WorldRenderer {
     this.doors = new Map();    // `${portalId}:${end}` -> door
     this.structure = null;
     this.context = null;
-    this.state = { lit: 0, delivered: 0, crates: [], selection: null, routePortals: new Set(), flash: 0 };
+    this.state = { lit: 0, delivered: 0, crates: [], selection: null, routePortals: new Set(), walkedPortals: new Set(), flash: 0 };
+    this._linkFlash = new Map(); // portal id -> time it was last crossed
     this.layoutMode = 'walk';
     this.positions = new Map(); // id -> Vector3 (current layout)
     this.pool = new Map();
@@ -585,6 +586,10 @@ export class WorldRenderer {
       if (u?.draw && u.draw.value < 1) u.draw.value = Math.min(1, u.draw.value + dt / 0.9);
     }
   }
+
+  // Marks a passage as just crossed: its arc flashes the next time the model is drawn.
+  // The flash starts when the model is next shown, since crossings happen in the walk view.
+  flashLink(portalId) { this._linkFlash.set(portalId, null); }
 
   // ---- labels and overview furniture ---------------------------------------
 
@@ -1141,8 +1146,17 @@ export class WorldRenderer {
     this.previewGroup.visible = true;
     this.ground.material.uniforms.unit.value = this.planScale;
     const route = this.state.routePortals;
+    const walked = this.state.walkedPortals ?? new Set();
     for (const c of this.linkGroup.children) {
-      if (c.material?.uniforms?.time) { c.material.uniforms.time.value = time; c.material.uniforms.lit.value = route.has(c.userData.portalId) || this.state.selectedPortal === c.userData.portalId ? 1 : 0; }
+      if (!c.material?.uniforms?.time) continue;
+      const id = c.userData.portalId;
+      // Full glow for the tested route or the selection, a trace for passages already walked, and a
+      // decaying flash on the passage most recently crossed.
+      if (this._linkFlash.get(id) === null) this._linkFlash.set(id, time);
+      const since = this._linkFlash.has(id) ? time - this._linkFlash.get(id) : Infinity;
+      const flash = since >= 0 && since < 1.6 ? 1.6 * (1 - since / 1.6) : 0;
+      c.material.uniforms.time.value = time;
+      c.material.uniforms.lit.value = Math.max(route.has(id) || this.state.selectedPortal === id ? 1 : walked.has(id) ? 0.45 : 0, flash);
     }
     for (const e of this.rooms.values()) {
       this._animate(e, time);
