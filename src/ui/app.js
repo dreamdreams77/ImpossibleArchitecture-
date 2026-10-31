@@ -14,7 +14,7 @@ import { Sound } from './sound.js';
 import { ATLAS } from '../campaign/atlas.js';
 import { DEMOS } from '../campaign/demos.js';
 import { throughFaces } from '../topology/propagation.js';
-import { fitViewFor, transitionProgress, snapTo } from '../render/view.js';
+import { fitViewFor, transitionProgress, snapTo, MIN_SCALE as MIN_ZOOM } from '../render/view.js';
 import { sightlines, gateOpen } from '../topology/traversal.js';
 import { themeFor } from '../render/themes.js';
 import { sightCardModel, drawSightCards } from '../render/sightcards.js';
@@ -141,6 +141,8 @@ export function boot() {
   populateChapters();
 
   let ratio = canvasRatio(); // canvas pixels per CSS pixel, set by fitView
+  let lastPlanSize = null;
+  let fittedFor = null;
 
   function fitView() {
     ratio = canvasRatio(); // read once per resize, not once per frame
@@ -148,8 +150,11 @@ export function boot() {
     plan.width = Math.max(1, Math.floor(r.width * ratio));
     plan.height = Math.max(1, Math.floor(r.height * ratio));
     pctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    view.offsetX = r.width / 2;
-    view.offsetY = r.height / 2;
+    // Keep what the player was looking at: a resize (a phone's address bar, a rotation) moves the
+    // centre of the canvas, so shift the view by the same amount rather than snapping back to the origin.
+    if (lastPlanSize) { view.offsetX += (r.width - lastPlanSize.w) / 2; view.offsetY += (r.height - lastPlanSize.h) / 2; }
+    else { view.offsetX = r.width / 2; view.offsetY = r.height / 2; }
+    lastPlanSize = { w: r.width, h: r.height };
     const g = graph.getBoundingClientRect();
     graph.width = Math.max(1, Math.floor(g.width * ratio));
     graph.height = Math.max(1, Math.floor(g.height * ratio));
@@ -313,6 +318,17 @@ export function boot() {
     const r = plan.getBoundingClientRect();
     Object.assign(view, fitViewFor(session.structure, r.width, r.height));
     render();
+  }
+
+  // Frames the construction once whenever a different building is put in front of the player (a new
+  // challenge, a demonstration, a generated puzzle), so nothing opens off-screen.
+  function fitOnNewBuilding() {
+    const key = `${session.chapter?.id ?? 'free'}|${session.demo?.id ?? ''}|${session.generated?.chapter?.id ?? ''}`;
+    if (key === fittedFor) return;
+    const r = plan.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return;
+    fittedFor = key;
+    Object.assign(view, fitViewFor(session.structure, r.width, r.height));
   }
 
   // Saves whichever view is on screen as a PNG, named for its chapter.
@@ -818,6 +834,7 @@ export function boot() {
       session.justCompleted = null;
       showComplete(done);
     }
+    fitOnNewBuilding();
     // A blank free construction offers rooms first: the tool is Add room, and the plan says so.
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
     $('#plan-tools').hidden = viewMode !== 'plan';
@@ -1074,7 +1091,7 @@ export function boot() {
   // Zoom the plan about a screen point, so that point stays where it is.
   function zoomPlanAt(sx, sy, factor) {
     const old = view.scale;
-    const next = Math.min(200, Math.max(30, old * factor));
+    const next = Math.min(200, Math.max(MIN_ZOOM, old * factor));
     const wx = (sx - view.offsetX) / old;
     const wy = (sy - view.offsetY) / old;
     view.scale = next;

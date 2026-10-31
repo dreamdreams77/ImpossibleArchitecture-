@@ -2,7 +2,7 @@
 // Pure, so it can be tested without a canvas. Screen = world * scale + offset.
 
 export const DEFAULT_SCALE = 80;
-const MIN_SCALE = 40;
+export const MIN_SCALE = 20;
 const MAX_SCALE = 120;
 
 export function fitViewFor(structure, width, height) {
@@ -16,9 +16,9 @@ export function fitViewFor(structure, width, height) {
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  // Two grid units of margin on every side, so the outer rooms are not cut off.
-  const span = Math.max(maxX - minX, maxY - minY) + 4;
-  const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(width, height) / span));
+  // Two grid units of margin on every side, so the outer rooms are not cut off. Each axis is fitted to its
+  // own side of the canvas: a wide building on a wide canvas uses the width.
+  const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(width / (maxX - minX + 4), height / (maxY - minY + 4))));
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   return { scale, offsetX: width / 2 - cx * scale, offsetY: height / 2 - cy * scale };

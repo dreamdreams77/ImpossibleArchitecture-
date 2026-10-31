@@ -31,7 +31,20 @@ test('fit view clamps the scale for a single room and for a very wide spread', (
   const wide = new Structure();
   wide.addRoom({ x: 0, y: 0 });
   wide.addRoom({ x: 500, y: 0 });
-  assert.equal(fitViewFor(wide, 800, 600).scale, 40, 'a huge spread stops at the minimum');
+  assert.equal(fitViewFor(wide, 800, 600).scale, 20, 'a huge spread stops at the minimum');
+});
+
+test('fit view shows a wide building on a phone-shaped canvas, rooms and margin included', () => {
+  const s = new Structure();
+  for (const [i, x] of [0, 3, 6, 9, 12].entries()) s.addRoom({ id: `r${i}`, x, y: 0 });
+  for (const [w, h] of [[390, 389], [390, 700], [800, 300]]) {
+    const { scale, offsetX, offsetY } = fitViewFor(s, w, h);
+    for (const x of [0, 12]) {
+      const left = x * scale + offsetX - 0.42 * scale; const right = x * scale + offsetX + 0.42 * scale;
+      assert.ok(left >= 0 && right <= w, `room at ${x} fits a ${w}x${h} canvas (${left.toFixed(0)}..${right.toFixed(0)})`);
+    }
+    assert.ok(offsetY - 0.42 * scale >= 0 && offsetY + 0.42 * scale <= h);
+  }
 });
 
 test('fit view of an empty construction is the default framing', () => {
