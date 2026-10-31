@@ -49,21 +49,22 @@ expect(await page.evaluate(() => !document.getElementById('gl-model-controls').h
 const views = () => page.evaluate(() => {
   const s = window.__session; const w = window.__ia.gl.world;
   window.__ia.render(); window.__ia.gl.paint?.(performance.now());
-  return { rooms: s.structure.rooms.size, portals: s.structure.portals.size, worldRooms: w.rooms.size, doors: w.doors.size, arcs: w.linkGroup.children.filter((c) => c.userData.portalId).length };
+  return { rooms: s.structure.rooms.size, portals: s.structure.portals.size, worldRooms: w.rooms.size, doors: w.doors.size, arcs: new Set(w.linkGroup.children.map((c) => c.userData.portalId).filter(Boolean)).size,
+    sameIds: [...s.structure.portals.keys()].every((id) => w.linkGroup.children.some((c) => c.userData.portalId === id)) };
 });
 await page.click('#menu-sandbox').catch(() => {});
 await page.evaluate(() => { window.__ia.session.loadDemo('distant-neighbours'); window.__ia.setView('model'); window.__ia.render(); });
 await page.waitForTimeout(800);
 let v = await views();
-expect(v.worldRooms === v.rooms && v.doors === 2 * v.portals && v.arcs === v.portals, `a loaded building appears whole in the model (${JSON.stringify(v)})`);
+expect(v.worldRooms === v.rooms && v.doors === 2 * v.portals && v.arcs === v.portals && v.sameIds, `a loaded building appears whole in the model (${JSON.stringify(v)})`);
 await page.evaluate(() => { const s = window.__ia.session; s.addRoomAt(8, 8); const id = [...s.structure.rooms.keys()].pop(); s.pickFace(id, 'N'); s.pickFace('lodge', 'S'); window.__ia.render(); });
 await page.waitForTimeout(800);
 v = await views();
-expect(v.rooms === 6 && v.portals === 5 && v.worldRooms === v.rooms && v.doors === 2 * v.portals && v.arcs === v.portals, `a room and a passage added in one view appear in the others (${JSON.stringify(v)})`);
+expect(v.rooms === 6 && v.portals === 5 && v.worldRooms === v.rooms && v.doors === 2 * v.portals && v.arcs === v.portals && v.sameIds, `a room and a passage added in one view appear in the others (${JSON.stringify(v)})`);
 await page.evaluate(() => { const s = window.__ia.session; s.undo(); s.undo(); window.__ia.render(); });
 await page.waitForTimeout(800);
 v = await views();
-expect(v.rooms === 5 && v.portals === 4 && v.worldRooms === 5 && v.arcs === 4, `undo takes them away everywhere (${JSON.stringify(v)})`);
+expect(v.rooms === 5 && v.portals === 4 && v.worldRooms === 5 && v.arcs === 4 && v.sameIds, `undo takes them away everywhere (${JSON.stringify(v)})`);
 
 await page.evaluate(() => { window.__ia.showEnding(); });
 await page.waitForSelector('#ending-screen:not([hidden])');
