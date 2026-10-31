@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.1.0 — correct reflections, procedural challenges, the Atlas, demonstrations
+
+Rules (behaviour changes)
+- Passages are now exact maps between rooms' compasses. Crossing from the `b` end applies the inverse, so a
+  quarter turn is undone on the way back. A mirror no longer swaps east and west (which could turn a traveller
+  round at a door); it reflects across the line of travel and flips the traveller's parity. The walk view mirrors
+  the picture and reverses turning while reflected. Goals and plates can ask for a parity.
+- Four mirror challenges (Mirrored Gallery, Reflecting Vault, Mirror Archive, Long Corridor) now ask for a
+  reflected arrival; The Weathervane, The Seam and The Last Construction were re-tuned with the solver.
+- `tests/passage-algebra.test.js` checks the engine against an independent compass-matrix model.
+
+Campaign
+- 39 challenges (eight new): four physical (crate pushing, weight plates), The Ordered Hall (sequenced plates),
+  The Two-Lock Vault, The Mirror Lock and The Weathervane (multi-plate gates, toggles, one answer each).
+- Sequenced plates (`after`), multi-plate gates (`also`), plates that answer only reflected travellers.
+
+Game
+- Challenge editor in free construction: several goals, plates, crates, pads, blocks, gates, rules, objectives.
+- Generated challenges (five difficulties, seeded, built backwards from a hidden solution and checked).
+- The Atlas of 11 architectural phenomena, loop prediction experiments, seven demonstrations.
+- Sound and light propagate through the passage graph; spatial audio; optional cinematic camera moments.
+- Quick tools on the plan so rooms can be placed on a phone.
+
+Rendering and tools
+- Monumental atria, wall dressing, mechanical-floor fix; model view traces walked passages and fits the building.
+- Benchmark and graphics presets, dynamic resolution, shadow caching. `tools/e2e.mjs` also checks the three
+  views stay in step through loading, editing and undo.
+
+Tests: 427 pass. Browser checks ran on a software renderer only.
+
 ## 1.0.0 — a 3D walk, six chapters, an ending
 
 Layout

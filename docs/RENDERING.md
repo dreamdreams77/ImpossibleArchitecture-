@@ -10,7 +10,9 @@ doorway frame sits on the portal surface, the outer plane of the wall thickness,
 
     T = FB . Ry(pi) . S . FA^-1
 
-`S` flips the doorway's x axis when the passage mirrors. Quarter turns do not move the
+`S` flips the doorway's x axis when the passage mirrors. A reflected traveller (an odd number of
+mirrored crossings) sees the whole picture flipped left to right in the final post pass, and
+drag-to-look is inverted to match. Quarter turns do not move the
 view: they turn the traveller, as the engine's entry heading says. Tests pin this to
 `Structure.exit` for every face pair, turn count and mirror setting, and check that
 chained crossings compose and invert.

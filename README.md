@@ -90,24 +90,34 @@ and [docs/TESTING.md](docs/TESTING.md).
 
 ## Honest limits
 
-- The 3D look has been inspected in headless Chromium on a *software* renderer. Frame
-  times there say nothing about real GPUs. The renderer is built to be cheap (merged
-  geometry, about 35 to 130 draw calls a frame, bounded recursion with adaptive quality)
-  but it has not been profiled on real hardware.
+- The 3D look has only been inspected in headless Chromium on a *software* renderer. Frame
+  times there say nothing about real GPUs, and **nothing has been measured on a real phone**. The
+  renderer is built to be cheap (merged geometry, bounded recursion, adaptive quality and three presets),
+  and there is a built-in benchmark (`?bench`, or Settings, Run benchmark) for you to run on a device, but
+  no such report exists yet. Touch controls were checked at phone screen sizes in a desktop browser, not
+  on a touchscreen.
+- The recursive portal view is bounded: the number of doorways shown inside doorways depends on the
+  graphics preset (a self-loop shows only a few repeats on low, more on high). It is never infinite.
 - Construction works in the model view: join faces, add rooms (Add tool), drag the selected room, click an arc
   to select a passage. Its turn, mirror, direction, and a room's size and kind, are the sidebar's buttons, shared
   with the plan.
 - A twisting passage does not bend the doorway's view; it turns the traveller as they
-  cross, like a revolving door. A mirroring passage reflects the view and the walker
-  snaps to the engine's heading on arrival.
-- Objects are plates, gates, crates and pads. Gates slide open when their plate is lit, but crates cannot be
-  pushed. Only six actions are rebindable.
-- The soundscape is simple synthesis, not composed music.
-- Your own challenges are single goals (reach, arrive facing, within N steps): no plates, crates or restrictions. Campaign challenges are data files.
-- Campaign challenges are checked by planted solutions and negative cases, and by `tools/solve.mjs`, an exhaustive
-  solver that proves 18 of them solvable and reports their minimum builds. The larger ones (Machine, Wheel, Spiral
-  Cellar, Cupboard, Ring Hall, Last Construction) are beyond brute force, so unintended shortcuts may exist there.
-  The solver also shows that many early challenges are solvable by a single passage: they are tutorials.
+  cross, like a revolving door. A mirroring passage keeps the traveller facing straight in and exchanges their
+  left and right: the walk view then shows the world mirrored, and turn controls go the other way, until a
+  second mirror restores them. The engine's heading and parity are authoritative; the walker snaps to them on
+  arrival.
+- Objects are plates (latch, toggle, weight, sequenced), gates (one or several plates), crates, pads and
+  pushable blocks. Gates slide open when their plates are lit. Only six actions are rebindable.
+- The soundscape is simple synthesis, not composed music, and has only been checked against a fake audio
+  context in tests and by reading, not by ear on real devices.
+- Your own challenges (the editor) support several goals, plates, crates, pads, blocks, gates, rules and
+  optional objectives, and are judged by the campaign's engine. The editor cannot yet author every field
+  the campaign data can (for example forbidden faces are not editable).
+- Campaign challenges are checked by planted solutions and negative cases, and by `tools/solve.mjs`, an
+  exhaustive solver that proves 29 of the 39 solvable and reports their minimum builds. The remaining ten are
+  beyond brute force: five physical (crate-pushing) challenges are checked by a separate push-level solver, and
+  five larger ones (Machine, Spiral Cellar, Cupboard, Ring Hall, Last Construction) by planted solutions only, so
+  unintended shortcuts may exist there. Many early challenges are solvable by a single passage: they are tutorials.
 
 ## License
 

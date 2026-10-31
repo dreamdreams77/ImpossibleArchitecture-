@@ -9,9 +9,9 @@ Open the game with `npm start`, then visit http://localhost:8080.
 - **Turn ¼ / Mirror:** change a selected portal's transform.
 - **Test construction:** checks the current chapter's goal and highlights the route.
 
-The campaign is six chapters of 31 challenges (see the README). Each challenge teaches one idea: a direct connection, a self-loop,
+The campaign is six chapters of 39 challenges (see the README). Each challenge teaches one idea: a direct connection, a self-loop,
 turns that change your heading, a shortcut across the plan, a mirror that
-reflects your heading, a machine whose plates must be struck on one route, a
+reflects you (your left and right exchange, so turn controls reverse), a machine whose plates must be struck on one route, a
 hidden stair, and a final construction combining them. Free construction has
 no goal.
 
