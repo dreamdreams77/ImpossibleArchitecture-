@@ -96,8 +96,9 @@ and [docs/TESTING.md](docs/TESTING.md).
   and there is a built-in benchmark (`?bench`, or Settings, Run benchmark) for you to run on a device, but
   no such report exists yet. Touch controls were checked at phone screen sizes in a desktop browser, not
   on a touchscreen.
-- The recursive portal view is bounded: the number of doorways shown inside doorways depends on the
-  graphics preset (a self-loop shows only a few repeats on low, more on high). It is never infinite.
+- The recursive portal view is bounded: a doorway shows the room beyond it, and rooms beyond that, to a depth
+  set by the graphics preset (4 levels on high, 2 on medium, 1 on low). A self-looping room therefore shows a
+  few nested repeats, not an infinite regress. A software renderer is given the low preset automatically.
 - Construction works in the model view: join faces, add rooms (Add tool), drag the selected room, click an arc
   to select a passage. Its turn, mirror, direction, and a room's size and kind, are the sidebar's buttons, shared
   with the plan.
