@@ -209,6 +209,7 @@
             <button id="menu-continue" type="button" class="primary">Continue</button>
             <button id="menu-new" type="button">New game</button>
             <button id="menu-chapters-open" type="button">Chapters</button>
+            <button id="menu-demos-open" type="button">Demonstrations</button>
             <button id="menu-sandbox" type="button">Free construction</button>
             <button id="menu-generated" type="button">Generated challenge</button>
             <button id="menu-settings-open" type="button">Settings</button>
@@ -226,6 +227,7 @@
             <button id="pause-gen-easier" type="button" hidden>New, easier</button>
             <button id="pause-gen-harder" type="button" hidden>New, harder</button>
             <button id="pause-chapters-open" type="button">Chapters</button>
+            <button id="pause-demos-open" type="button">Demonstrations</button>
             <button id="pause-atlas-open" type="button">Atlas and experiments</button>
             <button id="pause-settings-open" type="button">Settings</button>
             <button id="pause-title" type="button">Title screen</button>
@@ -273,6 +275,13 @@
             <div class="keybinds"><strong>Keys</strong><div id="key-list" class="menu-buttons"></div><p id="key-note" class="muted" role="status"></p><button id="key-reset" type="button">Reset keys</button></div>
             <button id="settings-back" type="button">Back</button>
           </div>
+        </section>
+
+        <section id="menu-demos" class="menu-view" hidden>
+          <h2 class="menu-heading">Demonstrations</h2>
+          <p class="muted">Small buildings that do what no floor plan can. Each loads into free construction: walk it, inspect it, change it.</p>
+          <ul id="demo-list" class="demo-list"></ul>
+          <div class="menu-buttons"><button id="demos-back" type="button">Back</button></div>
         </section>
 
         <section id="menu-atlas" class="menu-view" hidden>

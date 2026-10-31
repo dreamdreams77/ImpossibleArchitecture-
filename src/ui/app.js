@@ -12,6 +12,7 @@ import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, descr
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
 import { ATLAS } from '../campaign/atlas.js';
+import { DEMOS } from '../campaign/demos.js';
 import { throughFaces } from '../topology/propagation.js';
 import { fitViewFor, transitionProgress, snapTo } from '../render/view.js';
 import { sightlines, gateOpen } from '../topology/traversal.js';
@@ -385,7 +386,7 @@ export function boot() {
   let menuView = 'title';
   let menuParent = 'title';
   let menuReturnFocus = null;
-  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'credits'];
+  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'demos', 'credits'];
 
   function showMenu(view = 'title') {
     const menu = $('#menu');
@@ -396,17 +397,32 @@ export function boot() {
 
   function showView(view) {
     // Chapters, settings and credits return to whichever view opened them.
-    if (['chapters', 'settings', 'atlas', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
+    if (['chapters', 'settings', 'atlas', 'demos', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
     if (view === 'atlas') fillAtlas();
+    if (view === 'demos') fillDemos();
     if (view === 'pause') for (const id of ['solution', 'easier', 'harder']) $(`#pause-gen-${id}`).hidden = !session.generated;
     $(`#menu-${view}`).querySelector('button, input')?.focus();
   }
 
   // The Atlas lists what has been found, and for the rest only a question: no recipes.
+  // Demonstrations: each a building that shows one impossible thing, opened in the view that shows it best.
+  function fillDemos() {
+    $('#demo-list').replaceChildren(...DEMOS.map((d) => {
+      const li = document.createElement('li');
+      const t = document.createElement('strong'); t.textContent = d.title;
+      const p = document.createElement('span'); p.textContent = d.text;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'primary';
+      b.textContent = d.view === 'first' ? 'Walk it' : 'See it in the model';
+      b.addEventListener('click', () => { session.loadDemo(d.id); closeMenu(); setView(d.view); render(); });
+      li.append(t, p, b);
+      return li;
+    }));
+  }
+
   let experimentResult = '';
   function fillExperiment() {
     const box = $('#atlas-experiment');
@@ -640,6 +656,9 @@ export function boot() {
   $('#pause-gen-solution').addEventListener('click', () => { session.revealGenerated(); closeMenu(); render(); });
   $('#menu-settings-open').addEventListener('click', () => showView('settings'));
   $('#menu-atlas-open').addEventListener('click', () => showView('atlas'));
+  $('#menu-demos-open').addEventListener('click', () => showView('demos'));
+  $('#pause-demos-open').addEventListener('click', () => showView('demos'));
+  $('#demos-back').addEventListener('click', () => showView(menuParent));
   $('#pause-atlas-open').addEventListener('click', () => showView('atlas'));
   $('#atlas-back').addEventListener('click', () => showView(menuParent));
   $('#menu-credits-open').addEventListener('click', () => showView('credits'));

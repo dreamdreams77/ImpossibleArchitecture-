@@ -11,6 +11,7 @@ import { History } from './topology/history.js';
 import { findRoute, replay, makeTraveller, step, startingLit, platesLitBy } from './topology/traversal.js';
 import { rotateFace } from './topology/graph.js';
 import { atlasIn, atlasById } from './campaign/atlas.js';
+import { demoById } from './campaign/demos.js';
 import { loopExperiments, judge } from './campaign/experiments.js';
 import { generateChallenge, toChallenge } from './campaign/generate.js';
 import { CHAPTERS, chapterById, chapterStructure, goalSatisfied, goalPredicate, discoveriesIn, rulesFor, bodySolution } from './campaign/chapters.js';
@@ -89,6 +90,7 @@ export class Session {
 
   startSandbox() {
     this.generated = null;
+    this.demo = null;
     this.sandbox = true;
     this.challenge = null;
     this.chapterIdValue = null;
@@ -102,6 +104,7 @@ export class Session {
   // construction back; otherwise the history starts again.
   loadStructure(structure, chapterId = null, { undoable = false, challenge = null } = {}) {
     this.generated = null;
+    this.demo = null;
     const sameMode = chapterId && chapterById(chapterId)
       ? !this.sandbox && this.chapterIdValue === chapterId
       : this.sandbox && !chapterId;
@@ -130,6 +133,19 @@ export class Session {
     this.feedback = { kind: 'info', text: `${made.chapter.title}. Reach the ${made.chapter.rooms.find((r) => r.id === made.chapter.goal.to).label}${made.chapter.goal.heading ? ` facing ${made.chapter.goal.heading}` : ''}.` };
     this.generated = made;
     return made;
+  }
+
+  // Loads a demonstration into free construction and stands the traveller where it says. Returns false for
+  // an unknown id. The demonstration is ordinary architecture from then on: edit it, save it, undo.
+  loadDemo(id) {
+    const d = demoById(id);
+    if (!d) return false;
+    this.startSandbox();
+    this.loadStructure(d.build(), null);
+    this.demo = d;
+    this.fp = makeTraveller(d.start, d.heading);
+    this.feedback = { kind: 'info', text: `${d.title}. ${d.try}` };
+    return true;
   }
 
   // Builds the generated challenge's hidden passages (one undo takes them away again). False when the
@@ -444,9 +460,10 @@ export class Session {
   // plan's route, so walls, gates, one-way passages and plates all behave alike.
   startFirstPerson() {
     const act = this.active;
+    const demo = !act && this.demo && this.structure.rooms.has(this.demo.start) ? this.demo : null;
     const start = act?.start && this.structure.rooms.has(act.start)
       ? act.start
-      : [...this.structure.rooms.keys()][0];
+      : demo?.start ?? [...this.structure.rooms.keys()][0];
     if (!start) {
       this.fp = null; // nowhere to stand: drop any walker left from a deleted room
       return false;
@@ -457,7 +474,7 @@ export class Session {
       return true;
     }
     const rules = act ? rulesFor(act) : { plates: [], cargo: [], depot: null, pads: [] };
-    const t = makeTraveller(start, 'N', { cargo: rules.cargo, depot: rules.depot, pads: rules.pads });
+    const t = makeTraveller(start, demo?.heading ?? 'N', { cargo: rules.cargo, depot: rules.depot, pads: rules.pads });
     t.lit = startingLit(rules.plates, start);
     this.fp = t;
     return true;
