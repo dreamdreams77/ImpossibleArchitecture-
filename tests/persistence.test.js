@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Structure } from '../src/topology/graph.js';
 import { History } from '../src/topology/history.js';
-import { encodeSave, decodeSave, SaveSlots } from '../src/persistence/store.js';
+import { encodeSave, decodeSave, SaveSlots, restoreSaveIntoSession } from '../src/persistence/store.js';
 
 test('history supports undo and redo', () => {
   const h = new History('a');
@@ -120,6 +120,72 @@ test('decodeSave tolerates older saves without optional progress statistics', ()
   assert.deepEqual(decodeSave(JSON.stringify(data)).progress, {
     completed: ['threshold'], discoveries: [], attempts: {}, time: {},
   });
+});
+
+
+test('autosave recovery restores its matching campaign progress snapshot', () => {
+  const source = new Structure();
+  const a = source.addRoom({ x: 0, y: 0 });
+  source.addPortal({ a, aFace: 'N', b: a, bFace: 'S', transform: { turns: 1 } });
+  const raw = encodeSave({
+    chapterId: 'threshold', structure: source,
+    progress: {
+      completed: ['threshold'], discoveries: ['reflected-ring'],
+      attempts: { threshold: 4 }, time: { threshold: 98765 },
+    },
+  });
+  const session = {
+    chapter: { id: 'threshold' },
+    progress: { completed: [], discoveries: [], attempts: {}, time: {} },
+    loadStructure(structure, chapterId) {
+      this.structure = structure;
+      this.loadedChapter = chapterId;
+    },
+  };
+  assert.equal(restoreSaveIntoSession(session, raw), true);
+  assert.equal(session.loadedChapter, 'threshold');
+  assert.deepEqual(session.structure.toJSON(), source.toJSON());
+  assert.deepEqual(session.progress, {
+    completed: ['threshold'], discoveries: ['reflected-ring'],
+    attempts: { threshold: 4 }, time: { threshold: 98765 },
+  });
+});
+
+test('autosave recovery refuses a different chapter without changing progress', () => {
+  const session = {
+    chapter: { id: 'threshold' },
+    progress: { completed: ['old'], discoveries: [], attempts: {}, time: {} },
+    loadStructure() { throw new Error('must not load another chapter'); },
+  };
+  const raw = encodeSave({
+    chapterId: 'lantern-court', structure: new Structure(),
+    progress: { completed: ['lantern-court'], discoveries: [], attempts: {}, time: {} },
+  });
+  assert.equal(restoreSaveIntoSession(session, raw), false);
+  assert.deepEqual(session.progress.completed, ['old']);
+});
+
+test('autosave recovery restores free construction and its challenge state', () => {
+  const source = new Structure();
+  const a = source.addRoom({ x: 1, y: 2 });
+  source.addPortal({ a, aFace: 'E', b: a, bFace: 'W' });
+  const raw = encodeSave({
+    chapterId: null, structure: source,
+    challenge: { goal: { kind: 'reach', to: a } },
+    progress: { completed: ['threshold'], discoveries: ['lantern-orbit'], attempts: {}, time: {} },
+  });
+  const session = {
+    progress: { completed: [], discoveries: [], attempts: {}, time: {} },
+    startSandbox() { this.sandboxStarted = true; },
+    loadStructure(structure, chapterId, options) {
+      this.structure = structure; this.loadedChapter = chapterId; this.challenge = options.challenge;
+    },
+  };
+  assert.equal(restoreSaveIntoSession(session, raw), true);
+  assert.equal(session.sandboxStarted, true);
+  assert.equal(session.loadedChapter, null);
+  assert.deepEqual(session.structure.toJSON(), source.toJSON());
+  assert.deepEqual(session.progress.discoveries, ['lantern-orbit']);
 });
 
 test('SaveSlots writes and reads through an injected storage', () => {
