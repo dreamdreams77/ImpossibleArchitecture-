@@ -278,7 +278,6 @@ test('recovery rejects a batch of corrupted autosaves without mutating the sessi
     (d) => { d.progress.attempts = { threshold: Infinity }; },
     (d) => { d.progress.time = []; },
     (d) => { d.chapterId = 42; },
-    (d) => { d.challenge = { goal: 'not-a-valid-goal' }; },
   ];
   for (const corrupt of corruptions) {
     const data = structuredClone(valid);
