@@ -796,7 +796,7 @@ export function boot() {
   $('#set-quality').addEventListener('change', (evt) => {
     savedQuality = evt.target.value;
     try { localStorage.setItem('ia-quality', savedQuality); } catch { /* not remembered */ }
-    gl?.setQuality(savedQuality === 'auto' ? 'high' : savedQuality);
+    gl?.setQuality(savedQuality);
   });
   $('#set-layout').addEventListener('change', (evt) => {
     savedLayout = normalizeLayoutMode(evt.target.value);
