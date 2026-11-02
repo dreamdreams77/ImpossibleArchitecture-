@@ -25,3 +25,25 @@ jobs:
           node-version: 22
       - name: Run automated tests
         run: npm test
+      - name: Install Chromium for responsive browser checks
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start the game server
+        run: |
+          npm start > /tmp/impossible-architecture.log 2>&1 &
+          echo $! > /tmp/impossible-architecture.pid
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/impossible-architecture.log
+          exit 1
+      - name: Check touch and desktop layouts in Chromium
+        env:
+          PLAYWRIGHT_MODULE: playwright
+        run: node tools/responsive-e2e.mjs
+      - name: Stop the game server
+        if: always()
+        run: |
+          if [ -f /tmp/impossible-architecture.pid ]; then kill "$(cat /tmp/impossible-architecture.pid)" || true; fi
