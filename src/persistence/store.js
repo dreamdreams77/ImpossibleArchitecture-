@@ -19,6 +19,8 @@ export function encodeSave({ chapterId, structure, progress, challenge = null })
     progress: {
       completed: [...(progress?.completed ?? [])],
       discoveries: [...(progress?.discoveries ?? [])],
+      attempts: { ...(progress?.attempts ?? {}) },
+      time: { ...(progress?.time ?? {}) },
     },
   }, null, 2);
 }
@@ -43,6 +45,8 @@ export function decodeSave(text) {
     progress: {
       completed: data.progress?.completed ?? [],
       discoveries: data.progress?.discoveries ?? [],
+      attempts: { ...(data.progress?.attempts ?? {}) },
+      time: { ...(data.progress?.time ?? {}) },
     },
   };
 }
