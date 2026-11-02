@@ -10,30 +10,77 @@
 </head>
 <body>
   <header class="bar">
-    <div class="brand">Impossible Architecture</div>
-    <label class="field">Chapter
-      <select id="chapter-select"></select>
-    </label>
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Impossible Architecture</div>
+    <label class="chapterpick"><span class="sr-only">Chapter</span><select id="chapter-select"></select></label>
     <div id="progress" class="muted"></div>
     <div class="spacer"></div>
-    <button id="sound" type="button" aria-pressed="false" title="Short sound cues for steps, plates and the goal">Sound off</button>
-    <input id="volume" type="range" min="0" max="100" step="5" value="100" aria-label="Sound volume" title="Sound volume">
-    <button id="theme" type="button" title="Switch between dark and light page colours">Light</button>
-    <button id="panel-toggle" type="button" aria-controls="controls" aria-expanded="true">Hide controls</button>
-    <button id="keys-btn" type="button" title="Keyboard shortcuts (?)" aria-controls="keys-overlay" aria-expanded="false">Keys</button>
-    <button id="toggle-graph" type="button" title="Show or hide the developer graph view">Graph view</button>
+    <details class="more" id="more">
+      <summary class="ghost" aria-label="More options" title="More options">More</summary>
+      <div class="more-body">
+        <button id="sound" type="button" class="ghost" aria-pressed="false" title="Short sound cues for steps, plates and the goal">Sound off</button>
+        <label class="field">Volume <input id="volume" type="range" min="0" max="100" step="5" value="100" aria-label="Sound volume" title="Sound volume"></label>
+        <button id="theme" type="button" class="ghost" title="Switch between dark and light page colours">Light</button>
+        <button id="keys-btn" type="button" class="ghost" title="Keyboard shortcuts (?)" aria-controls="keys-overlay" aria-expanded="false">Keyboard shortcuts</button>
+        <button id="toggle-graph" type="button" class="ghost" aria-pressed="false" title="Show the connection graph over the plan: where the rooms are joined, drawn without the plan">Connection graph</button>
+        <button id="save-image" type="button" class="ghost" title="Save the current view as a PNG">Save this view as an image</button>
+        <button id="panel-toggle" type="button" class="ghost" aria-controls="controls" aria-expanded="true">Hide controls</button>
+      </div>
+    </details>
+    <button id="menu-open" type="button" class="ghost" title="Chapters, demonstrations, the Atlas and settings">Menu</button>
   </header>
 
   <main class="layout">
     <aside class="side" id="controls">
-      <section>
+      <section class="brief">
         <h2 id="chapter-title" aria-live="polite"></h2>
-        <p id="chapter-blurb" class="muted"></p>
+        <p id="chapter-blurb" class="blurb"></p>
         <p id="stats" class="mono muted"></p>
       </section>
 
-      <section id="room-section" hidden>
-        <h3>Room</h3>
+      <section class="actions">
+        <button id="test" title="Check every goal with the engine and show the route it finds" type="button" class="primary">Test construction</button>
+        <div class="actionrow">
+          <button id="walk" title="Play the found route, step by step" type="button" class="ghost" disabled>Walk the route</button>
+          <label class="field speed">Speed
+            <select id="speed" aria-label="Walk and playback speed">
+              <option value="0.5">½×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+            </select>
+          </label>
+          <button id="hint" title="Show the next hint for this challenge" type="button" class="linkish">Hint</button>
+        </div>
+        <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+        <button id="prev" type="button" class="ghost" hidden>← Previous chapter</button>
+        <button id="next" type="button" class="ghost" hidden>Next chapter →</button>
+        <div id="ending" class="ending" hidden>
+          <strong>The last thing you build is this.</strong>
+          <p>Every chapter is complete. The construction is still yours to keep changing. Free construction remains open.</p>
+        </div>
+        <p id="fp-live" class="sr-only" aria-live="polite"></p>
+        <div id="fp-controls" class="toolrow walkrow" hidden>
+          <p class="muted touch-only">Tap the left or right edge to turn, the middle to walk.</p>
+          <button id="fp-left" type="button" title="Left arrow or Q">Turn left</button>
+          <button id="fp-forward" type="button" title="Up arrow">Forward</button>
+          <button id="fp-right" type="button" title="Right arrow or E">Turn right</button>
+          <button id="fp-reset" title="Stand at the start again" type="button" class="ghost">Back to start</button>
+          <button id="fp-play" type="button" class="ghost" disabled title="Walk the last passing route">Play route</button>
+        </div>
+      </section>
+
+      <section id="portal-actions-section" class="context">
+        <div id="portal-actions" class="toolrow" hidden>
+          <h3>This passage</h3>
+          <button id="rotate" type="button" class="ghost" title="R">Turn ¼</button>
+          <button id="mirror" type="button" class="ghost" title="M">Mirror</button>
+          <button id="move-end" type="button" class="ghost" title="Re-attach the end of this portal">Move end</button>
+          <button id="oneway" type="button" class="ghost" title="O">One way</button>
+          <button id="reverse" type="button" class="ghost" title="Flip the direction of a one-way passage">Reverse</button>
+        </div>
+      </section>
+
+      <section id="room-section" class="context" hidden>
+        <h3>This room</h3>
         <label class="field">Label <input id="room-label" type="text" maxlength="24" autocomplete="off"></label>
         <label class="field">Kind
           <select id="room-kind" aria-label="Kind of room">
@@ -51,68 +98,27 @@
           </select>
         </label>
         <div class="toolrow">
-          <button id="turn-room" type="button" title="Turn the room a quarter-turn in the plan. Its doors keep their faces.">Turn room</button>
-          <button id="duplicate" type="button" title="Copy this room one step away, with its label">Duplicate room</button>
+          <button id="turn-room" type="button" class="ghost" title="Turn the room a quarter-turn in the plan. Its doors keep their faces.">Turn room</button>
+          <button id="duplicate" type="button" class="ghost" title="Copy this room one step away, with its label">Duplicate</button>
         </div>
       </section>
 
-      <section id="notes-section" hidden>
+      <section id="notes-section" class="context" hidden>
         <h3>Field notes</h3>
         <ul id="notes" class="notes"></ul>
-        <button id="copy-notes" type="button">Copy notes</button>
+        <button id="copy-notes" type="button" class="ghost">Copy notes</button>
       </section>
 
-      <section id="sight-section" hidden>
+      <section id="sight-section" class="context" hidden>
         <h3>Sightlines</h3>
         <canvas id="sight" width="300" height="240" aria-label="What each face of the selected room leads to"></canvas>
       </section>
 
-      <section>
-        <h3>View</h3>
-        <div class="toolrow">
-          <button id="view-plan" title="The drawing: build rooms and passages here" type="button" aria-pressed="true">Plan</button>
-          <button id="view-first" type="button" aria-pressed="false" title="Walk the building in 3D">Walk</button>
-          <button id="view-model" type="button" aria-pressed="false" title="The architect's model in 3D">Model</button>
-        </div>
-        <div class="toolrow">
-          <button id="fit" type="button" title="F">Fit view</button>
-          <button id="snap" type="button" aria-pressed="true" title="G">Snap to grid</button>
-          <button id="save-image" type="button" title="Save the current view as a PNG">Save image</button>
-        </div>
-        <p id="fp-live" class="sr-only" aria-live="polite"></p>
-        <div id="fp-controls" class="toolrow" hidden>
-          <p class="muted touch-only">Tap the left or right edge to turn, the middle to walk.</p>
-          <button id="fp-left" type="button" title="Left arrow or Q">Turn left</button>
-          <button id="fp-forward" type="button" title="Up arrow">Forward</button>
-          <button id="fp-right" type="button" title="Right arrow or E">Turn right</button>
-          <button id="fp-reset" title="Stand at the start again" type="button">Back to start</button>
-          <button id="fp-play" type="button" disabled title="Walk the last passing route">Play route</button>
-        </div>
-        <div id="gl-model-controls" class="toolrow" hidden>
-          <button id="gl-cutaway" type="button" aria-pressed="true" title="Cut the model at a section plane">Cutaway</button>
-          <label class="field" title="Height of the section plane">Section <input id="gl-cut-height" type="range" min="1" max="6" step="0.1" value="2.7" aria-label="Section plane height"></label>
-          <button id="gl-reset-view" type="button" title="F">Reset view</button>
-        </div>
-      </section>
+      <section id="challenge-box" class="editor" hidden></section>
 
-      <section>
-        <h3>Tools</h3>
-        <div class="toolrow">
-          <button type="button" data-tool="select" aria-pressed="true" title="Select a room or passage; drag a room to move it">Select &amp; move</button>
-          <button type="button" data-tool="add" title="Click empty grid to place a room">Add room</button>
-          <button type="button" data-tool="connect" title="Click a face dot on one room, then on another, to join them">Connect faces</button>
-        </div>
-        <div class="toolrow">
-          <button id="undo" type="button" title="Ctrl/Cmd-Z">Undo</button>
-          <button id="redo" type="button" title="Ctrl/Cmd-Shift-Z">Redo</button>
-          <button id="delete" type="button" title="Delete">Delete</button>
-          <button id="clear" type="button" disabled title="Empty a free construction (undoable)">Clear all</button>
-        </div>
-      </section>
-
-      <section>
+      <section class="footer">
         <details id="symbols">
-          <summary class="sum-h3">Symbols</summary>
+          <summary>Symbols</summary>
           <dl class="symbols">
             <dt>numbered circle</dt><dd>a pressure plate; it lights when a walker arrives in its room facing the arrow</dd>
             <dt>dot on a room edge</dt><dd>a face you can connect</dd>
@@ -121,101 +127,84 @@
             <dt>gate label or bar</dt><dd>a gate, open only when its plate is lit</dd>
           </dl>
         </details>
-      </section>
-
-      <section>
-        <div id="portal-actions" class="toolrow" hidden>
-          <button id="rotate" type="button" title="R">Turn ¼</button>
-          <button id="mirror" type="button" title="M">Mirror</button>
-          <button id="move-end" type="button" title="Re-attach the end of this portal">Move end</button>
-          <button id="oneway" type="button" title="O">One way</button>
-          <button id="reverse" type="button" title="Flip the direction of a one-way passage">Reverse</button>
-        </div>
-      </section>
-
-      <section>
-        <button id="test" title="Check every goal with the engine and show the route it finds" type="button" class="primary">Test construction</button>
-        <button id="walk" title="Play the found route, step by step" type="button" disabled>Walk the route</button>
-        <label class="field">Speed
-          <select id="speed" aria-label="Walk and playback speed">
-            <option value="0.5">½×</option>
-            <option value="1" selected>1×</option>
-            <option value="2">2×</option>
-          </select>
-        </label>
-        <button id="hint" title="Show the next hint for this challenge" type="button">Show hint</button>
-        <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-        <button id="prev" type="button" hidden>← Previous chapter</button>
-        <button id="next" type="button" hidden>Next chapter →</button>
-        <div id="ending" class="ending" hidden>
-          <strong>The last thing you build is this.</strong>
-          <p>Every chapter is complete. The construction is still yours to keep changing. Free construction remains open.</p>
-        </div>
-      </section>
-
-      <section id="challenge-box" class="editor" hidden></section>
-
-      <section>
-        <details id="advanced" class="advanced">
-          <summary class="sum-h3">Advanced: inspector, save, share</summary>
-        <pre id="inspector" class="inspector" tabindex="0" role="region" aria-label="Inspector">Nothing selected.</pre>
-        <button id="describe" type="button" title="Copy a plain-language description of the construction">Copy description</button>
-        <button id="copy-route" type="button" disabled title="Copy the passing route as numbered steps">Copy route</button>
-        <h3>Save &amp; load</h3>
-        <div class="toolrow">
-          <select id="slot-list" aria-label="saved slots"><option value="">saved slots</option></select>
-          <input id="slot-name" type="text" placeholder="slot name" aria-label="save slot name" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
-          <button id="save" title="Save the construction to this browser under the name above" type="button">Save</button>
-          <button id="load" title="Load the selected saved construction" type="button">Load</button>
-          <button id="delete-slot" type="button" title="Delete the save with this name">Delete</button>
-        </div>
-        <div class="toolrow">
-          <button id="copy-progress" type="button" title="Copy a code holding your chapter progress">Copy progress</button>
-          <input id="progress-code" type="text" placeholder="progress code" aria-label="progress code to restore" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
-          <button id="restore-progress" type="button">Restore</button>
-        </div>
-        <div class="toolrow">
-          <button id="export" title="Copy the construction as JSON" type="button">Export JSON</button>
-          <label class="filebtn">Import JSON<input id="import" type="file" accept="application/json"></label>
-        </div>
-        <div class="toolrow">
-          <button id="share" type="button" title="Put this construction in a link">Share link</button>
-        </div>
-        <button id="reset" title="Put the challenge back as it started (undo brings your construction back)" type="button">Restart chapter</button>
-        <button id="reset-progress" type="button" title="Forget completed chapters, discoveries, tests and time">Reset campaign progress</button>
+        <details id="help">
+          <summary>How space works here</summary>
+          <p>A room's position on the plan never decides its connections. Only portals do. Each portal may turn your heading by quarter-turns or reflect you, so you can return to a room facing a new direction, or reach a distant room in one step.</p>
+          <p class="muted">Keys: Delete removes selection · R turns a portal · M mirrors it · Esc clears · Ctrl/Cmd-Z undo.</p>
         </details>
-      </section>
-
-      <section>
+        <details id="advanced" class="advanced">
+          <summary>Inspector, save and share</summary>
+          <pre id="inspector" class="inspector" tabindex="0" role="region" aria-label="Inspector">Nothing selected.</pre>
+          <button id="describe" type="button" class="ghost" title="Copy a plain-language description of the construction">Copy description</button>
+          <button id="copy-route" type="button" class="ghost" disabled title="Copy the passing route as numbered steps">Copy route</button>
+          <h3>Save &amp; load</h3>
+          <div class="toolrow">
+            <select id="slot-list" aria-label="saved slots"><option value="">saved slots</option></select>
+            <input id="slot-name" type="text" placeholder="slot name" aria-label="save slot name" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+            <button id="save" class="ghost" title="Save the construction to this browser under the name above" type="button">Save</button>
+            <button id="load" class="ghost" title="Load the selected saved construction" type="button">Load</button>
+            <button id="delete-slot" class="ghost" type="button" title="Delete the save with this name">Delete</button>
+          </div>
+          <div class="toolrow">
+            <button id="copy-progress" class="ghost" type="button" title="Copy a code holding your chapter progress">Copy progress</button>
+            <input id="progress-code" type="text" placeholder="progress code" aria-label="progress code to restore" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+            <button id="restore-progress" class="ghost" type="button">Restore</button>
+          </div>
+          <div class="toolrow">
+            <button id="export" class="ghost" title="Copy the construction as JSON" type="button">Export JSON</button>
+            <label class="filebtn">Import JSON<input id="import" type="file" accept="application/json"></label>
+            <button id="share" class="ghost" type="button" title="Put this construction in a link">Share link</button>
+          </div>
+          <div class="toolrow">
+            <button id="clear" class="ghost" type="button" disabled title="Empty a free construction (undoable)">Clear all</button>
+            <button id="reset" class="ghost" title="Put the challenge back as it started (undo brings your construction back)" type="button">Restart chapter</button>
+            <button id="reset-progress" class="ghost" type="button" title="Forget completed chapters, discoveries, tests and time">Reset progress</button>
+          </div>
+        </details>
         <details id="credits">
           <summary>Credits</summary>
-          <p class="muted">The Last Thing You'll Ever Build. Written in plain JavaScript modules with no build step. Every sound is synthesised in the browser, and every graphic is drawn on a canvas, so nothing is licensed from anywhere else.</p>
+          <p class="muted">Written in plain JavaScript modules with no build step. Every sound is synthesised in the browser, and every graphic is drawn on a canvas, so nothing is licensed from anywhere else.</p>
         </details>
-      </section>
-
-      <section class="help">
-        <h3>How space works here</h3>
-        <p>A room's position on the plan never decides its connections. Only portals do. Each portal may turn your heading by quarter-turns or reflect it, so you can return to a room facing a new direction, or reach a distant room in one step.</p>
-        <p class="muted">Keys: Delete removes selection · R turns a portal · M mirrors it · Esc clears · Ctrl/Cmd-Z undo.</p>
       </section>
     </aside>
 
     <div id="menu" class="menu" role="dialog" aria-modal="true" aria-label="Menu" hidden>
       <div class="menu-card">
-        <section id="menu-title" class="menu-view">
-          <h2 class="menu-heading">The Last Thing You'll Ever Build</h2>
-          <p class="muted">Build rooms, join them through space that does not have to match the plan, and walk what you build.</p>
-          <p id="menu-newhint" class="menu-newhint" hidden>New here? Start a new game: the first minute teaches the three views by doing. Or look at the Demonstrations first: seven small buildings that do what no floor plan can.</p>
-          <div class="menu-buttons">
-            <button id="menu-continue" type="button" class="primary" hidden>Continue</button>
-            <button id="menu-new" type="button">New game</button>
-            <button id="menu-demos-open" type="button" title="Small buildings that show what the architecture can do">Demonstrations</button>
-            <button id="menu-chapters-open" type="button">Chapters</button>
-            <button id="menu-sandbox" type="button">Free construction</button>
-            <button id="menu-generated" type="button" title="A new puzzle built from a seed, checked solvable by the engine">Generated challenge</button>
-            <button id="menu-settings-open" type="button">Settings</button>
-            <button id="menu-atlas-open" type="button">Atlas</button>
-            <button id="menu-credits-open" type="button">Credits</button>
+        <section id="menu-title" class="menu-view title">
+          <svg class="title-art" viewBox="0 0 760 520" preserveAspectRatio="xMaxYMid meet" aria-hidden="true" focusable="false">
+            <defs><pattern id="tg" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.16"/></pattern></defs>
+            <rect width="760" height="520" fill="url(#tg)"/>
+            <g class="art-rooms" fill="none" stroke="currentColor" stroke-width="1.4">
+              <rect x="40" y="340" width="84" height="84"/><rect x="50" y="350" width="64" height="64" stroke-dasharray="3 4" opacity="0.55"/>
+              <rect x="560" y="80" width="84" height="84"/><rect x="570" y="90" width="64" height="64" stroke-dasharray="3 4" opacity="0.55"/>
+              <rect x="318" y="250" width="56" height="56"/><rect x="325" y="257" width="42" height="42" stroke-dasharray="3 4" opacity="0.55"/>
+            </g>
+            <g class="art-labels" fill="currentColor" font-family="ui-monospace, Menlo, monospace" font-size="11" letter-spacing="1.5" opacity="0.75">
+              <text x="40" y="446">ENTRANCE</text><text x="560" y="186">VAULT</text>
+              <text x="470" y="212" opacity="0.7">12 units away on the plan,</text><text x="470" y="230" opacity="0.7">one doorway away in the building</text>
+            </g>
+            <path class="art-arc" d="M124 382 C 280 382 420 122 560 122" fill="none" stroke="#e8b45a" stroke-width="2.2" stroke-linecap="round"/>
+            <path class="art-arc" d="M346 250 C 346 190 410 190 410 250 C 410 300 372 300 372 280" fill="none" stroke="#e8b45a" stroke-width="1.6" stroke-dasharray="2 5" stroke-linecap="round" opacity="0.8"/>
+            <circle class="art-dot" r="4.5" fill="#f4d9a0"><animateMotion dur="7s" repeatCount="indefinite" path="M124 382 C 280 382 420 122 560 122"/></circle>
+          </svg>
+          <div class="title-copy">
+            <p class="title-kicker">A spatial puzzle</p>
+            <h1 class="title-name">Impossible Architecture</h1>
+            <p class="title-lede">Two rooms can be a world apart on the plan and one doorway apart in the building. You build the doorways.</p>
+            <div class="title-actions">
+              <button id="menu-continue" type="button" class="primary" hidden>Continue</button>
+              <button id="menu-new" type="button" class="primary">Begin</button>
+              <button id="menu-demos-open" type="button" class="ghost" title="Seven small buildings that do what no floor plan can">Seven impossible buildings</button>
+            </div>
+            <p id="menu-newhint" class="title-note" hidden>The first minute teaches the plan, the walk and the model by doing.</p>
+            <nav class="title-links" aria-label="More">
+              <button id="menu-chapters-open" type="button" class="linkish">Chapters</button>
+              <button id="menu-sandbox" type="button" class="linkish">Free construction</button>
+              <button id="menu-generated" type="button" class="linkish" title="A new puzzle built from a seed, checked solvable by the engine">Generated challenge</button>
+              <button id="menu-atlas-open" type="button" class="linkish">Atlas</button>
+              <button id="menu-settings-open" type="button" class="linkish">Settings</button>
+              <button id="menu-credits-open" type="button" class="linkish">Credits</button>
+            </nav>
           </div>
         </section>
 
@@ -386,12 +375,32 @@
           <button id="coach-skip" type="button">Skip</button>
         </span>
       </div>
-      <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Quick tools">
-        <button type="button" data-tool="select" title="Select a room or passage; drag a room to move it">Select</button>
-        <button type="button" data-tool="add" title="Tap empty grid to place a room">Add room</button>
-        <button type="button" data-tool="connect" title="Tap a face dot on one room, then on another, to join them">Connect</button>
-        <button type="button" id="plan-undo" title="Undo the last change (Ctrl+Z)">Undo</button>
+      <div class="viewswitch" role="group" aria-label="View">
+        <button id="view-plan" title="The drawing: build rooms and passages here" type="button" aria-pressed="true">Plan</button>
+        <button id="view-first" type="button" aria-pressed="false" title="Walk the building in 3D">Walk</button>
+        <button id="view-model" type="button" aria-pressed="false" title="The architect's model in 3D">Model</button>
+      </div>
+      <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Tools">
         <span id="plan-hint" class="plan-hint"></span>
+        <div class="toolgroup">
+          <button type="button" data-tool="select" aria-pressed="true" title="Select a room or passage; drag a room to move it">Select</button>
+          <button type="button" data-tool="add" title="Tap empty grid to place a room">Add room</button>
+          <button type="button" data-tool="connect" title="Tap a face dot on one room, then on another, to join them">Connect</button>
+        </div>
+        <div class="toolgroup">
+          <button id="undo" type="button" title="Ctrl/Cmd-Z">Undo</button>
+          <button id="redo" type="button" title="Ctrl/Cmd-Shift-Z">Redo</button>
+          <button id="delete" type="button" title="Delete">Delete</button>
+        </div>
+        <div class="toolgroup planonly">
+          <button id="fit" type="button" title="F">Fit</button>
+          <button id="snap" type="button" aria-pressed="true" title="G">Snap</button>
+        </div>
+      </div>
+      <div id="gl-model-controls" class="modelchip" hidden>
+        <button id="gl-cutaway" type="button" aria-pressed="true" title="Cut the model at a section plane">Cutaway</button>
+        <label class="field" title="Height of the section plane">Section <input id="gl-cut-height" type="range" min="1" max="6" step="0.1" value="2.7" aria-label="Section plane height"></label>
+        <button id="gl-reset-view" type="button" title="F">Reset view</button>
       </div>
       <div id="gl-hud" class="gl-hud" hidden></div>
       <div id="gl-toast" class="gl-toast" role="status" aria-live="polite" hidden></div>

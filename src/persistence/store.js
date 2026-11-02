@@ -23,6 +23,9 @@ export function encodeSave({ chapterId, structure, progress, challenge = null })
   }, null, 2);
 }
 
+// A list of strings from untrusted data; anything else is dropped rather than trusted.
+const strings = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
+
 export function decodeSave(text) {
   let data;
   try {
@@ -41,8 +44,8 @@ export function decodeSave(text) {
     structure: Structure.fromJSON(data.structure),
     challenge: normalizeChallenge(data.challenge),
     progress: {
-      completed: data.progress?.completed ?? [],
-      discoveries: data.progress?.discoveries ?? [],
+      completed: strings(data.progress?.completed),
+      discoveries: strings(data.progress?.discoveries),
     },
   };
 }

@@ -24,6 +24,8 @@ export function emptyChallenge(start = null) {
 
 const isCell = (c) => Array.isArray(c) && c.length === 2 && c.every((v) => Number.isInteger(v) && v >= 0 && v < 64);
 const heading = (h) => (HEADINGS.includes(h) ? h : null);
+// Anything that should be a list but is not (a number, an object, a string) counts as empty.
+const list = (v) => (Array.isArray(v) ? v : []);
 const posInt = (n) => (Number.isInteger(n) && n > 0 ? n : null);
 
 // Accepts the original single-goal shape ({ start, to, heading, maxSteps }) and the current one;
@@ -32,28 +34,28 @@ export function normalizeChallenge(raw) {
   if (!raw || typeof raw !== 'object' || typeof raw.start !== 'string') return null;
   const out = emptyChallenge(raw.start);
   if (raw.v === EDITOR_VERSION) {
-    for (const g of raw.goals ?? []) {
+    for (const g of list(raw.goals)) {
       if (g?.kind === 'reach' && typeof g.to === 'string') out.goals.push({ kind: 'reach', to: g.to, heading: heading(g.heading), maxSteps: posInt(g.maxSteps), lit: !!g.lit });
       else if (g?.kind === 'deliver' && typeof g.to === 'string') out.goals.push({ kind: 'deliver', to: g.to, heading: heading(g.heading) });
       else if (g?.kind === 'place' && Array.isArray(g.targets)) {
-        const targets = g.targets.filter((t) => typeof t?.room === 'string' && isCell(t.cell)).map((t) => ({ room: t.room, cell: [...t.cell], block: Number.isInteger(t.block) && t.block >= 0 ? t.block : null }));
+        const targets = list(g.targets).filter((t) => typeof t?.room === 'string' && isCell(t.cell)).map((t) => ({ room: t.room, cell: [...t.cell], block: Number.isInteger(t.block) && t.block >= 0 ? t.block : null }));
         if (targets.length) out.goals.push({ kind: 'place', targets });
       }
     }
-    for (const p of raw.plates ?? []) {
+    for (const p of list(raw.plates)) {
       if (typeof p?.room !== 'string') continue;
       if (p.mode === 'weight' && isCell(p.cell)) out.plates.push({ room: p.room, mode: 'weight', cell: [...p.cell] });
       else if (heading(p.heading)) out.plates.push({ room: p.room, mode: p.mode === 'toggle' ? 'toggle' : 'latch', heading: p.heading, startsLit: !!p.startsLit, ...(Number.isInteger(p.after) && p.after >= 0 ? { after: p.after } : {}) });
     }
-    for (const c of raw.cargo ?? []) if (typeof c?.room === 'string') out.cargo.push({ room: c.room });
-    out.pads = [...new Set((raw.pads ?? []).filter((r) => typeof r === 'string'))];
-    for (const b of raw.blocks ?? []) if (typeof b?.room === 'string' && isCell(b.cell)) out.blocks.push({ room: b.room, cell: [...b.cell] });
+    for (const c of list(raw.cargo)) if (typeof c?.room === 'string') out.cargo.push({ room: c.room });
+    out.pads = [...new Set(list(raw.pads).filter((r) => typeof r === 'string'))];
+    for (const b of list(raw.blocks)) if (typeof b?.room === 'string' && isCell(b.cell)) out.blocks.push({ room: b.room, cell: [...b.cell] });
     out.rules = {
       maxRooms: posInt(raw.rules?.maxRooms),
       maxPortals: posInt(raw.rules?.maxPortals),
-      forbidden: (raw.rules?.forbidden ?? []).filter((f) => typeof f?.a === 'string' && typeof f?.b === 'string' && f.a !== f.b).map((f) => ({ a: f.a, b: f.b })),
+      forbidden: list(raw.rules?.forbidden).filter((f) => typeof f?.a === 'string' && typeof f?.b === 'string' && f.a !== f.b).map((f) => ({ a: f.a, b: f.b })),
     };
-    for (const o of raw.objectives ?? []) if (OBJECTIVES[o?.kind]) out.objectives.push({ kind: o.kind, value: posInt(o.value) });
+    for (const o of list(raw.objectives)) if (OBJECTIVES[o?.kind]) out.objectives.push({ kind: o.kind, value: posInt(o.value) });
     return out;
   }
   // The first version: one goal.

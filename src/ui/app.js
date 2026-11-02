@@ -89,8 +89,7 @@ export function boot() {
   const view = { scale: 80, offsetX: 0, offsetY: 0 };
   let drag = null;
   const planPinch = createPinch();
-  // The graph panel is a developer overlay: on a phone it would cover the plan, so it starts hidden there.
-  let showGraph = !(globalThis.matchMedia?.('(max-width: 560px)').matches);
+  let showGraph = false;
   let viewMode = 'plan';
   let fpKey = null;        // identifies the walker's position, to start a transition
   let fpAnimStart = 0;
@@ -420,6 +419,7 @@ export function boot() {
     // Chapters, settings and credits return to whichever view opened them.
     if (['chapters', 'settings', 'atlas', 'demos', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
+    $('#menu').classList.toggle('is-title', view === 'title');
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
@@ -427,8 +427,9 @@ export function boot() {
       // Someone who has never played has nothing to continue: lead with New game, and point at the demonstrations.
       const played = hasPlayed();
       $('#menu-continue').hidden = !played;
+      $('#menu-new').textContent = played ? 'New game' : 'Begin';
       $('#menu-new').classList.toggle('primary', !played);
-      $('#menu-demos-open').classList.toggle('primary', false);
+      $('#menu-new').classList.toggle('ghost', played);
       $('#menu-newhint').hidden = played;
     }
     if (view === 'atlas') fillAtlas();
@@ -711,6 +712,12 @@ export function boot() {
   $('#ending-again').addEventListener('click', () => { closeEnding(); showEnding(); });
 
   $('#menu-continue').addEventListener('click', () => { closeMenu(); render(); });
+  // The menu is always one tap away. Without this button a phone has no way back to Settings, the Atlas or the
+  // demonstrations once the title screen has been left: Escape was the only door.
+  $('#menu-open').addEventListener('click', () => { $('#more').open = false; showMenu('pause'); });
+  // The More list closes when you tap anywhere else, or press Escape.
+  document.addEventListener('click', (evt) => { const more = $('#more'); if (more.open && !more.contains(evt.target)) more.open = false; });
+  document.addEventListener('keydown', (evt) => { if (evt.key === 'Escape' && $('#more').open) { $('#more').open = false; evt.stopPropagation(); } }, true);
   $('#menu-new').addEventListener('click', () => {
     if (session.progress.completed.length && !confirm('Start a new game? Completed chapters and discoveries are cleared. Your current construction is kept.')) return;
     session.resetProgress();
@@ -900,8 +907,9 @@ export function boot() {
     updateCoach();
     // A blank free construction offers rooms first: the tool is Add room, and the plan says so.
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
-    $('#plan-tools').hidden = viewMode !== 'plan';
-    $('#plan-hint').textContent = session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
+    document.body.dataset.view = viewMode; // the stylesheet shows each view's own tools
+    $('#plan-tools').hidden = viewMode === 'first';
+    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     updateSpatialAudio();
     maybeQueueCard();
@@ -1034,7 +1042,8 @@ export function boot() {
     }
     $('#portal-actions').hidden = !(sel && sel.type === 'portal');
     syncChallengeBox();
-    $('#feedback').textContent = session.feedback?.text ?? '';
+    // The blurb is already at the top of the column; say it twice and the page looks stuttering.
+    $('#feedback').textContent = session.feedback?.text === session.active?.blurb ? '' : session.feedback?.text ?? '';
     syncViewOverlays();
     $('#feedback').dataset.kind = session.feedback?.kind ?? 'info';
     $('#next').hidden = !(session.chapter && session.progress.completed.includes(session.chapter.id) && session.nextChapterId());
@@ -1044,7 +1053,8 @@ export function boot() {
     $('#ending').hidden = !(session.isFinished() && !session.sandbox);
     $('#chapter-select').value = session.sandbox ? '__sandbox' : session.chapter.id;
     const at = session.chapter ? CHAPTERS.findIndex((c) => c.id === session.chapter.id) + 1 : 0;
-    $('#progress').textContent = `${session.progress.completed.length} / ${CHAPTERS.length} challenges complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · chapter ${session.chapter.discipline}, challenge ${session.chapter.inChapter}` : ''}`;
+    $('#progress').textContent = `${session.progress.completed.length} of ${CHAPTERS.length} solved`;
+    $('#progress').title = `${session.progress.completed.length} of ${CHAPTERS.length} challenges complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · chapter ${session.chapter.discipline}, challenge ${session.chapter.inChapter}` : ''}`;
     persistProgress();
   }
 
@@ -1178,7 +1188,6 @@ export function boot() {
     });
   }
 
-  $('#plan-undo').addEventListener('click', () => { session.undo(); render(); });
   $('#undo').addEventListener('click', () => { session.undo(); render(); });
   $('#redo').addEventListener('click', () => { session.redo(); render(); });
   $('#delete').addEventListener('click', () => { session.deleteSelection(); render(); });
