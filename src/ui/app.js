@@ -420,6 +420,7 @@ export function boot() {
     // Chapters, settings and credits return to whichever view opened them.
     if (['chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
+    document.body.classList.toggle('title-screen', view === 'title' && !$('#menu').hidden);
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
@@ -559,6 +560,7 @@ export function boot() {
 
   function closeMenu() {
     $('#menu').hidden = true;
+    document.body.classList.remove('title-screen');
     menuReturnFocus?.focus?.();
     menuReturnFocus = null;
   }
