@@ -91,6 +91,36 @@ test('Structure.fromJSON keeps valid self-room loops and one-way passages', () =
   assert.deepEqual(loaded.toJSON(), s.toJSON());
 });
 
+
+test('decodeSave rejects malformed campaign progress without accepting partial state', () => {
+  const base = {
+    game: 'impossible-architecture', saveVersion: 1, chapterId: null,
+    structure: new Structure().toJSON(),
+    progress: { completed: [], discoveries: [], attempts: {}, time: {} },
+  };
+  for (const patch of [
+    { completed: 'threshold' },
+    { discoveries: [42] },
+    { attempts: { threshold: -1 } },
+    { attempts: [] },
+    { time: { threshold: 'a long time' } },
+  ]) {
+    const data = { ...base, progress: { ...base.progress, ...patch } };
+    assert.throws(() => decodeSave(JSON.stringify(data)), /invalid campaign progress/);
+  }
+});
+
+test('decodeSave tolerates older saves without optional progress statistics', () => {
+  const data = {
+    game: 'impossible-architecture', saveVersion: 1, chapterId: null,
+    structure: new Structure().toJSON(),
+    progress: { completed: ['threshold'], discoveries: [] },
+  };
+  assert.deepEqual(decodeSave(JSON.stringify(data)).progress, {
+    completed: ['threshold'], discoveries: [], attempts: {}, time: {},
+  });
+});
+
 test('SaveSlots writes and reads through an injected storage', () => {
   const mem = new Map();
   const storage = {
