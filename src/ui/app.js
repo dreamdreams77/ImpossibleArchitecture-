@@ -1800,9 +1800,11 @@ function persistWork() {
   try {
     const text = encodeSave({ chapterId: s.sandbox ? null : s.chapter.id, structure: s.structure, progress: s.progress, challenge: s.challenge });
     if (text === lastWork) return;
-    lastWork = text;
     localStorage.setItem(WORK_KEY, text);
     localStorage.setItem(WORK_AT_KEY, String(Date.now()));
+    // Cache only after both writes succeed. If storage is full or blocked,
+    // the next render must retry rather than treating an unsaved snapshot as saved.
+    lastWork = text;
   } catch { /* storage may be full or blocked */ }
 }
 
