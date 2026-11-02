@@ -394,8 +394,23 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     get cutaway() { return world.cutaway; },
     setCutaway(on) { world.cutaway = !!on; },
     setCutHeight(y) { world.cutY = y; },
-    setQuality(q) { world.setQuality(q); },
-    setAdaptive(on) { autoQuality = !!on && !params.has('quality') && (settings.quality ?? 'auto') === 'auto'; slow = 0; },
+    setQuality(q) {
+      if (q === 'auto') {
+        params.delete('quality');
+        const info = deviceInfo(document.createElement('canvas'));
+        quality = recommendPreset({ renderer: info.renderer, mobile: info.mobile, memoryGB: info.memoryGB, cores: info.cores, dpr: info.dpr });
+        autoQuality = true;
+        resScale = 1;
+        world.setQuality(quality);
+        world.setResolutionScale(1);
+      } else {
+        quality = q;
+        autoQuality = false;
+        world.setQuality(q);
+      }
+      slow = 0; fast = 0;
+    },
+    setAdaptive(on) { autoQuality = !!on && !params.has('quality') && (settings.quality ?? 'auto') === 'auto'; slow = 0; fast = 0; },
     setResolutionScale(k) { resScale = k; world.setResolutionScale(k); },
     get resolutionScale() { return resScale; },
     // Debug tint: passes are coloured by recursion depth so the portal budget is visible.
