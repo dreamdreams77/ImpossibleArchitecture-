@@ -269,6 +269,14 @@
                 <option value="low">Low</option>
               </select>
             </label>
+            <p class="muted setting-note">Auto chooses a device-appropriate quality and adjusts rendering resolution to keep the game smooth.</p>
+            <label class="field">Interface layout
+              <select id="set-layout" aria-label="Interface layout">
+                <option value="auto">Auto · adapt to this device</option>
+                <option value="compact">Compact · more room for the view</option>
+                <option value="full">Full · keep controls open</option>
+              </select>
+            </label>
             <label class="field">Look sensitivity <input id="set-look" type="range" min="0.4" max="2.5" step="0.1" aria-label="Look sensitivity"></label>
             <label class="field">Field of view <input id="set-fov" type="range" min="55" max="100" step="1" aria-label="Field of view in degrees"></label>
             <button id="set-intro" type="button" title="Play the short first-run introduction again">Replay the introduction</button>
@@ -398,12 +406,17 @@
           <button id="coach-skip" type="button">Skip</button>
         </span>
       </div>
-      <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Quick tools">
-        <button type="button" data-tool="select" title="Select a room or passage; drag a room to move it">Select</button>
-        <button type="button" data-tool="add" title="Tap empty grid to place a room">Add room</button>
-        <button type="button" data-tool="connect" title="Tap a face dot on one room, then on another, to join them">Connect</button>
-        <button type="button" id="plan-undo" title="Undo the last change (Ctrl+Z)">Undo</button>
+      <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Quick construction tools">
         <span id="plan-hint" class="plan-hint"></span>
+        <div class="plan-tool-actions">
+          <button type="button" data-tool="select" title="Select a room or passage; drag a room to move it" aria-label="Select and move">Select</button>
+          <button type="button" data-tool="add" title="Tap empty grid to place a room" aria-label="Add room">Add room</button>
+          <button type="button" data-tool="connect" title="Tap a face dot on one room, then on another, to join them" aria-label="Connect faces">Connect</button>
+          <button type="button" id="plan-undo" title="Undo the last change (Ctrl+Z)">Undo</button>
+          <button type="button" id="plan-redo" title="Redo the last undone change (Ctrl+Shift+Z)">Redo</button>
+          <button type="button" id="plan-test" title="Test the construction">Test</button>
+          <button type="button" id="plan-more" title="Open room settings and advanced controls">More</button>
+        </div>
       </div>
       <div id="gl-hud" class="gl-hud" hidden></div>
       <div id="gl-toast" class="gl-toast" role="status" aria-live="polite" hidden></div>
