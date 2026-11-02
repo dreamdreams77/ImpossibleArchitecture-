@@ -30,6 +30,7 @@ import { createEditorPanel } from './editorpanel.js';
 import { runBenchmark, formatReport } from './bench.js';
 import { ACTIONS, loadBindings, saveBindings, rebind, translate } from './keybindings.js';
 import { copyText, canvasRatio } from './platform.js';
+import { normalizeLayoutMode, defaultPanelHidden } from './responsive.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -112,6 +113,8 @@ export function boot() {
   // The WebGL walk and architect's model. Where WebGL is unavailable the 2D views below stay in use.
   let savedQuality = 'auto';
   try { savedQuality = localStorage.getItem('ia-quality') || 'auto'; } catch { /* default */ }
+  let savedLayout = 'auto';
+  try { savedLayout = normalizeLayoutMode(localStorage.getItem('ia-layout') || 'auto'); } catch { /* automatic layout */ }
   const gl = createGlView({
     canvas: glCanvas,
     session,
@@ -595,6 +598,7 @@ export function boot() {
     $('#set-speed').value = $('#speed').value;
     $('#set-quality').value = savedQuality;
     $('#set-quality').disabled = !gl;
+    $('#set-layout').value = savedLayout;
     $('#set-look').value = String(access.look);
     $('#set-fov').value = String(access.fov);
     $('#set-bob').checked = !!access.bob;
@@ -793,6 +797,13 @@ export function boot() {
     savedQuality = evt.target.value;
     try { localStorage.setItem('ia-quality', savedQuality); } catch { /* not remembered */ }
     gl?.setQuality(savedQuality === 'auto' ? 'high' : savedQuality);
+  });
+  $('#set-layout').addEventListener('change', (evt) => {
+    savedLayout = normalizeLayoutMode(evt.target.value);
+    document.body.dataset.layout = savedLayout;
+    try { localStorage.setItem('ia-layout', savedLayout); localStorage.removeItem('ia-panel'); } catch { /* preference is optional */ }
+    applyPanel(defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false));
+    syncSettings();
   });
   $('#set-look').addEventListener('input', (e) => { access.look = Number(e.target.value); saveAccess(); });
   $('#set-fov').addEventListener('input', (e) => { access.fov = Number(e.target.value); saveAccess(); });
@@ -1014,6 +1025,8 @@ export function boot() {
     $('#redo').title = forward ? `Redo (${forward} step${forward === 1 ? '' : 's'} forward)` : 'Nothing to redo';
     $('#hint').textContent = session.hintState && session.hintState.chapter === session.chapter?.id ? 'Show full hint' : 'Show hint';
     $('#redo').disabled = !session.history.canRedo;
+    $('#plan-redo').disabled = !session.history.canRedo;
+    $('#plan-undo').disabled = !session.history.canUndo;
     for (const btn of document.querySelectorAll('[data-tool]')) {
       btn.setAttribute('aria-pressed', String(btn.dataset.tool === session.tool));
     }
@@ -1212,6 +1225,9 @@ export function boot() {
   }
 
   $('#plan-undo').addEventListener('click', () => { session.undo(); render(); });
+  $('#plan-redo').addEventListener('click', () => { session.redo(); render(); });
+  $('#plan-test').addEventListener('click', () => $('#test').click());
+  $('#plan-more').addEventListener('click', () => $('#panel-toggle').click());
   $('#undo').addEventListener('click', () => { session.undo(); render(); });
   $('#redo').addEventListener('click', () => { session.redo(); render(); });
   $('#delete').addEventListener('click', () => { session.deleteSelection(); render(); });
@@ -1690,7 +1706,12 @@ export function boot() {
     try { localStorage.setItem('ia-panel', hidden ? 'hidden' : 'shown'); } catch { /* not remembered */ }
   }
   $('#panel-toggle').addEventListener('click', () => applyPanel(!document.body.classList.contains('panel-hidden')));
-  try { if (localStorage.getItem('ia-panel') === 'hidden') applyPanel(true); } catch { /* default: shown */ }
+  document.body.dataset.layout = savedLayout;
+  try {
+    const storedPanel = localStorage.getItem('ia-panel');
+    applyPanel(storedPanel === 'hidden' ? true : storedPanel === 'shown' ? false
+      : defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false));
+  } catch { applyPanel(defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false)); }
 
   // Speed and view are remembered between visits.
   try {
