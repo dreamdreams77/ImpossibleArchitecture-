@@ -35,11 +35,12 @@ Current coverage focus:
 - `render3d-frames.test.js`, `render3d-walker.test.js`: portal frame maths and
   the walker, including body mode.
 - `audit.test.js`: the route-first audit finds exactly the exhaustive solver's minimal solutions on six challenges.
-- `intro.test.js`, `phone.test.js`: the first-run steps (pure), touch-sized hit targets, small-room labels, and that every challenge fits a phone-shaped plan (Contradiction excepted, on purpose).
+- `hostile-input.test.js`, `roundtrip.test.js`: 2,700 mutated saves, share links and progress codes are refused cleanly or survived, and every challenge and demonstration survives save, load and share unchanged.
+- `intro.test.js`, `menu.test.js`, `responsive.test.js`, `phone.test.js`: the first-run steps (pure), touch-sized hit targets, small-room labels, and that every challenge fits a phone-shaped plan (Contradiction excepted, on purpose).
 - `bench.test.js`: benchmark statistics and preset recommendation.
 - `spatial-sound.test.js`: room acoustics, neighbour mix and a fake AudioContext.
 
-Total: 444 tests. Browser tools (need Playwright, server on port 8080):
+Total: 468 tests. Browser tools (need Playwright, server on port 8080):
 `npm run e2e` (drives the real UI and asserts WebGL initialised), `npm run fuzz`
 (random edits and views in every challenge), `npm run portalcheck` (analytic
 marker projections against the rendered portals, within 4 px).

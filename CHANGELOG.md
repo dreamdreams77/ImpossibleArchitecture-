@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0 — a deliberate layout, one door to the menu
+
+- Layout: the header holds the name, the chapter and progress, then More and Menu. The view switch and the building
+  tools sit on the drawing. The column beside it holds the objective, the one main action and contextual panels;
+  Symbols, Help, the inspector and Credits are disclosures. The connection graph starts hidden (More, Connection
+  graph). The goal is no longer repeated as feedback. Choosing an item in More closes it.
+- Title screen: one primary action, one way to look, the rest quiet, over a drawing of the premise (two rooms twelve
+  units apart on the plan, one doorway apart in the building).
+- Fix: phones had no way back to Settings, the Atlas or the demonstrations once the title screen was left. There is a
+  Menu button in the header now.
+- From the guided-tutorial, graphics-controls and responsive work (merged from main): the Guided tutorial and its six
+  lessons, portal render distance and resolution scale in Settings, the live frame-rate readout, the Interface layout
+  choice. Under Auto the controls column is kept on touch devices (it holds the objective and Test), and Compact hides it.
+- Loaders refuse malformed lists instead of throwing; new hostile-input and round-trip tests.
+
 ## 1.1.1 — release polish
 
 - First-run introduction: a coach bar teaches Plan, Walk and Model by doing, reads game state so it cannot be

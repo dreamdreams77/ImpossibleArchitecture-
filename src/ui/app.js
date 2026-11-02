@@ -92,7 +92,7 @@ export function boot() {
   let drag = null;
   const planPinch = createPinch();
   // The graph panel is a developer overlay: on a phone it would cover the plan, so it starts hidden there.
-  let showGraph = !(globalThis.matchMedia?.('(max-width: 560px)').matches);
+  let showGraph = false; // the connection graph is a teaching aid, opened from More; it should not sit over the plan unasked
   let viewMode = 'plan';
   let fpKey = null;        // identifies the walker's position, to start a transition
   let fpAnimStart = 0;
@@ -429,8 +429,10 @@ export function boot() {
     if (['chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
     const menuLanding = !$('#menu').hidden && isLandingMenuView(view, menuParent);
-    document.body.classList.toggle('menu-screen', menuLanding);
-    document.body.classList.toggle('title-screen', !$('#menu').hidden && view === 'title');
+    // The title screen is a place, not a dialog; subpages opened from it stay on its backdrop; the pause menu
+    // stays an overlay on the live game.
+    $('#menu').classList.toggle('is-title', view === 'title');
+    $('#menu').classList.toggle('on-landing', menuLanding && view !== 'title');
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
@@ -438,8 +440,9 @@ export function boot() {
       // Someone who has never played has nothing to continue: lead with New game, and point at the demonstrations.
       const played = hasPlayed();
       $('#menu-continue').hidden = !played;
+      $('#menu-new').textContent = played ? 'New game' : 'Begin';
       $('#menu-new').classList.toggle('primary', !played);
-      $('#menu-demos-open').classList.toggle('primary', false);
+      $('#menu-new').classList.toggle('ghost', played);
       $('#menu-newhint').hidden = played;
     }
     if (view === 'atlas') fillAtlas();
@@ -570,7 +573,6 @@ export function boot() {
 
   function closeMenu() {
     $('#menu').hidden = true;
-    document.body.classList.remove('title-screen', 'menu-screen');
     menuReturnFocus?.focus?.();
     menuReturnFocus = null;
   }
@@ -757,7 +759,12 @@ export function boot() {
   $('#menu-continue').addEventListener('click', () => { closeMenu(); render(); });
   // The menu is always one tap away. Escape was the only door to it, which left a phone with no way back to
   // Settings, the Atlas or the demonstrations once the title screen had been left.
-  $('#menu-open').addEventListener('click', () => showMenu('pause'));
+  $('#menu-open').addEventListener('click', () => { $('#more').open = false; showMenu('pause'); });
+  // Choosing something in the More list closes it, as a menu should; the volume slider stays open while you drag.
+  $('#more').addEventListener('click', (evt) => { if (evt.target.closest('button')) $('#more').open = false; });
+  // The More list closes when you tap anywhere else, or press Escape.
+  document.addEventListener('click', (evt) => { const more = $('#more'); if (more.open && !more.contains(evt.target)) more.open = false; });
+  document.addEventListener('keydown', (evt) => { if (evt.key === 'Escape' && $('#more').open) { $('#more').open = false; evt.stopPropagation(); } }, true);
   $('#menu-new').addEventListener('click', () => {
     if (session.progress.completed.length && !confirm('Start a new game? Completed chapters and discoveries are cleared. Your current construction is kept.')) return;
     session.resetProgress();
@@ -827,7 +834,7 @@ export function boot() {
     savedLayout = normalizeLayoutMode(evt.target.value);
     document.body.dataset.layout = savedLayout;
     try { localStorage.setItem('ia-layout', savedLayout); localStorage.removeItem('ia-panel'); } catch { /* preference is optional */ }
-    applyPanel(defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false));
+    applyPanel(defaultPanelHidden(savedLayout));
     syncSettings();
   });
   $('#set-look').addEventListener('input', (e) => { access.look = Number(e.target.value); saveAccess(); });
@@ -969,8 +976,9 @@ export function boot() {
     updateCoach();
     // A blank free construction offers rooms first: the tool is Add room, and the plan says so.
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
-    $('#plan-tools').hidden = viewMode !== 'plan';
-    $('#plan-hint').textContent = session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
+    document.body.dataset.view = viewMode; // the stylesheet shows each view's own tools
+    $('#plan-tools').hidden = viewMode === 'first';
+    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     updateSpatialAudio();
     maybeQueueCard();
@@ -1050,8 +1058,6 @@ export function boot() {
     $('#redo').title = forward ? `Redo (${forward} step${forward === 1 ? '' : 's'} forward)` : 'Nothing to redo';
     $('#hint').textContent = session.hintState && session.hintState.chapter === session.chapter?.id ? 'Show full hint' : 'Show hint';
     $('#redo').disabled = !session.history.canRedo;
-    $('#plan-redo').disabled = !session.history.canRedo;
-    $('#plan-undo').disabled = !session.history.canUndo;
     for (const btn of document.querySelectorAll('[data-tool]')) {
       btn.setAttribute('aria-pressed', String(btn.dataset.tool === session.tool));
     }
@@ -1105,7 +1111,8 @@ export function boot() {
     }
     $('#portal-actions').hidden = !(sel && sel.type === 'portal');
     syncChallengeBox();
-    $('#feedback').textContent = session.feedback?.text ?? '';
+    // The blurb is already at the top of the column; saying it twice makes the page stutter.
+    $('#feedback').textContent = session.feedback?.text === session.active?.blurb ? '' : session.feedback?.text ?? '';
     syncViewOverlays();
     $('#feedback').dataset.kind = session.feedback?.kind ?? 'info';
     $('#next').hidden = !(session.chapter && session.progress.completed.includes(session.chapter.id) && session.nextChapterId());
@@ -1115,7 +1122,8 @@ export function boot() {
     $('#ending').hidden = !(session.isFinished() && !session.sandbox);
     $('#chapter-select').value = session.sandbox ? '__sandbox' : session.chapter.id;
     const at = session.chapter ? CHAPTERS.findIndex((c) => c.id === session.chapter.id) + 1 : 0;
-    $('#progress').textContent = `${session.progress.completed.length} / ${CHAPTERS.length} challenges complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · chapter ${session.chapter.discipline}, challenge ${session.chapter.inChapter}` : ''}`;
+    $('#progress').textContent = `${session.progress.completed.length} of ${CHAPTERS.length} solved`;
+    $('#progress').title = `${session.progress.completed.length} of ${CHAPTERS.length} challenges complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · chapter ${session.chapter.discipline}, challenge ${session.chapter.inChapter}` : ''}`;
     persistProgress();
   }
 
@@ -1249,10 +1257,6 @@ export function boot() {
     });
   }
 
-  $('#plan-undo').addEventListener('click', () => { session.undo(); render(); });
-  $('#plan-redo').addEventListener('click', () => { session.redo(); render(); });
-  $('#plan-test').addEventListener('click', () => $('#test').click());
-  $('#plan-more').addEventListener('click', () => $('#panel-toggle').click());
   $('#undo').addEventListener('click', () => { session.undo(); render(); });
   $('#redo').addEventListener('click', () => { session.redo(); render(); });
   $('#delete').addEventListener('click', () => { session.deleteSelection(); render(); });
@@ -1735,8 +1739,8 @@ export function boot() {
   try {
     const storedPanel = localStorage.getItem('ia-panel');
     applyPanel(storedPanel === 'hidden' ? true : storedPanel === 'shown' ? false
-      : defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false));
-  } catch { applyPanel(defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false)); }
+      : defaultPanelHidden(savedLayout));
+  } catch { applyPanel(defaultPanelHidden(savedLayout)); }
 
   // Speed and view are remembered between visits.
   try {

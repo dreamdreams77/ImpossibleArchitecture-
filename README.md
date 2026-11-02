@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 444 tests over the engine, campaign, renderer maths and walker
+npm test       # 468 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -46,7 +46,7 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 - **Guided tutorial** (title and pause menus): replay the hands-on Plan/Walk/Model introduction, then follow six optional lessons on distance versus connection, self-loops, quarter-turns, mirrors, one-way passages and overlapping rooms. Each lesson opens an editable demonstration.
 - **Demonstrations** (title and pause menus): seven small buildings that each show one impossible thing: an endless corridor, a hall of mirrors, a tower whose loop turns you, distant neighbours, two rooms in one place, a Möbius gallery and a one-way spiral. Each loads into free construction, and each states a claim the tests check with the engine.
 - **Experiments** (Atlas screen, also in the pause menu): the game poses a prediction about your own loop (which way do you face when you come back round?). You answer; the engine walks it and judges. A correct answer is remembered once per loop.
-- **Quick tools on the plan** (Select, Add room, Connect, Undo) so building never needs the side panel, which on a phone sits below the plan.
+- **A deliberate layout**: a quiet header (name, chapter, progress, More, Menu), the view switch and the building tools on the drawing itself, and one column beside it holding the objective, the one main action (Test) and contextual panels, with everything secondary behind disclosures. On a phone the drawing is pinned and the column scrolls beneath it. The Menu button is always one tap away (Escape was once the only door to Settings, the Atlas and the demonstrations). Settings has an Interface layout choice (Auto, Compact, Full), a portal render distance and a render-resolution scale, and a live frame-rate readout appears in the 3D views.
 - **Cinematic moments** (Settings, on by default): a gentle lift and widening of the walk camera when you make a discovery or finish a challenge. It is layered on your own view, ends the instant you touch anything, and never plays under reduced motion.
 - **Wall dressing**: every wall bay is dressed per room and wall (hanging banners, glowing sconces, niches with plinths and figures, ring reliefs, or left plain), so rooms of one style no longer repeat. Sconces cost a glow sprite each, not a light.
 - **Monuments**: the grandest atrium (size 1.5) is taller, with a floor medallion, four slanted shafts of light crossing over it and a centrepiece that differs by chapter (armillary, meshed gears, nested arches, two counter-turning half-rings, a colossal gate-ring) and turns faster for a moment after you cross a passage. Built into the room generator, so it appears wherever you make such a room.

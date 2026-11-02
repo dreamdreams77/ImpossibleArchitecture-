@@ -3,7 +3,8 @@ export function normalizeLayoutMode(value) {
   return ['auto', 'compact', 'full'].includes(value) ? value : 'auto';
 }
 
-export function defaultPanelHidden(mode = 'auto', coarsePointer = false) {
-  const preference = normalizeLayoutMode(mode);
-  return preference === 'compact' || (preference === 'auto' && !!coarsePointer);
+// The controls column is where the objective and the Test button live, so Auto keeps it: on a phone it scrolls
+// beneath the pinned drawing. Compact hides it for the largest possible view.
+export function defaultPanelHidden(mode = 'auto') {
+  return normalizeLayoutMode(mode) === 'compact';
 }

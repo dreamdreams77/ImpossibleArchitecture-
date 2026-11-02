@@ -19,37 +19,45 @@ const makePage = async (options) => {
   return { context, page };
 };
 
-// Portrait phone: Auto starts with the inspector tucked away, but all controls
-// remain reachable through Settings and the More action in the construction dock.
+// Portrait phone: the drawing is pinned at the top and the controls column (the objective and the Test button)
+// scrolls beneath it, so Auto keeps it. Compact tucks it away for the largest drawing, Full keeps it open, and
+// the menu is always one tap away in the header.
 {
   const { context, page } = await makePage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
-  check(await page.evaluate(() => document.body.classList.contains('panel-hidden')), 'portrait touch defaults to the compact workspace');
+  check(!(await page.evaluate(() => document.body.classList.contains('panel-hidden'))), 'portrait touch keeps the controls column beneath the drawing');
+  check(await page.locator('#menu-open').isVisible(), 'the Menu button is in the phone header');
   await page.click('#menu-settings-open');
   await page.selectOption('#set-layout', 'full');
-  check(!(await page.evaluate(() => document.body.classList.contains('panel-hidden'))), 'Full layout opens the inspector on a phone');
+  check(!(await page.evaluate(() => document.body.classList.contains('panel-hidden'))), 'Full layout keeps the controls open on a phone');
   await page.selectOption('#set-layout', 'compact');
-  check(await page.evaluate(() => document.body.classList.contains('panel-hidden')), 'Compact layout tucks the inspector away');
+  check(await page.evaluate(() => document.body.classList.contains('panel-hidden')), 'Compact layout tucks the controls away');
   await page.selectOption('#set-layout', 'auto');
-  check(await page.evaluate(() => document.body.classList.contains('panel-hidden')), 'Auto restores touch-first defaults');
+  check(!(await page.evaluate(() => document.body.classList.contains('panel-hidden'))), 'Auto restores the controls column');
   await page.click('#settings-back');
   await page.click('#menu-sandbox');
   await page.waitForFunction(() => document.getElementById('menu').hidden);
-  check(!(await page.locator('#plan-tools').evaluate((el) => el.hidden)), 'mobile construction dock appears in the plan');
+  check(!(await page.locator('#plan-tools').evaluate((el) => el.hidden)), 'the construction tools appear in the plan');
+  const stagePosition = await page.locator('.stage').evaluate((el) => getComputedStyle(el).position);
+  check(stagePosition === 'sticky', 'the drawing stays pinned while the column scrolls');
   const before = await page.evaluate(() => window.__session.structure.rooms.size);
   await page.click('#plan-tools [data-tool="add"]');
   await page.locator('#plan').tap({ position: { x: 190, y: 180 } });
   const afterAdd = await page.evaluate(() => window.__session.structure.rooms.size);
-  check(afterAdd === before + 1, 'Add Room works through the touch construction dock');
-  await page.click('#plan-undo');
+  check(afterAdd === before + 1, 'Add room works by touch');
+  await page.click('#undo');
   const afterUndo = await page.evaluate(() => window.__session.structure.rooms.size);
-  check(afterUndo === before, 'Undo works through the touch construction dock');
-  await page.click('#plan-redo');
+  check(afterUndo === before, 'Undo works by touch');
+  await page.click('#redo');
   const afterRedo = await page.evaluate(() => window.__session.structure.rooms.size);
-  check(afterRedo === before + 1, 'Redo works through the touch construction dock');
-  await page.click('#plan-more');
-  check(!(await page.evaluate(() => document.body.classList.contains('panel-hidden'))), 'More opens the full controls drawer');
+  check(afterRedo === before + 1, 'Redo works by touch');
+  await page.click('#more > summary');
   await page.click('#panel-toggle');
-  check(await page.evaluate(() => document.body.classList.contains('panel-hidden')), 'the header toggle closes the controls drawer');
+  check(await page.evaluate(() => document.body.classList.contains('panel-hidden')), 'More, Hide controls tucks the column away');
+  await page.click('#more > summary');
+  await page.click('#panel-toggle');
+  check(!(await page.evaluate(() => document.body.classList.contains('panel-hidden'))), 'and brings it back');
+  await page.click('#menu-open');
+  check(await page.locator('#menu-pause').isVisible(), 'Menu opens the pause menu on a phone');
   await context.close();
 }
 
@@ -61,7 +69,6 @@ const makePage = async (options) => {
   await page.waitForFunction(() => document.getElementById('menu').hidden);
   const stagePosition = await page.locator('.stage').evaluate((el) => getComputedStyle(el).position);
   check(stagePosition === 'relative', 'landscape phone uses a side-by-side stage layout');
-  await page.click('#plan-more');
   const layout = await page.locator('.layout').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
   check(layout >= 2, 'landscape phone can show the inspector beside the stage');
   check(await page.locator('#controls').isVisible(), 'landscape inspector is reachable');
