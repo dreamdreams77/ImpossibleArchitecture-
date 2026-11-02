@@ -312,6 +312,15 @@ test('chapter data is consistent: gates name real plates, numbering runs in orde
   });
 });
 
+test('the Lantern Court: a circuit around the Lantern reveals its hidden discovery', () => {
+  const c = chapterById('lantern-court');
+  let s = chapterStructure(c);
+  s = join(s, { a: 'court', aFace: 'N', b: 'lantern', bFace: 'S' });
+  assert.deepEqual(discoveriesIn(s, c), []);
+  s = join(s, { a: 'court', aFace: 'W', b: 'lantern', bFace: 'E' });
+  assert.deepEqual(discoveriesIn(s, c), ['lantern-orbit']);
+});
+
 test('the Lantern Court: the Lantern lights from the west, the gate then opens to the Roof', () => {
   const c = chapterById('lantern-court');
   let s = chapterStructure(c);
