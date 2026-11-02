@@ -58,6 +58,39 @@ test('decodeSave rejects foreign and corrupt files', () => {
   assert.throws(() => decodeSave(JSON.stringify({ game: 'impossible-architecture', saveVersion: 7 })), /Unsupported save version/);
 });
 
+
+test('Structure.fromJSON rejects ambiguous or malformed topology before loading', () => {
+  const base = new Structure();
+  const a = base.addRoom({ x: 0, y: 0 });
+  const b = base.addRoom({ x: 2, y: 0 });
+  base.addPortal({ a, aFace: 'N', b, bFace: 'S', transform: { turns: 1, mirror: true } });
+  const original = base.toJSON();
+  const corrupt = (mutate, code) => {
+    const data = structuredClone(original);
+    mutate(data);
+    assert.throws(() => Structure.fromJSON(data), (err) => err.code === code);
+  };
+
+  corrupt((d) => { d.portals.push({ ...d.portals[0] }); }, 'DUPLICATE_PORTAL');
+  corrupt((d) => { d.portals.push({ ...d.portals[0], id: 'p-extra', b: { room: a, face: 'N' } }); }, 'FACE_OCCUPIED');
+  corrupt((d) => { d.portals[0].a.room = 'missing'; }, 'NO_ROOM');
+  corrupt((d) => { d.portals[0].transform.turns = 8; }, 'BAD_TRANSFORM');
+  corrupt((d) => { d.portals[0].transform.mirror = 'yes'; }, 'BAD_TRANSFORM');
+  corrupt((d) => { d.portals[0].gate = -1; }, 'BAD_GATE');
+  corrupt((d) => { d.portals[0].opensAfter = 1.5; }, 'BAD_CRATE');
+  corrupt((d) => { d.rooms[0].x = Infinity; }, 'BAD_POSITION');
+  corrupt((d) => { d.nextId = 0; }, 'BAD_ID');
+  corrupt((d) => { d.portals = {}; }, 'BAD_SHAPE');
+});
+
+test('Structure.fromJSON keeps valid self-room loops and one-way passages', () => {
+  const s = new Structure();
+  const room = s.addRoom({ x: 1, y: 2 });
+  s.addPortal({ a: room, aFace: 'N', b: room, bFace: 'S', oneWay: 'a' });
+  const loaded = Structure.fromJSON(s.toJSON());
+  assert.deepEqual(loaded.toJSON(), s.toJSON());
+});
+
 test('SaveSlots writes and reads through an injected storage', () => {
   const mem = new Map();
   const storage = {
