@@ -383,7 +383,7 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
   .bar button { min-height: 44px; padding: 6px 11px; }
   .bar .field { flex: 1 1 100%; }
   .bar #chapter-select { min-height: 44px; }
-  .layout { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: auto minmax(0, 1fr); overflow-y: auto; overscroll-behavior: contain; }
+  .layout { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: auto auto; overflow-y: auto; overscroll-behavior: contain; }
   .stage { order: -1; position: sticky; top: 0; z-index: 3; height: 58dvh; min-height: 270px; max-height: 640px; }
   .side { max-height: none; overflow: visible; padding: 16px max(14px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
   .side section { margin-bottom: 18px; }
