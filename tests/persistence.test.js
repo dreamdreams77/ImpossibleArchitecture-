@@ -79,6 +79,7 @@ test('Structure.fromJSON rejects ambiguous or malformed topology before loading'
   corrupt((d) => { d.portals[0].gate = -1; }, 'BAD_GATE');
   corrupt((d) => { d.portals[0].opensAfter = 1.5; }, 'BAD_CRATE');
   corrupt((d) => { d.rooms[0].x = Infinity; }, 'BAD_POSITION');
+  corrupt((d) => { d.rooms[0].turn = 'sideways'; }, 'BAD_TURN');
   corrupt((d) => { d.nextId = 0; }, 'BAD_ID');
   corrupt((d) => { d.portals = {}; }, 'BAD_SHAPE');
 });
