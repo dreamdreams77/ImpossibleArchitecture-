@@ -299,7 +299,14 @@ const RAW = [
     plates: [{ room: 'lantern', heading: 'E' }],
     goal: { kind: 'machine', to: 'roof' },
     hint: 'Join the Court to the Lantern on the Lantern\'s west face. Strike it, step back out, cross the gate, then go south from the Stair to the Roof.',
-    optional: [],
+    optional: [
+      {
+        id: 'lantern-orbit',
+        title: 'The Lantern\\'s orbit',
+        text: 'A second passage closes a circuit around the Lantern. The light has found its way home.',
+        check: (s) => findCycles(s).some((c) => c.rooms.includes('lantern')),
+      },
+    ],
   },
   {
     id: 'spiral-cellar',
