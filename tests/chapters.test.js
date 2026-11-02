@@ -161,7 +161,7 @@ test('the finale: the Closed Ring discovery needs a three-room cycle', () => {
   s = join(s, { a: 'well', aFace: 'N', b: 'apex', bFace: 'N', transform: { turns: 2 } });
   assert.deepEqual(discoveriesIn(s, c), []);
   s = join(s, { a: 'apex', aFace: 'S', b: 'foundation', bFace: 'E' });
-  assert.deepEqual(discoveriesIn(s, c), ['closed-ring']);
+  assert.deepEqual(discoveriesIn(s, c), ['closed-ring', 'half-turn-circuit']);
 });
 
 test('the finale: a walkable reflected triangle reveals A Ring of Reflections', () => {
