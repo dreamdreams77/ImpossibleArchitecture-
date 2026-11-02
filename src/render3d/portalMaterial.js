@@ -88,6 +88,16 @@ void main() {
   col += rim * glow * (0.9 + fade * 1.2) * breathe;
   col += rim * exp(-edge * 60.0) * 2.2;
 
+  // A quiet interference field makes the view feel like a surface under tension:
+  // concentric waves drift across the aperture without obscuring the room beyond.
+  // The effect stays deliberately faint so puzzle information remains legible.
+  vec2 rippleP = vec2(p.x * 0.72, p.y - SIZE.y * 0.5);
+  float rippleRadius = length(rippleP);
+  float rippleAngle = atan(rippleP.y, rippleP.x);
+  float interference = sin(rippleRadius * 7.5 - time * 1.25 + sin(rippleAngle * 3.0 + time * 0.35) * 0.7);
+  float rippleLine = smoothstep(0.78, 0.98, interference) * (1.0 - smoothstep(0.9, 1.8, rippleRadius));
+  col += mix(rim, vec3(1.0), 0.28) * rippleLine * 0.055 * (1.0 - min(overlay, 1.0) * 0.45);
+
   // A turning passage: spiral arms of light round the edge.
   if (twist > 0.5) {
     vec2 q = vec2(p.x, p.y - SIZE.y * 0.5);
