@@ -51,8 +51,10 @@ Six styles (`styles.js`) give the six chapters their own materials, light, scale
 fog and architectural features (clerestory, arcades, colossal piers, oculus, rails and
 gears, split warm/cool light with a seam). Room kinds (chamber, corridor, atrium,
 cellar) change height and the ceiling: coffers, barrel vault, groins, a mezzanine.
-There is no real-time shadow mapping and no bloom pass; light shafts and glows are
-additive geometry.
+The renderer enables shadow mapping, but the shipped quality presets set `shadowDepth: 0`,
+so recursive portal views do not currently cast shadow maps. The final image does use a
+three-level, separable bloom chain in `post.js`, followed by ACES tone mapping, chapter
+colour grading, vignette and dithering. Light shafts and glows are also additive geometry.
 
 ## Walker (`walker.js`)
 
