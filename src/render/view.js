@@ -24,6 +24,16 @@ export function fitViewFor(structure, width, height) {
   return { scale, offsetX: width / 2 - cx * scale, offsetY: height / 2 - cy * scale };
 }
 
+// The plan scale that would be needed to show every room at once, before the readability floor is applied.
+// Below MIN_SCALE the building cannot be drawn whole on the plan (Contradiction puts rooms 300 units apart,
+// on purpose): the model view is where such a building is built.
+export function scaleNeededToFit(structure, width, height) {
+  const rooms = [...structure.rooms.values()];
+  if (rooms.length === 0 || width <= 0 || height <= 0) return Infinity;
+  const xs = rooms.map((r) => r.x); const ys = rooms.map((r) => r.y);
+  return Math.min(width / (Math.max(...xs) - Math.min(...xs) + 4), height / (Math.max(...ys) - Math.min(...ys) + 4));
+}
+
 // Snaps a coordinate to the nearest grid step. A step of 0 means no snapping.
 export function snapTo(value, step = 0.5) {
   if (!step) return Math.round(value * 100) / 100;

@@ -205,13 +205,14 @@
         <section id="menu-title" class="menu-view">
           <h2 class="menu-heading">The Last Thing You'll Ever Build</h2>
           <p class="muted">Build rooms, join them through space that does not have to match the plan, and walk what you build.</p>
+          <p id="menu-newhint" class="menu-newhint" hidden>New here? Start a new game: the first minute teaches the three views by doing. Or look at the Demonstrations first: seven small buildings that do what no floor plan can.</p>
           <div class="menu-buttons">
-            <button id="menu-continue" type="button" class="primary">Continue</button>
+            <button id="menu-continue" type="button" class="primary" hidden>Continue</button>
             <button id="menu-new" type="button">New game</button>
+            <button id="menu-demos-open" type="button" title="Small buildings that show what the architecture can do">Demonstrations</button>
             <button id="menu-chapters-open" type="button">Chapters</button>
-            <button id="menu-demos-open" title="Small buildings that show what the architecture can do" type="button">Demonstrations</button>
             <button id="menu-sandbox" type="button">Free construction</button>
-            <button id="menu-generated" title="A new puzzle built from a seed, checked solvable by the engine" type="button">Generated challenge</button>
+            <button id="menu-generated" type="button" title="A new puzzle built from a seed, checked solvable by the engine">Generated challenge</button>
             <button id="menu-settings-open" type="button">Settings</button>
             <button id="menu-atlas-open" type="button">Atlas</button>
             <button id="menu-credits-open" type="button">Credits</button>
@@ -266,6 +267,7 @@
             </label>
             <label class="field">Look sensitivity <input id="set-look" type="range" min="0.4" max="2.5" step="0.1" aria-label="Look sensitivity"></label>
             <label class="field">Field of view <input id="set-fov" type="range" min="55" max="100" step="1" aria-label="Field of view in degrees"></label>
+            <button id="set-intro" type="button" title="Play the short first-run introduction again">Replay the introduction</button>
             <label class="field">Cinematic moments <input id="set-cinematic" type="checkbox" aria-label="Gentle camera moves on discoveries and completions"></label>
             <label class="field">Head bob <input id="set-bob" type="checkbox" aria-label="Head bob while walking"></label>
             <div class="perf"><strong>Performance</strong>
@@ -376,6 +378,14 @@
     <section class="stage" data-chapter="">
       <canvas id="plan" aria-label="Plan view of the construction"></canvas>
       <canvas id="gl" aria-label="Three-dimensional view of the construction" hidden></canvas>
+      <div id="coach" class="coach" role="status" aria-live="polite" hidden>
+        <span id="coach-step" class="coach-step"></span>
+        <span id="coach-text" class="coach-text"></span>
+        <span class="coach-actions">
+          <button id="coach-demos" type="button" class="primary" hidden>See the demonstrations</button>
+          <button id="coach-skip" type="button">Skip</button>
+        </span>
+      </div>
       <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Quick tools">
         <button type="button" data-tool="select" title="Select a room or passage; drag a room to move it">Select</button>
         <button type="button" data-tool="add" title="Tap empty grid to place a room">Add room</button>

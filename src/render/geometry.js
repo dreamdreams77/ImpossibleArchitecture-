@@ -35,7 +35,7 @@ export function faceAnchor(room, face) {
 
 // Returns { type: 'face', room, face } for the nearest face within radius,
 // else { type: 'room', id } if inside a room, else null.
-export function hitTest(structure, wx, wy, { faceRadius = 0.22 } = {}) {
+export function hitTest(structure, wx, wy, { faceRadius = 0.22, roomSlack = 0 } = {}) {
   let best = null;
   let bestD = Infinity;
   for (const room of structure.rooms.values()) {
@@ -51,7 +51,7 @@ export function hitTest(structure, wx, wy, { faceRadius = 0.22 } = {}) {
   if (best) return best;
   for (const room of structure.rooms.values()) {
     const h = roomHalf(room);
-    if (Math.abs(wx - room.x) <= h && Math.abs(wy - room.y) <= h) {
+    if (Math.abs(wx - room.x) <= h + roomSlack && Math.abs(wy - room.y) <= h + roomSlack) {
       return { type: 'room', id: room.id };
     }
   }

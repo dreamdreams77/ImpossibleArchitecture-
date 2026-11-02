@@ -236,10 +236,25 @@ function drawRoom(ctx, s, r, toScreen, scale, T, session) {
   ctx.strokeRect(x0 + 6, y0 + 6, size - 12, size - 12);
   ctx.setLineDash([]);
 
-  ctx.fillStyle = T.ink;
-  ctx.font = '12px ui-monospace, Menlo, monospace';
+  const text = r.label || r.id;
   ctx.textAlign = 'center';
-  ctx.fillText(r.label || r.id, c.x, c.y + 4);
+  if (size >= 56) {
+    ctx.fillStyle = T.ink;
+    ctx.font = '12px ui-monospace, Menlo, monospace';
+    ctx.fillText(text, c.x, c.y + 4);
+  } else {
+    // A small room cannot hold its name: put it beneath, shortened to the width of a room's pitch, on a halo
+    // so it stays readable over the grid and the passages.
+    ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif';
+    const room = Math.max(44, size * 2.4);
+    let shown = text;
+    while (shown.length > 3 && ctx.measureText(shown).width > room) shown = shown.slice(0, -2).trimEnd() + '…';
+    const y = y0 + size + 13;
+    ctx.lineWidth = 3; ctx.strokeStyle = T.paper; ctx.lineJoin = 'round';
+    ctx.strokeText(shown, c.x, y);
+    ctx.fillStyle = T.ink;
+    ctx.fillText(shown, c.x, y);
+  }
 }
 
 function drawPortal(ctx, s, p, toScreen, T, session, time) {

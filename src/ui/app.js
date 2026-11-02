@@ -11,10 +11,11 @@ import { drawPlan, drawGraph } from '../render/draw.js';
 import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, describeFirstPerson, fpZoneFor } from '../render/firstperson.js';
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
+import { introStep, introNeeded } from './intro.js';
 import { ATLAS } from '../campaign/atlas.js';
 import { DEMOS } from '../campaign/demos.js';
 import { throughFaces } from '../topology/propagation.js';
-import { fitViewFor, transitionProgress, snapTo, MIN_SCALE as MIN_ZOOM } from '../render/view.js';
+import { fitViewFor, transitionProgress, snapTo, scaleNeededToFit, MIN_SCALE as MIN_ZOOM } from '../render/view.js';
 import { sightlines, gateOpen } from '../topology/traversal.js';
 import { themeFor } from '../render/themes.js';
 import { sightCardModel, drawSightCards } from '../render/sightcards.js';
@@ -88,7 +89,8 @@ export function boot() {
   const view = { scale: 80, offsetX: 0, offsetY: 0 };
   let drag = null;
   const planPinch = createPinch();
-  let showGraph = true;
+  // The graph panel is a developer overlay: on a phone it would cover the plan, so it starts hidden there.
+  let showGraph = !(globalThis.matchMedia?.('(max-width: 560px)').matches);
   let viewMode = 'plan';
   let fpKey = null;        // identifies the walker's position, to start a transition
   let fpAnimStart = 0;
@@ -329,6 +331,9 @@ export function boot() {
     if (r.width < 2 || r.height < 2) return;
     fittedFor = key;
     Object.assign(view, fitViewFor(session.structure, r.width, r.height));
+    if (scaleNeededToFit(session.structure, r.width, r.height) < MIN_ZOOM) {
+      session.feedback = { kind: 'info', text: 'These rooms are drawn too far apart to show together on the plan. Open the Model: it shows them all, and you can join their doorway rings there.' };
+    }
   }
 
   // Saves whichever view is on screen as a PNG, named for its chapter.
@@ -418,6 +423,14 @@ export function boot() {
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
+    if (view === 'title') {
+      // Someone who has never played has nothing to continue: lead with New game, and point at the demonstrations.
+      const played = hasPlayed();
+      $('#menu-continue').hidden = !played;
+      $('#menu-new').classList.toggle('primary', !played);
+      $('#menu-demos-open').classList.toggle('primary', false);
+      $('#menu-newhint').hidden = played;
+    }
     if (view === 'atlas') fillAtlas();
     if (view === 'demos') fillDemos();
     if (view === 'pause') for (const id of ['solution', 'easier', 'harder']) $(`#pause-gen-${id}`).hidden = !session.generated;
@@ -468,6 +481,55 @@ export function boot() {
       li.append(t, document.createTextNode(hit ? e.text : e.hint));
       return li;
     }));
+  }
+
+  // ---- the first-run introduction -------------------------------------------------------------
+  // The coach bar reads the game's state and names the next thing to do. It is hidden behind any dialog and
+  // never blocks input. It ends when the player finishes or skips it, and is remembered.
+  let introActive = false;
+  let modelSeen = false;
+  const introStore = () => { try { return localStorage.getItem('ia-intro'); } catch { return 'done'; } };
+  const introEnd = (how) => { introActive = false; try { localStorage.setItem('ia-intro', how); } catch { /* not remembered */ } updateCoach(); };
+  const modalOpen = () => ['#menu', '#chapter-card', '#complete', '#ending-screen'].some((sel) => { const el = document.querySelector(sel); return el && !el.hidden; });
+  const COACH_TARGETS = { 'tool-connect': '[data-tool="connect"]', 'view-plan': '#view-plan', 'view-first': '#view-first', 'view-model': '#view-model', 'pad-fwd': '#pad-fwd', 'pad-turn': '#pad-left, #pad-right' };
+
+  function updateCoach() {
+    const bar = $('#coach');
+    for (const el of document.querySelectorAll('.coach-target')) el.classList.remove('coach-target');
+    if (!introActive) { bar.hidden = true; return; }
+    // Anyone who has gone on to other challenges has moved past it.
+    if (session.progress.completed.some((id) => id !== 'threshold')) { introEnd('done'); return; }
+    if (viewMode === 'model' && (session.fp?.steps ?? 0) > 0) modelSeen = true;
+    const step = modalOpen() ? null : introStep({
+      active: true, chapterId: session.chapter?.id ?? null, portals: session.structure.portals.size,
+      pending: !!session.pendingFace, steps: session.fp?.steps ?? 0, view: viewMode, modelSeen,
+      facing: (() => { const w = session.fp; const e = w && session.structure.exit(w.room, w.heading); return !!e && !e.blocked; })(),
+    });
+    if (!step) { bar.hidden = true; return; }
+    bar.hidden = false;
+    $('#coach-step').textContent = step.step === 'finish' ? 'DONE' : `${step.index} / ${step.of}`;
+    $('#coach-text').textContent = step.text;
+    $('#coach-demos').hidden = step.step !== 'finish';
+    $('#coach-skip').textContent = step.step === 'finish' ? 'Close' : 'Skip';
+    if (step.target) for (const el of document.querySelectorAll(COACH_TARGETS[step.target])) if (el.offsetParent) el.classList.add('coach-target');
+  }
+  // Dialogs open and close without a render, so the coach checks itself a few times a second.
+  setInterval(() => { if (introActive) updateCoach(); }, 120);
+  $('#coach-skip').addEventListener('click', () => introEnd($('#coach-demos').hidden ? 'skipped' : 'done'));
+  $('#coach-demos').addEventListener('click', () => { introEnd('done'); showMenu('title'); showView('demos'); });
+  $('#set-intro').addEventListener('click', () => {
+    session.loadChapter(CHAPTERS[0].id);
+    session.restartChapter();
+    introActive = true; modelSeen = false;
+    setView('plan');
+    closeMenu(); render();
+  });
+
+  // Whether there is anything to continue: some progress, a discovery, an attempt, or a chapter beyond the first.
+  function hasPlayed() {
+    const p = session.progress;
+    return p.completed.length > 0 || p.discoveries.length > 0 || Object.keys(p.attempts ?? {}).length > 0
+      || (session.chapter && session.chapter.id !== CHAPTERS[0].id) || session.sandbox;
   }
 
   function closeMenu() {
@@ -835,6 +897,7 @@ export function boot() {
       showComplete(done);
     }
     fitOnNewBuilding();
+    updateCoach();
     // A blank free construction offers rooms first: the tool is Add room, and the plan says so.
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
     $('#plan-tools').hidden = viewMode !== 'plan';
@@ -987,6 +1050,12 @@ export function boot() {
 
   // ---- pointer ----------------------------------------------------------
 
+  // Face dots and rooms are targets for a finger as well as a mouse: never smaller than about 20 px, however
+  // far the plan is zoomed out to fit.
+  function touchHit() {
+    return { faceRadius: Math.max(0.22, 20 / view.scale), roomSlack: Math.max(0, 14 / view.scale - 0.1) };
+  }
+
   plan.addEventListener('pointerdown', (evt) => {
     plan.setPointerCapture(evt.pointerId);
     const w = toWorld(evt);
@@ -997,7 +1066,7 @@ export function boot() {
       render();
       return;
     }
-    const hit = hitTest(session.structure, w.x, w.y);
+    const hit = hitTest(session.structure, w.x, w.y, touchHit());
     const portal = !hit || hit.type === 'room' ? portalHit(session.structure, w.x, w.y) : null;
 
     if (session.tool === 'add') {
@@ -1062,7 +1131,7 @@ export function boot() {
   // What a click will do here, shown as the cursor.
   function cursorFor(w) {
     if (session.tool === 'add') return 'copy';
-    const hit = hitTest(session.structure, w.x, w.y);
+    const hit = hitTest(session.structure, w.x, w.y, touchHit());
     if (session.tool === 'connect') return hit?.type === 'face' ? 'pointer' : 'default';
     if (hit?.type === 'face' || hit?.type === 'portal') return 'pointer';
     if (hit?.type === 'room') return 'move';
@@ -1073,7 +1142,7 @@ export function boot() {
   plan.addEventListener('dblclick', (evt) => {
     if (session.tool !== 'select') return;
     const w = toWorld(evt);
-    const hit = hitTest(session.structure, w.x, w.y);
+    const hit = hitTest(session.structure, w.x, w.y, touchHit());
     if (hit?.type !== 'room') return;
     session.selectRoom(hit.id);
     render();
@@ -1268,7 +1337,8 @@ export function boot() {
     if (session.beginRetarget('b')) session.tool = 'connect';
     render();
   });
-  $('#toggle-graph').addEventListener('click', () => { showGraph = !showGraph; $('#graph').hidden = !showGraph; render(); });
+  $('#toggle-graph').addEventListener('click', () => { showGraph = !showGraph; $('#graph').hidden = !showGraph; $('#toggle-graph').setAttribute('aria-pressed', String(showGraph)); render(); });
+  $('#toggle-graph').setAttribute('aria-pressed', String(showGraph));
   $('#prev').addEventListener('click', () => {
     const prev = session.previousChapterId();
     if (prev) { session.loadChapter(prev); render(); }
@@ -1596,6 +1666,8 @@ export function boot() {
     const view = localStorage.getItem('ia-view');
     if (['plan', 'first', 'model'].includes(view) && view !== 'plan') { setView(view); }
   } catch { /* defaults */ }
+  introActive = introNeeded({ stored: introStore(), hasPlayed: hasPlayed() });
+  graph.hidden = viewMode !== 'plan' || !showGraph;
   fitView();
   render();
   requestAnimationFrame(frame);
