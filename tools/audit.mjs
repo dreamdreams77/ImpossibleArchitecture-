@@ -27,6 +27,30 @@ const sig = (p) => {
   return `${a.room}.${a.face}-${b.room}.${b.face}${turns ? '^' + turns : ''}${p.transform.mirror ? 'm' : ''}`;
 };
 
+// A fixed-memory set of 64-bit state hashes with the most steps still allowed when each was seen. A 64-bit hash
+// makes an accidental collision, which could prune a real path, astronomically unlikely (about n^2 / 2^65).
+// When the table fills the search reports itself incomplete instead of exhausting memory.
+class Seen {
+  constructor(bits = 27) { this.mask = (1 << bits) - 1; this.a = new Uint32Array(1 << bits); this.b = new Uint32Array(1 << bits); this.v = new Int8Array(1 << bits).fill(-1); this.n = 0; this.cap = Math.floor((1 << bits) * 0.7); this.full = false; }
+  static hash(str) {
+    let h1 = 0x811c9dc5; let h2 = 0x9747b28c;
+    for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 ^ c, 0x5bd1e995); h2 ^= h2 >>> 15; }
+    return [h1 >>> 0, h2 >>> 0];
+  }
+  // Returns true if this state was already seen with at least `remaining` steps to spare; otherwise records it.
+  seenWith(str, remaining) {
+    const [h1, h2] = Seen.hash(str);
+    let i = h1 & this.mask;
+    while (this.v[i] >= 0) {
+      if (this.a[i] === h1 && this.b[i] === h2) { if (this.v[i] >= remaining) return true; this.v[i] = remaining; return false; }
+      i = (i + 1) & this.mask;
+    }
+    if (this.n >= this.cap) { this.full = true; return false; }
+    this.a[i] = h1; this.b[i] = h2; this.v[i] = remaining; this.n++;
+    return false;
+  }
+}
+
 export function audit(chapter, { budget = 2, maxRoute = 14, seconds = 60, maxSolutions = 500 } = {}) {
   const s = chapterStructure(chapter);
   const rules = rulesFor(chapter);
@@ -38,7 +62,7 @@ export function audit(chapter, { budget = 2, maxRoute = 14, seconds = 60, maxSol
   start.lit = startingLit(rules.plates, chapter.start);
   const deadline = Date.now() + seconds * 1000;
   const found = new Map();   // portal-set signature -> { size, example route }
-  const seen = new Map();    // state key -> most steps still allowed when seen
+  const seen = new Seen();
   let nodes = 0; let truncated = false;
 
   const portalKey = () => [...s.portals.values()].map(sig).sort().join(',');
@@ -55,8 +79,8 @@ export function audit(chapter, { budget = 2, maxRoute = 14, seconds = 60, maxSol
     if (route.length >= maxRoute) return;
     const k = stateKey(t);
     const remaining = maxRoute - route.length;
-    if ((seen.get(k) ?? -1) >= remaining) return;
-    seen.set(k, remaining);
+    if (seen.seenWith(k, remaining)) return;
+    if (seen.full) { truncated = true; return; }
     for (const face of FACES) {
       const exit = s.exit(t.room, face);
       if (exit) {
@@ -103,4 +127,35 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     for (const e of r.examples) console.log('   ' + e);
     if (!r.complete) break;
   }
+}
+
+// A lower bound on how many new passages a challenge needs, by counting. A walker must enter every room that
+// holds a plate, a crate or the goal. A room the fixed passages already lead to needs nothing, and rooms
+// downstream of an unreachable one come with it. Each remaining "source" group of rooms (a strongly connected
+// set of fixed passages that nothing else required leads into) needs its own new passage in, because one new
+// passage joins an already-reached room to at most one unreached group. So no solution can have fewer new
+// passages than there are source groups. If the bound meets the intended size, no shortcut exists.
+export function lowerBound(chapter) {
+  const s = chapterStructure(chapter);
+  const rooms = chapter.rooms.map((r) => r.id);
+  const needed = new Set();
+  for (const p of chapter.plates ?? []) if (!(p.room === chapter.start && p.heading === 'N')) needed.add(p.room);
+  for (const c of chapter.cargo ?? []) needed.add(c.room);
+  if (chapter.goal.to) needed.add(chapter.goal.to);
+  if (chapter.goal.kind === 'deliver') needed.add(chapter.goal.to);
+  // Directed reachability over fixed passages (a one-way passage only leads one way).
+  const out = new Map(rooms.map((r) => [r, new Set()]));
+  for (const p of s.portals.values()) {
+    if (p.oneWay !== 'b') out.get(p.a.room).add(p.b.room);
+    if (p.oneWay !== 'a') out.get(p.b.room).add(p.a.room);
+  }
+  const reach = (from) => { const seen = new Set([from]); const q = [from]; while (q.length) { const r = q.pop(); for (const n of out.get(r)) if (!seen.has(n)) { seen.add(n); q.push(n); } } return seen; };
+  const fromStart = reach(chapter.start);
+  const unreached = [...needed].filter((r) => !fromStart.has(r));
+  // Groups: rooms mutually reachable. A group is a source if no other unreached needed room leads into it.
+  const closure = new Map(rooms.map((r) => [r, reach(r)]));
+  const group = (r) => rooms.filter((x) => closure.get(r).has(x) && closure.get(x).has(r)).sort()[0];
+  const groups = [...new Set(unreached.map(group))];
+  const sources = groups.filter((g) => !groups.some((h) => h !== g && closure.get(h).has(g) && !closure.get(g).has(h)));
+  return { needed: [...needed], unreached, sources, bound: sources.length };
 }
