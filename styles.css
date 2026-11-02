@@ -386,7 +386,7 @@ body[data-view="model"] .gl-hud { bottom: 70px; }
 
 /* ---- from the graphics-controls work: the live telemetry readout and the settings notes ---- */
 /* Live renderer telemetry: unobtrusive, legible over both dark and bright rooms. */
-.gl-performance { position: absolute; top: 56px; right: 12px; z-index: 5; padding: 6px 9px; border: 1px solid rgba(214, 190, 145, .28); border-radius: 7px; color: rgba(246, 239, 222, .9); background: rgba(7, 10, 14, .68); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .035em; pointer-events: none; backdrop-filter: blur(8px); }
+.gl-performance { position: absolute; top: 10px; right: 12px; z-index: 5; padding: 6px 9px; border: 1px solid rgba(214, 190, 145, .28); border-radius: 7px; color: rgba(246, 239, 222, .9); background: rgba(7, 10, 14, .68); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .035em; pointer-events: none; backdrop-filter: blur(8px); }
 .gl-performance[hidden] { display: none; }
 @media (max-width: 560px) { .gl-performance { top: 6px; right: 6px; padding: 5px 7px; font-size: 10px; } }
 
@@ -412,3 +412,26 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
 /* Lessons and demonstrations: the list is the content, so its buttons stay quiet. */
 .demo-list button.primary { background: transparent; color: var(--accent); border-color: var(--accent); font-weight: 500; }
 .demo-list button.primary:hover { background: var(--control-on); filter: none; }
+
+/* ---- phone, Model view: the drawing is the point, so give it room and keep the furniture to two slim lanes ---- */
+@media (max-width: 800px) and (orientation: portrait) {
+  body[data-view="model"] .stage { height: 64vh; height: 64dvh; }
+  /* Tools on one row: Redo is the one thing worth dropping, since Undo and Delete cover the mistakes. */
+  body[data-view="model"] .toolgroup button { padding: 6px 8px; font-size: 13px; }
+  body[data-view="model"] #redo { display: none; }
+  body[data-view="model"] .plan-tools { bottom: 62px; flex-wrap: nowrap; }
+  body[data-view="model"] .modelchip { padding: 3px 6px; gap: 6px; font-size: 12px; }
+  body[data-view="model"] .modelchip input[type="range"] { min-width: 0; width: 100%; }
+  body[data-view="model"] .modelchip .field { flex: 1; min-width: 0; }
+  /* A message here is a note, not a paragraph: two lines, then it fades out as it already does. */
+  body[data-view="model"] .gl-toast { max-width: calc(100% - 20px); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  body[data-view="model"] .gl-test { display: none; }
+}
+
+/* The frame-rate readout takes the top-right corner. On a phone the walk view's Test button is there, so it drops
+   below it; the model view has no such button, so it stays at the top. */
+@media (max-width: 800px) {
+  .gl-performance { top: 10px; right: 10px; padding: 4px 6px; font-size: 9.5px; letter-spacing: -0.01em; white-space: nowrap; }
+  body[data-view="first"] .gl-performance { top: 52px; }
+}
+@media (max-width: 420px) { body[data-view="model"] .gl-performance { display: none; } }
