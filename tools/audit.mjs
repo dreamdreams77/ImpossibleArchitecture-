@@ -9,6 +9,7 @@
 //
 //   node tools/audit.mjs the-machine            # budgets 1, 2, 3 ...
 //   node tools/audit.mjs the-machine 4 14 120   # up to 4 new passages, routes of 14 steps, 120 seconds
+//   node tools/audit.mjs the-ring-hall 4 14 900 plain   # only passages with no turn or mirror
 //
 // Single steps use the engine's own crossing rule (whose algebra is checked separately in
 // tests/passage-algebra.test.js); the goal predicate and gate, plate and cargo rules are the engine's too.
@@ -51,7 +52,9 @@ class Seen {
   }
 }
 
-export function audit(chapter, { budget = 2, maxRoute = 14, seconds = 60, maxSolutions = 500 } = {}) {
+// `plainOnly` restricts new passages to ones with no turn and no mirror: if a challenge teaches turning, nothing
+// should be solvable that way.
+export function audit(chapter, { budget = 2, maxRoute = 14, seconds = 60, maxSolutions = 500, plainOnly = false } = {}) {
   const s = chapterStructure(chapter);
   const rules = rulesFor(chapter);
   const pred = goalPredicate(chapter);
@@ -96,7 +99,7 @@ export function audit(chapter, { budget = 2, maxRoute = 14, seconds = 60, maxSol
       for (const target of faces) {
         if (target.room === t.room && target.face === face) continue;
         if (s.portalAt(target.room, target.face)) continue;
-        for (let turns = 0; turns < 4; turns++) for (const mirror of [false, true]) {
+        for (let turns = 0; turns < (plainOnly ? 1 : 4); turns++) for (const mirror of (plainOnly ? [false] : [false, true])) {
           const id = s.addPortal({ a: t.room, aFace: face, b: target.room, bFace: target.face, transform: { turns, mirror } });
           if (validate(s, chapter.ruleset).ok) {
             const moved = step(s, t, face);
@@ -117,12 +120,12 @@ export function audit(chapter, { budget = 2, maxRoute = 14, seconds = 60, maxSol
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [id, maxBudget = '3', maxRoute = '14', seconds = '90'] = process.argv.slice(2);
+  const [id, maxBudget = '3', maxRoute = '14', seconds = '90', mode = ''] = process.argv.slice(2);
   const chapter = chapterById(id);
   if (!chapter) { console.error(`no challenge ${id}`); process.exit(1); }
   for (let b = 1; b <= Number(maxBudget); b++) {
     const t0 = Date.now();
-    const r = audit(chapter, { budget: b, maxRoute: Number(maxRoute), seconds: Number(seconds) });
+    const r = audit(chapter, { budget: b, maxRoute: Number(maxRoute), seconds: Number(seconds), plainOnly: mode === 'plain' });
     console.log(`${id} budget ${b}: ${r.solutions} solution set(s) by size ${JSON.stringify(r.bySize)}; ${r.nodes} states; ${r.complete ? 'COMPLETE for routes up to ' + r.maxRoute + ' steps' : 'TIME LIMIT, incomplete'} (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
     for (const e of r.examples) console.log('   ' + e);
     if (!r.complete) break;
