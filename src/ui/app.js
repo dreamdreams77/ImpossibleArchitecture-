@@ -11,7 +11,7 @@ import { drawPlan, drawGraph } from '../render/draw.js';
 import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, describeFirstPerson, fpZoneFor } from '../render/firstperson.js';
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
-import { introStep, introNeeded } from './intro.js';
+import { introStep, introNeeded, TUTORIAL_LESSONS } from './intro.js';
 import { ATLAS } from '../campaign/atlas.js';
 import { DEMOS } from '../campaign/demos.js';
 import { throughFaces } from '../topology/propagation.js';
@@ -407,7 +407,7 @@ export function boot() {
   let menuView = 'title';
   let menuParent = 'title';
   let menuReturnFocus = null;
-  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'demos', 'credits'];
+  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'];
 
   function showMenu(view = 'title') {
     const menu = $('#menu');
@@ -418,7 +418,7 @@ export function boot() {
 
   function showView(view) {
     // Chapters, settings and credits return to whichever view opened them.
-    if (['chapters', 'settings', 'atlas', 'demos', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
+    if (['chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
@@ -433,6 +433,7 @@ export function boot() {
     }
     if (view === 'atlas') fillAtlas();
     if (view === 'demos') fillDemos();
+    if (view === 'tutorial') fillTutorial();
     if (view === 'pause') for (const id of ['solution', 'easier', 'harder']) $(`#pause-gen-${id}`).hidden = !session.generated;
     $(`#menu-${view}`).querySelector('button, input')?.focus();
   }
@@ -448,6 +449,28 @@ export function boot() {
       b.textContent = d.view === 'first' ? 'Walk it' : 'See it in the model';
       b.addEventListener('click', () => { session.loadDemo(d.id); closeMenu(); setView(d.view); render(); });
       li.append(t, p, b);
+      return li;
+    }));
+  }
+
+  // The tutorial is a curated learning path through real, editable demo buildings.
+  // The short first-run coach teaches the controls; these lessons explain the deeper rules.
+  function fillTutorial() {
+    $('#tutorial-list').replaceChildren(...TUTORIAL_LESSONS.map((lesson, index) => {
+      const demo = DEMOS.find((d) => d.id === lesson.demoId);
+      const li = document.createElement('li');
+      const heading = document.createElement('strong'); heading.textContent = `${index + 1}. ${lesson.title}`;
+      const concept = document.createElement('span'); concept.textContent = lesson.concept;
+      const action = document.createElement('p'); action.textContent = lesson.action;
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'primary';
+      button.textContent = demo?.view === 'first' ? 'Walk this lesson' : 'Inspect this lesson';
+      button.addEventListener('click', () => {
+        session.loadDemo(lesson.demoId);
+        closeMenu();
+        setView(demo?.view ?? 'model');
+        render();
+      });
+      li.append(heading, concept, action, button);
       return li;
     }));
   }
@@ -735,6 +758,9 @@ export function boot() {
   $('#menu-settings-open').addEventListener('click', () => showView('settings'));
   $('#menu-atlas-open').addEventListener('click', () => showView('atlas'));
   $('#menu-demos-open').addEventListener('click', () => showView('demos'));
+  $('#menu-tutorial-open').addEventListener('click', () => showView('tutorial'));
+  $('#pause-tutorial-open').addEventListener('click', () => showView('tutorial'));
+  $('#tutorial-back').addEventListener('click', () => showView(menuParent));
   $('#pause-demos-open').addEventListener('click', () => showView('demos'));
   $('#demos-back').addEventListener('click', () => showView(menuParent));
   $('#pause-atlas-open').addEventListener('click', () => showView('atlas'));
