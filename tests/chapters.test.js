@@ -161,7 +161,25 @@ test('the finale: the Closed Ring discovery needs a three-room cycle', () => {
   s = join(s, { a: 'well', aFace: 'N', b: 'apex', bFace: 'N', transform: { turns: 2 } });
   assert.deepEqual(discoveriesIn(s, c), []);
   s = join(s, { a: 'apex', aFace: 'S', b: 'foundation', bFace: 'E' });
-  assert.deepEqual(discoveriesIn(s, c), ['closed-ring']);
+  assert.deepEqual(discoveriesIn(s, c), ['closed-ring', 'half-turn-circuit']);
+});
+
+test('the finale: a walkable reflected triangle reveals A Ring of Reflections', () => {
+  const c = chapterById('final-construction');
+  let s = chapterStructure(c);
+  s = join(s, { a: 'foundation', aFace: 'S', b: 'well', bFace: 'W' });
+  s = join(s, { a: 'well', aFace: 'N', b: 'apex', bFace: 'N' });
+  s = join(s, { a: 'apex', aFace: 'S', b: 'foundation', bFace: 'E', transform: { mirror: true } });
+  assert.deepEqual(discoveriesIn(s, c), ['closed-ring', 'reflected-ring']);
+});
+
+test('the finale: a walkable half-turn triangle reveals The Half-Turn Circuit', () => {
+  const c = chapterById('final-construction');
+  let s = chapterStructure(c);
+  s = join(s, { a: 'foundation', aFace: 'S', b: 'well', bFace: 'W' });
+  s = join(s, { a: 'well', aFace: 'N', b: 'apex', bFace: 'N', transform: { turns: 2 } });
+  s = join(s, { a: 'apex', aFace: 'S', b: 'foundation', bFace: 'E' });
+  assert.deepEqual(discoveriesIn(s, c), ['closed-ring', 'half-turn-circuit']);
 });
 
 test('goal check and walked route agree for every chapter, unsolved and solved', () => {
@@ -292,6 +310,15 @@ test('chapter data is consistent: gates name real plates, numbering runs in orde
       }
     }
   });
+});
+
+test('the Lantern Court: a circuit around the Lantern reveals its hidden discovery', () => {
+  const c = chapterById('lantern-court');
+  let s = chapterStructure(c);
+  s = join(s, { a: 'court', aFace: 'N', b: 'lantern', bFace: 'S' });
+  assert.deepEqual(discoveriesIn(s, c), []);
+  s = join(s, { a: 'court', aFace: 'W', b: 'lantern', bFace: 'E' });
+  assert.deepEqual(discoveriesIn(s, c), ['lantern-orbit']);
 });
 
 test('the Lantern Court: the Lantern lights from the west, the gate then opens to the Roof', () => {

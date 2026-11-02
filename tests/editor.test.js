@@ -174,6 +174,24 @@ test('the editor reports what is wrong before a test, and normalisation drops wh
   assert.equal(ch.goals.length, 1, 'edits never change their input');
 });
 
+
+test('challenge normalisation safely drops malformed non-array collections', () => {
+  const malformed = {
+    v: 2, start: 'room',
+    goals: { kind: 'reach', to: 'room' },
+    plates: { room: 'room', heading: 'N' },
+    cargo: 'room', pads: { 0: 'room' }, blocks: 7,
+    rules: { forbidden: { a: 'room', b: 'other' } },
+    objectives: { kind: 'noMirror' },
+  };
+  assert.deepEqual(normalizeChallenge(malformed), emptyChallenge('room'));
+  assert.deepEqual(normalizeChallenge({
+    ...malformed,
+    goals: null, plates: null, cargo: null, pads: null, blocks: null,
+    rules: { forbidden: null }, objectives: null,
+  }), emptyChallenge('room'));
+});
+
 test('gating is refused on fixed passages, in the campaign, and with a nonsense index', () => {
   const c = new Session({ chapterId: 'sealed-wing' });
   const fixed = [...c.structure.portals.values()][0];

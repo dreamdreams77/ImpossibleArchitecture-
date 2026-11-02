@@ -209,20 +209,75 @@ export class Structure {
     if (!data || data.version !== 1) {
       throw new TopologyError('Unsupported structure version', 'BAD_VERSION');
     }
-    // Validate before building: a dangling portal would otherwise load fine and
-    // crash the renderer the first time it is drawn.
+    // Validate the complete payload before building anything. Saves and share
+    // links are untrusted input: silently overwriting duplicate map keys or
+    // accepting two portals on one face makes traversal ambiguous.
+    if (!Array.isArray(data.rooms) || !Array.isArray(data.portals)) {
+      throw new TopologyError('Structure rooms and portals must be arrays', 'BAD_SHAPE');
+    }
+    if (!Number.isSafeInteger(data.nextId) || data.nextId < 1) {
+      throw new TopologyError('Structure has an invalid next id', 'BAD_ID');
+    }
     const ids = new Set();
-    for (const r of data.rooms ?? []) {
+    for (const r of data.rooms) {
+      if (!r || (typeof r.id !== 'string' && typeof r.id !== 'number') || String(r.id).length === 0) {
+        throw new TopologyError('Room has an invalid id', 'BAD_ID');
+      }
       if (ids.has(r.id)) throw new TopologyError(`Duplicate room ${r.id}`, 'DUPLICATE_ROOM');
       ids.add(r.id);
+      if (!Number.isFinite(r.x) || !Number.isFinite(r.y)) {
+        throw new TopologyError(`Room ${r.id} has invalid coordinates`, 'BAD_POSITION');
+      }
+      if (r.label != null && typeof r.label !== 'string') {
+        throw new TopologyError(`Room ${r.id} has an invalid label`, 'BAD_LABEL');
+      }
+      if (r.turn != null && (!Number.isInteger(r.turn) || r.turn < 0 || r.turn > 3)) {
+        throw new TopologyError(`Room ${r.id} has an invalid drawing turn`, 'BAD_TURN');
+      }
+      if (r.objects != null && !Array.isArray(r.objects)) {
+        throw new TopologyError(`Room ${r.id} has invalid objects`, 'BAD_OBJECTS');
+      }
     }
-    for (const p of data.portals ?? []) {
+    const portalIds = new Set();
+    const occupied = new Set();
+    for (const p of data.portals) {
+      if (!p || (typeof p.id !== 'string' && typeof p.id !== 'number') || String(p.id).length === 0) {
+        throw new TopologyError('Portal has an invalid id', 'BAD_ID');
+      }
+      if (portalIds.has(p.id)) throw new TopologyError(`Duplicate portal ${p.id}`, 'DUPLICATE_PORTAL');
+      portalIds.add(p.id);
       for (const end of [p.a, p.b]) {
         if (!ids.has(end?.room)) throw new TopologyError(`Portal ${p.id} joins a missing room`, 'NO_ROOM');
-        if (!FACES.includes(end.face)) throw new TopologyError(`Portal ${p.id} has an invalid face`, 'BAD_FACE');
+        if (!FACES.includes(end?.face)) throw new TopologyError(`Portal ${p.id} has an invalid face`, 'BAD_FACE');
+        const faceKey = JSON.stringify([end.room, end.face]);
+        if (occupied.has(faceKey)) throw new TopologyError(`Portal ${p.id} overlaps an occupied room face`, 'FACE_OCCUPIED');
+        occupied.add(faceKey);
+      }
+      if (p.a.room === p.b.room && p.a.face === p.b.face) {
+        throw new TopologyError(`Portal ${p.id} connects a face to itself`, 'SELF_PORTAL');
       }
       if (p.oneWay != null && p.oneWay !== 'a' && p.oneWay !== 'b') {
         throw new TopologyError(`Portal ${p.id} has an invalid one-way direction`, 'BAD_ONEWAY');
+      }
+      if (p.transform != null && (typeof p.transform !== 'object' || Array.isArray(p.transform))) {
+        throw new TopologyError(`Portal ${p.id} has an invalid transform`, 'BAD_TRANSFORM');
+      }
+      const turns = p.transform?.turns ?? 0;
+      const mirror = p.transform?.mirror ?? false;
+      if (!Number.isInteger(turns) || turns < 0 || turns > 3 || typeof mirror !== 'boolean') {
+        throw new TopologyError(`Portal ${p.id} has an invalid transform`, 'BAD_TRANSFORM');
+      }
+      if (p.gate != null && !(Number.isInteger(p.gate) && p.gate >= 0)) {
+        throw new TopologyError(`Portal ${p.id} has an invalid plate gate`, 'BAD_GATE');
+      }
+      if (p.also != null && (!Array.isArray(p.also) || !p.also.every((v) => Number.isInteger(v) && v >= 0))) {
+        throw new TopologyError(`Portal ${p.id} has invalid additional gates`, 'BAD_GATE');
+      }
+      if (p.opensAfter != null && !(Number.isInteger(p.opensAfter) && p.opensAfter >= 0)) {
+        throw new TopologyError(`Portal ${p.id} has an invalid crate gate`, 'BAD_CRATE');
+      }
+      if (p.fixed != null && typeof p.fixed !== 'boolean') {
+        throw new TopologyError(`Portal ${p.id} has an invalid fixed flag`, 'BAD_PORTAL');
       }
     }
     const s = new Structure();

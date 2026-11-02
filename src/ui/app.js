@@ -19,7 +19,7 @@ import { fitViewFor, transitionProgress, snapTo, scaleNeededToFit, MIN_SCALE as 
 import { sightlines, gateOpen } from '../topology/traversal.js';
 import { themeFor } from '../render/themes.js';
 import { sightCardModel, drawSightCards } from '../render/sightcards.js';
-import { SaveSlots, encodeSave, decodeSave } from '../persistence/store.js';
+import { SaveSlots, encodeSave, decodeSave, restoreSaveIntoSession } from '../persistence/store.js';
 import { encodeProgress, decodeProgress, SHARE_LIMIT } from '../persistence/share.js';
 import { createPinch } from './pinch.js';
 import { createGlView } from './glview.js';
@@ -1800,28 +1800,19 @@ function persistWork() {
   try {
     const text = encodeSave({ chapterId: s.sandbox ? null : s.chapter.id, structure: s.structure, progress: s.progress, challenge: s.challenge });
     if (text === lastWork) return;
-    lastWork = text;
     localStorage.setItem(WORK_KEY, text);
     localStorage.setItem(WORK_AT_KEY, String(Date.now()));
+    // Cache only after both writes succeed. If storage is full or blocked,
+    // the next render must retry rather than treating an unsaved snapshot as saved.
+    lastWork = text;
   } catch { /* storage may be full or blocked */ }
 }
 
 // Puts back the construction that was in progress when the page last closed.
 function restoreWork(session) {
-  let data;
-  try {
-    const raw = localStorage.getItem(WORK_KEY);
-    if (!raw) return;
-    data = decodeSave(raw);
-  } catch { return; }
-  if (data.chapterId === null) {
-    session.startSandbox();
-    session.loadStructure(data.structure, null, { challenge: data.challenge });
-  } else if (data.chapterId === session.chapter?.id) {
-    session.loadStructure(data.structure, data.chapterId);
-  } else {
-    return;
-  }
+  let raw;
+  try { raw = localStorage.getItem(WORK_KEY); } catch { return; }
+  if (!raw || !restoreSaveIntoSession(session, raw)) return;
   const at = Number(localStorage.getItem(WORK_AT_KEY));
   const when = Number.isFinite(at) && at > 0 ? ` from ${new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
   session.feedback = { kind: 'success', text: `Restored your last construction${when}.` };
