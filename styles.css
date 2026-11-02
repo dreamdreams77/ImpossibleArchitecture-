@@ -281,17 +281,17 @@ body.panel-hidden .ending-screen { inset: 0; }
 
 
 /* A true title screen: hide the editor chrome until the player chooses to enter. */
-body.title-screen { background: #090d12; }
-body.title-screen .bar { display: none; }
-body.title-screen .layout {
+body.menu-screen { background: #090d12; }
+body.menu-screen .bar { display: none; }
+body.menu-screen .layout {
   display: block; flex: 1; min-height: 100dvh; position: relative; overflow: hidden;
   background:
     radial-gradient(ellipse at 50% 42%, rgba(54, 88, 105, 0.22), transparent 42%),
     radial-gradient(ellipse at 50% 100%, rgba(184, 124, 65, 0.12), transparent 48%),
     linear-gradient(145deg, #080c11 0%, #111b23 48%, #080b10 100%);
 }
-body.title-screen .layout > :not(#menu) { display: none !important; }
-body.title-screen #menu {
+body.menu-screen .layout > :not(#menu) { display: none !important; }
+body.menu-screen #menu {
   position: absolute; inset: 0; z-index: 30; display: grid; place-items: center;
   padding: max(28px, env(safe-area-inset-top)) 22px max(28px, env(safe-area-inset-bottom));
   overflow: auto;
