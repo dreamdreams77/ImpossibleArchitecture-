@@ -36,7 +36,7 @@ const makePage = async (options) => {
   await page.waitForFunction(() => document.getElementById('menu').hidden);
   check(!(await page.locator('#plan-tools').evaluate((el) => el.hidden)), 'mobile construction dock appears in the plan');
   const before = await page.evaluate(() => window.__session.structure.rooms.size);
-  await page.click('[data-tool="add"]');
+  await page.click('#plan-tools [data-tool="add"]');
   await page.locator('#plan').tap({ position: { x: 190, y: 180 } });
   const afterAdd = await page.evaluate(() => window.__session.structure.rooms.size);
   check(afterAdd === before + 1, 'Add Room works through the touch construction dock');
