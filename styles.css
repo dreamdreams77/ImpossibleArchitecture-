@@ -278,3 +278,80 @@ body.panel-hidden .ending-screen { inset: 0; }
 @media (max-width: 560px) {
   .gl-hud .gl-legend, .gl-hud .gl-hint { display: none; }
 }
+
+
+/* A true title screen: hide the editor chrome until the player chooses to enter. */
+body.title-screen { background: #090d12; }
+body.title-screen .bar { display: none; }
+body.title-screen .layout {
+  display: block; flex: 1; min-height: 100dvh; position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(54, 88, 105, 0.22), transparent 42%),
+    radial-gradient(ellipse at 50% 100%, rgba(184, 124, 65, 0.12), transparent 48%),
+    linear-gradient(145deg, #080c11 0%, #111b23 48%, #080b10 100%);
+}
+body.title-screen .layout > :not(#menu) { display: none !important; }
+body.title-screen #menu {
+  position: absolute; inset: 0; z-index: 30; display: grid; place-items: center;
+  padding: max(28px, env(safe-area-inset-top)) 22px max(28px, env(safe-area-inset-bottom));
+  overflow: auto;
+  background:
+    linear-gradient(90deg, transparent 49.92%, rgba(201, 174, 127, 0.045) 50%, transparent 50.08%),
+    repeating-linear-gradient(0deg, transparent 0 79px, rgba(180, 205, 218, 0.025) 80px),
+    radial-gradient(ellipse at 50% 45%, rgba(9, 14, 19, 0.08), rgba(4, 7, 10, 0.56));
+}
+body.title-screen .menu-card {
+  width: min(560px, 100%); max-height: none; overflow: visible; padding: clamp(22px, 5vw, 44px);
+  text-align: center; background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  animation: title-arrive 900ms cubic-bezier(.2,.7,.2,1) both;
+}
+body.title-screen #menu-title { display: grid; justify-items: center; }
+body.title-screen .title-kicker {
+  margin: 0 0 22px; color: #c9a979; font-size: 10px; letter-spacing: .32em;
+  text-transform: uppercase;
+}
+body.title-screen .menu-heading {
+  margin: 0; color: #f0e8d8; font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(38px, 8vw, 66px); font-weight: 400; letter-spacing: -.045em;
+  line-height: .98; text-wrap: balance; text-shadow: 0 8px 36px rgba(0,0,0,.6);
+}
+body.title-screen .title-subtitle {
+  margin: 20px 0 0; color: #d3b985; font-size: 11px; letter-spacing: .34em; text-transform: uppercase;
+}
+body.title-screen .title-description {
+  max-width: 390px; margin: 16px auto 28px; color: rgba(222, 229, 228, .72);
+  font-family: Georgia, "Times New Roman", serif; font-size: clamp(15px, 2.5vw, 18px);
+  line-height: 1.65; text-wrap: pretty;
+}
+body.title-screen .menu-newhint { max-width: 390px; margin: 0 auto 18px; color: rgba(222,229,228,.62); }
+body.title-screen .menu-buttons {
+  width: min(390px, 100%); grid-template-columns: 1fr 1fr; gap: 9px; margin: 0 auto;
+}
+body.title-screen .menu-buttons button {
+  min-height: 46px; padding: 10px 14px; color: rgba(236, 235, 225, .86);
+  background: rgba(17, 26, 33, .64); border: 1px solid rgba(195, 174, 139, .22);
+  border-radius: 3px; backdrop-filter: blur(8px); transition: background .25s, border-color .25s, transform .25s;
+}
+body.title-screen .menu-buttons button:hover:not(:disabled) {
+  color: #fff3d8; background: rgba(61, 66, 62, .72); border-color: rgba(220, 187, 129, .72);
+  transform: translateY(-1px);
+}
+body.title-screen .menu-buttons button.primary {
+  grid-column: 1 / -1; min-height: 54px; color: #151710; background: #d2b47d;
+  border-color: #e4c994; font-weight: 650; letter-spacing: .08em; text-transform: uppercase;
+}
+body.title-screen .menu-buttons button.primary:hover:not(:disabled) { background: #e5c995; }
+@keyframes title-arrive {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 480px) {
+  body.title-screen .menu-card { padding: 20px 10px; }
+  body.title-screen .menu-buttons { grid-template-columns: 1fr; max-width: 320px; }
+  body.title-screen .menu-buttons button.primary { grid-column: auto; }
+  body.title-screen .title-kicker { margin-bottom: 18px; letter-spacing: .24em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.title-screen .menu-card { animation: none; }
+  body.title-screen .menu-buttons button { transition: none; }
+}
