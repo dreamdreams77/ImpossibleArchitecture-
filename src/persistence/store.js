@@ -65,6 +65,38 @@ export function decodeSave(text) {
   };
 }
 
+
+/**
+ * Restore the most recent autosaved construction into a live session.
+ * The autosave contains the progress snapshot written alongside that
+ * construction, so it is the recovery source of truth if the browser closed
+ * between the separate work/progress localStorage writes.
+ *
+ * Returns false when the save belongs to a different chapter or is invalid.
+ */
+export function restoreSaveIntoSession(session, raw) {
+  let data;
+  try {
+    data = decodeSave(raw);
+    if (data.chapterId !== null && data.chapterId !== session.chapter?.id) return false;
+    if (data.chapterId === null) session.startSandbox();
+    session.loadStructure(
+      data.structure,
+      data.chapterId,
+      { challenge: data.challenge },
+    );
+    session.progress = {
+      completed: [...data.progress.completed],
+      discoveries: [...data.progress.discoveries],
+      attempts: { ...data.progress.attempts },
+      time: { ...data.progress.time },
+    };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // A sandbox challenge: the editor's current shape, or the first version's one goal, which is upgraded.
 // Anything malformed is dropped. (Kept under its old name for callers of the first version.)
 export const validChallenge = normalizeChallenge;
