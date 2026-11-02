@@ -560,6 +560,18 @@ const RAW = [
         text: 'Foundation, Well and Apex are joined in a single ring. Every room can be left and returned to.',
         check: (s) => findCycles(s).some((c) => c.rooms.length === 3),
       },
+      {
+        id: 'reflected-ring',
+        title: 'A Ring of Reflections',
+        text: 'Make a walkable three-room circuit that returns you as your own reflection.',
+        check: (s) => findCycles(s).some((c) => c.rooms.length === 3 && c.reflected && c.walkable),
+      },
+      {
+        id: 'half-turn-circuit',
+        title: 'The Half-Turn Circuit',
+        text: 'Make a walkable three-room circuit whose accumulated turns leave you facing the opposite way.',
+        check: (s) => findCycles(s).some((c) => c.rooms.length === 3 && c.netTurns === 2 && c.walkable),
+      },
     ],
   },
 ];
