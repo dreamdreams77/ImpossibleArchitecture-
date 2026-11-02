@@ -56,6 +56,11 @@ so recursive portal views do not currently cast shadow maps. The final image doe
 three-level, separable bloom chain in `post.js`, followed by ACES tone mapping, chapter
 colour grading, vignette and dithering. Light shafts and glows are also additive geometry.
 
+Room atmosphere responds to puzzle state. When a plate powers a room, its central light
+strengthens, the monumental mechanism accelerates, dust motes become brighter and drift
+slightly faster, and any visible sun shaft gathers intensity. These are visual responses
+to the topology engine's existing plate state; they do not change traversal or puzzle rules.
+
 ## Walker (`walker.js`)
 
 Turns the engine's discrete steps into motion: stride to the doorway, apply the same
