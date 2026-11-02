@@ -390,6 +390,7 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
   .side button, .side select, .side input[type="text"] { min-height: 44px; }
   .plan-tools { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-width: none; padding: 7px; gap: 5px; }
   .plan-tool-actions { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 1px; }
+  .plan-tool-actions { width: 100%; min-width: 0; max-width: 100%; }
   .plan-tool-actions button { flex: 1 0 auto; min-width: 58px; min-height: 46px; padding: 7px 12px; white-space: nowrap; }
   .plan-hint { order: -1; flex: 0 0 auto; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; line-height: 1.35; }
   .gl-pad button { min-width: 62px; min-height: 56px; }
@@ -423,3 +424,5 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
 @media (prefers-reduced-motion: reduce) {
   .plan-tools button { transition: none !important; }
 }
+
+@media (min-width: 961px) { #plan-more { display: none; } }
