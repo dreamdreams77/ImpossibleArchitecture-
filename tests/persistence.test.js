@@ -38,10 +38,17 @@ test('save round-trips chapter, structure and progress', () => {
   const s = new Structure();
   const a = s.addRoom({ x: 0, y: 0 });
   s.addPortal({ a, aFace: 'N', b: a, bFace: 'S', transform: { turns: 1 } });
-  const text = encodeSave({ chapterId: 'returning-hall', structure: s, progress: { completed: ['threshold'] } });
+  const text = encodeSave({ chapterId: 'returning-hall', structure: s, progress: {
+    completed: ['threshold'], discoveries: ['mirror-gallery-loop'],
+    attempts: { 'returning-hall': 7, 'hidden-stair': 2 },
+    time: { 'returning-hall': 125000, 'hidden-stair': 42000 },
+  } });
   const back = decodeSave(text);
   assert.equal(back.chapterId, 'returning-hall');
   assert.deepEqual(back.progress.completed, ['threshold']);
+  assert.deepEqual(back.progress.discoveries, ['mirror-gallery-loop']);
+  assert.deepEqual(back.progress.attempts, { 'returning-hall': 7, 'hidden-stair': 2 });
+  assert.deepEqual(back.progress.time, { 'returning-hall': 125000, 'hidden-stair': 42000 });
   assert.deepEqual(back.structure.toJSON(), s.toJSON());
 });
 
