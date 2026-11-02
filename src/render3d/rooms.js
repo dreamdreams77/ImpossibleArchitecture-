@@ -609,12 +609,13 @@ export function buildRoom(spec, lib) {
     const points = new Points(geo, pm);
     points.frustumCulled = false;
     group.add(points);
+    const dustAccent = new Color(style.accent);
     animated.push((t, c) => {
       const a = geo.attributes.position;
       const power = c.energy ?? 0;
       pm.opacity = 0.48 + power * 0.2;
       pm.size = 0.085 + power * 0.025;
-      pm.color.set(style.lamp).lerp(new Color(style.accent), power * 0.28);
+      pm.color.set(style.lamp).lerp(dustAccent, power * 0.28);
       for (let i = 0; i < dustN; i++) {
         const sx = seed[i * 3]; const sy = seed[i * 3 + 1]; const sz = seed[i * 3 + 2];
         const drift = 0.5 + power * 0.35;
