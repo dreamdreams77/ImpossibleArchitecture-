@@ -528,6 +528,8 @@ export function buildRoom(spec, lib) {
       depthWrite: false, opacity, fog: false,
     }));
     s.scale.set(scale, scale, 1);
+    s.userData.baseScale = scale;
+    s.userData.baseOpacity = opacity;
     s.position.set(x, y, z);
     s.userData.roof = y > H * 0.7;
     group.add(s);
@@ -546,6 +548,20 @@ export function buildRoom(spec, lib) {
     if (lw > 0 || has.has('oculus')) addGlow(0, H - 0.8, 0, style.lamp, Math.max(2.5, hw * 0.6), 0.55);
   }
   lights.push({ x: 0, y: Math.min(1.4, H * 0.3), z: 0, color: style.accent, intensity: style.lampIntensity * 0.12 });
+
+  // Every light has a slightly different, deterministic breath. Powered rooms
+  // answer with a brighter pulse, so the atmosphere reacts without a harsh flicker.
+  const glowPhase = (hash(spec.id) % 6283) / 1000;
+  animated.push((t, state) => {
+    const energy = state.energy ?? 0;
+    for (let i = 0; i < lampSprites.length; i++) {
+      const sprite = lampSprites[i];
+      const pulse = 0.96 + 0.04 * Math.sin(t * (1.1 + i * 0.035) + glowPhase + i * 1.7);
+      sprite.material.opacity = sprite.userData.baseOpacity * pulse * (1 + energy * 0.18);
+      const scale = sprite.userData.baseScale * pulse * (1 + energy * 0.08);
+      sprite.scale.set(scale, scale, 1);
+    }
+  });
 
   if (has.has('pendants')) {
     const pg = new Builder(lib, H, hw);
