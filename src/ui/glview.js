@@ -22,7 +22,7 @@ export function glSupported() {
 }
 
 // Creates the view, or returns null where WebGL is unavailable (the app then keeps its 2D views).
-export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSelectRoom, onPickFace, onCross, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
+export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkClick, onSelectRoom, onPickFace, onCross, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
   if (!glSupported()) return null;
   const params = new URLSearchParams(globalThis.location?.search ?? '');
   let quality = params.get('quality') ?? settings.quality ?? 'auto';
@@ -39,6 +39,11 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     console.warn('WebGL view unavailable:', err);
     return null;
   }
+  let renderDistance = Math.min(4, Math.max(1, Number(settings.renderDistance) || 2));
+  let resolutionScale = Math.min(1, Math.max(0.5, Number(settings.resolutionScale) || 1));
+  if (resolutionScale < 1) autoQuality = false;
+  world.q = { ...world.q, maxDepth: renderDistance };
+  world.setResolutionScale(resolutionScale);
   const walker = new Walker();
   const presentation = new Presentation({ enabled: settings.cinematic?.() ?? true, reduceMotion: !!settings.reduceMotion });
   walker.reduceMotion = !!settings.reduceMotion;
@@ -57,9 +62,12 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   let flash = 0;
   let autoOrbit = false;
   let frameMs = 16;
+  let fpsFrames = 0;
+  let fpsWindowAt = 0;
+  let fpsValue = 0;
   let slow = 0;
   let fast = 0;
-  let resScale = 1;
+  let resScale = resolutionScale;
   let debugOn = world.debug;
   const pinch = createPinch();
   let lost = false;
@@ -176,6 +184,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
   function setVisible(v) {
     visible = v;
     canvas.hidden = !v;
+    if (statsEl) statsEl.hidden = !v;
     if (v) {
       resize();
       lastStructure = null; // resync on show: the structure may have changed in the plan
@@ -254,6 +263,14 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     // Adapt. First shrink the picture a little at a time; only when it cannot shrink further, lower the
     // preset. When frames are comfortably quick the picture grows back. Presets never rise by themselves.
     frameMs += (dt * 1000 - frameMs) * 0.05;
+    fpsFrames++;
+    if (statsEl && now - fpsWindowAt >= 500) {
+      fpsValue = fpsWindowAt ? Math.round(fpsFrames * 1000 / (now - fpsWindowAt)) : 0;
+      statsEl.textContent = `${fpsValue || '—'} FPS · ${Math.round(frameMs)} ms · ${world.quality.toUpperCase()} · ${Math.round((world.resScale ?? 1) * 100)}%`;
+      statsEl.hidden = false;
+      fpsFrames = 0;
+      fpsWindowAt = now;
+    }
     if (autoQuality && dt > 0) {
       slow = frameMs > 40 ? slow + 1 : Math.max(0, slow - 2);
       fast = frameMs < 19 ? fast + 1 : 0;
@@ -394,10 +411,33 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
     get cutaway() { return world.cutaway; },
     setCutaway(on) { world.cutaway = !!on; },
     setCutHeight(y) { world.cutY = y; },
-    setQuality(q) { world.setQuality(q); },
-    setAdaptive(on) { autoQuality = !!on && !params.has('quality') && (settings.quality ?? 'auto') === 'auto'; slow = 0; },
-    setResolutionScale(k) { resScale = k; world.setResolutionScale(k); },
-    get resolutionScale() { return resScale; },
+    setQuality(q) {
+      if (q === 'auto') {
+        params.delete('quality');
+        const info = deviceInfo(document.createElement('canvas'));
+        quality = recommendPreset({ renderer: info.renderer, mobile: info.mobile, memoryGB: info.memoryGB, cores: info.cores, dpr: info.dpr });
+        autoQuality = resolutionScale >= 1;
+        resScale = resolutionScale;
+        world.setQuality(quality);
+        world.q = { ...world.q, maxDepth: renderDistance };
+        world.setResolutionScale(resolutionScale);
+      } else {
+        quality = q;
+        autoQuality = false;
+        world.setQuality(q);
+        world.q = { ...world.q, maxDepth: renderDistance };
+      }
+      slow = 0; fast = 0;
+    },
+    setRenderDistance(level) {
+      renderDistance = Math.min(4, Math.max(1, Math.round(Number(level) || 2)));
+      world.q = { ...world.q, maxDepth: renderDistance };
+      return renderDistance;
+    },
+    get renderDistance() { return renderDistance; },
+    setAdaptive(on) { autoQuality = !!on && !params.has('quality') && (settings.quality ?? 'auto') === 'auto'; slow = 0; fast = 0; },
+    setResolutionScale(k) { resolutionScale = Math.min(1, Math.max(0.5, Number(k) || 1)); resScale = resolutionScale; autoQuality = false; world.setResolutionScale(resolutionScale); return resolutionScale; },
+    get resolutionScale() { return resolutionScale; },
     // Debug tint: passes are coloured by recursion depth so the portal budget is visible.
     setDebug(on) {
       debugOn = !!on;

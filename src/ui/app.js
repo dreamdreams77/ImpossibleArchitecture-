@@ -11,7 +11,8 @@ import { drawPlan, drawGraph } from '../render/draw.js';
 import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, describeFirstPerson, fpZoneFor } from '../render/firstperson.js';
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
-import { introStep, introNeeded } from './intro.js';
+import { introStep, introNeeded, TUTORIAL_LESSONS } from './intro.js';
+import { isLandingMenuView } from './menu.js';
 import { ATLAS } from '../campaign/atlas.js';
 import { DEMOS } from '../campaign/demos.js';
 import { throughFaces } from '../topology/propagation.js';
@@ -19,7 +20,7 @@ import { fitViewFor, transitionProgress, snapTo, scaleNeededToFit, MIN_SCALE as 
 import { sightlines, gateOpen } from '../topology/traversal.js';
 import { themeFor } from '../render/themes.js';
 import { sightCardModel, drawSightCards } from '../render/sightcards.js';
-import { SaveSlots, encodeSave, decodeSave } from '../persistence/store.js';
+import { SaveSlots, encodeSave, decodeSave, restoreSaveIntoSession } from '../persistence/store.js';
 import { encodeProgress, decodeProgress, SHARE_LIMIT } from '../persistence/share.js';
 import { createPinch } from './pinch.js';
 import { createGlView } from './glview.js';
@@ -29,6 +30,7 @@ import { createEditorPanel } from './editorpanel.js';
 import { runBenchmark, formatReport } from './bench.js';
 import { ACTIONS, loadBindings, saveBindings, rebind, translate } from './keybindings.js';
 import { copyText, canvasRatio } from './platform.js';
+import { normalizeLayoutMode, defaultPanelHidden } from './responsive.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -89,7 +91,8 @@ export function boot() {
   const view = { scale: 80, offsetX: 0, offsetY: 0 };
   let drag = null;
   const planPinch = createPinch();
-  let showGraph = false;
+  // The graph panel is a developer overlay: on a phone it would cover the plan, so it starts hidden there.
+  let showGraph = !(globalThis.matchMedia?.('(max-width: 560px)').matches);
   let viewMode = 'plan';
   let fpKey = null;        // identifies the walker's position, to start a transition
   let fpAnimStart = 0;
@@ -110,12 +113,18 @@ export function boot() {
   // The WebGL walk and architect's model. Where WebGL is unavailable the 2D views below stay in use.
   let savedQuality = 'auto';
   try { savedQuality = localStorage.getItem('ia-quality') || 'auto'; } catch { /* default */ }
+  let savedRenderDistance = 2;
+  let savedResolutionScale = 1;
+  try { savedRenderDistance = Math.min(4, Math.max(1, Number(localStorage.getItem('ia-render-distance')) || 2)); } catch { /* default */ }
+  try { savedResolutionScale = Math.min(1, Math.max(0.5, Number(localStorage.getItem('ia-resolution-scale')) || 1)); } catch { /* default */ }
+  let savedLayout = 'auto';
+  try { savedLayout = normalizeLayoutMode(localStorage.getItem('ia-layout') || 'auto'); } catch { /* automatic layout */ }
   const gl = createGlView({
     canvas: glCanvas,
     session,
     hud: $('#gl-hud'),
-    
-    settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed, look: () => access.look, fov: () => access.fov, bob: () => access.bob, cinematic: () => access.cinematic !== false },
+    statsEl: $('#gl-performance'),
+    settings: { quality: savedQuality, renderDistance: savedRenderDistance, resolutionScale: savedResolutionScale, reduceMotion, speed: () => walkSpeed, look: () => access.look, fov: () => access.fov, bob: () => access.bob, cinematic: () => access.cinematic !== false },
     onWalkClick: (zone) => {
       session.fpStopPlay();
       if (zone === 'forward') walkForward();
@@ -406,7 +415,7 @@ export function boot() {
   let menuView = 'title';
   let menuParent = 'title';
   let menuReturnFocus = null;
-  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'demos', 'credits'];
+  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'];
 
   function showMenu(view = 'title') {
     const menu = $('#menu');
@@ -417,9 +426,11 @@ export function boot() {
 
   function showView(view) {
     // Chapters, settings and credits return to whichever view opened them.
-    if (['chapters', 'settings', 'atlas', 'demos', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
+    if (['chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
-    $('#menu').classList.toggle('is-title', view === 'title');
+    const menuLanding = !$('#menu').hidden && isLandingMenuView(view, menuParent);
+    document.body.classList.toggle('menu-screen', menuLanding);
+    document.body.classList.toggle('title-screen', !$('#menu').hidden && view === 'title');
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
@@ -427,13 +438,13 @@ export function boot() {
       // Someone who has never played has nothing to continue: lead with New game, and point at the demonstrations.
       const played = hasPlayed();
       $('#menu-continue').hidden = !played;
-      $('#menu-new').textContent = played ? 'New game' : 'Begin';
       $('#menu-new').classList.toggle('primary', !played);
-      $('#menu-new').classList.toggle('ghost', played);
+      $('#menu-demos-open').classList.toggle('primary', false);
       $('#menu-newhint').hidden = played;
     }
     if (view === 'atlas') fillAtlas();
     if (view === 'demos') fillDemos();
+    if (view === 'tutorial') fillTutorial();
     if (view === 'pause') for (const id of ['solution', 'easier', 'harder']) $(`#pause-gen-${id}`).hidden = !session.generated;
     $(`#menu-${view}`).querySelector('button, input')?.focus();
   }
@@ -449,6 +460,28 @@ export function boot() {
       b.textContent = d.view === 'first' ? 'Walk it' : 'See it in the model';
       b.addEventListener('click', () => { session.loadDemo(d.id); closeMenu(); setView(d.view); render(); });
       li.append(t, p, b);
+      return li;
+    }));
+  }
+
+  // The tutorial is a curated learning path through real, editable demo buildings.
+  // The short first-run coach teaches the controls; these lessons explain the deeper rules.
+  function fillTutorial() {
+    $('#tutorial-list').replaceChildren(...TUTORIAL_LESSONS.map((lesson, index) => {
+      const demo = DEMOS.find((d) => d.id === lesson.demoId);
+      const li = document.createElement('li');
+      const heading = document.createElement('strong'); heading.textContent = `${index + 1}. ${lesson.title}`;
+      const concept = document.createElement('span'); concept.textContent = lesson.concept;
+      const action = document.createElement('p'); action.textContent = lesson.action;
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'primary';
+      button.textContent = demo?.view === 'first' ? 'Walk this lesson' : 'Inspect this lesson';
+      button.addEventListener('click', () => {
+        session.loadDemo(lesson.demoId);
+        closeMenu();
+        setView(demo?.view ?? 'model');
+        render();
+      });
+      li.append(heading, concept, action, button);
       return li;
     }));
   }
@@ -518,13 +551,15 @@ export function boot() {
   setInterval(() => { if (introActive) updateCoach(); }, 120);
   $('#coach-skip').addEventListener('click', () => introEnd($('#coach-demos').hidden ? 'skipped' : 'done'));
   $('#coach-demos').addEventListener('click', () => { introEnd('done'); showMenu('title'); showView('demos'); });
-  $('#set-intro').addEventListener('click', () => {
+  function startIntroduction() {
     session.loadChapter(CHAPTERS[0].id);
     session.restartChapter();
     introActive = true; modelSeen = false;
     setView('plan');
     closeMenu(); render();
-  });
+  }
+  $('#set-intro').addEventListener('click', startIntroduction);
+  $('#tutorial-replay-intro').addEventListener('click', startIntroduction);
 
   // Whether there is anything to continue: some progress, a discovery, an attempt, or a chapter beyond the first.
   function hasPlayed() {
@@ -535,6 +570,7 @@ export function boot() {
 
   function closeMenu() {
     $('#menu').hidden = true;
+    document.body.classList.remove('title-screen', 'menu-screen');
     menuReturnFocus?.focus?.();
     menuReturnFocus = null;
   }
@@ -566,6 +602,13 @@ export function boot() {
     $('#set-speed').value = $('#speed').value;
     $('#set-quality').value = savedQuality;
     $('#set-quality').disabled = !gl;
+    $('#set-distance').value = String(savedRenderDistance);
+    $('#set-distance-value').textContent = `${savedRenderDistance} ${savedRenderDistance === 1 ? 'level' : 'levels'}`;
+    $('#set-distance').disabled = !gl;
+    $('#set-resolution').value = String(Math.round(savedResolutionScale * 100));
+    $('#set-resolution-value').textContent = `${Math.round(savedResolutionScale * 100)}%`;
+    $('#set-resolution').disabled = !gl;
+    $('#set-layout').value = savedLayout;
     $('#set-look').value = String(access.look);
     $('#set-fov').value = String(access.fov);
     $('#set-bob').checked = !!access.bob;
@@ -712,12 +755,9 @@ export function boot() {
   $('#ending-again').addEventListener('click', () => { closeEnding(); showEnding(); });
 
   $('#menu-continue').addEventListener('click', () => { closeMenu(); render(); });
-  // The menu is always one tap away. Without this button a phone has no way back to Settings, the Atlas or the
-  // demonstrations once the title screen has been left: Escape was the only door.
-  $('#menu-open').addEventListener('click', () => { $('#more').open = false; showMenu('pause'); });
-  // The More list closes when you tap anywhere else, or press Escape.
-  document.addEventListener('click', (evt) => { const more = $('#more'); if (more.open && !more.contains(evt.target)) more.open = false; });
-  document.addEventListener('keydown', (evt) => { if (evt.key === 'Escape' && $('#more').open) { $('#more').open = false; evt.stopPropagation(); } }, true);
+  // The menu is always one tap away. Escape was the only door to it, which left a phone with no way back to
+  // Settings, the Atlas or the demonstrations once the title screen had been left.
+  $('#menu-open').addEventListener('click', () => showMenu('pause'));
   $('#menu-new').addEventListener('click', () => {
     if (session.progress.completed.length && !confirm('Start a new game? Completed chapters and discoveries are cleared. Your current construction is kept.')) return;
     session.resetProgress();
@@ -742,6 +782,9 @@ export function boot() {
   $('#menu-settings-open').addEventListener('click', () => showView('settings'));
   $('#menu-atlas-open').addEventListener('click', () => showView('atlas'));
   $('#menu-demos-open').addEventListener('click', () => showView('demos'));
+  $('#menu-tutorial-open').addEventListener('click', () => showView('tutorial'));
+  $('#pause-tutorial-open').addEventListener('click', () => showView('tutorial'));
+  $('#tutorial-back').addEventListener('click', () => showView(menuParent));
   $('#pause-demos-open').addEventListener('click', () => showView('demos'));
   $('#demos-back').addEventListener('click', () => showView(menuParent));
   $('#pause-atlas-open').addEventListener('click', () => showView('atlas'));
@@ -766,7 +809,26 @@ export function boot() {
   $('#set-quality').addEventListener('change', (evt) => {
     savedQuality = evt.target.value;
     try { localStorage.setItem('ia-quality', savedQuality); } catch { /* not remembered */ }
-    gl?.setQuality(savedQuality === 'auto' ? 'high' : savedQuality);
+    gl?.setQuality(savedQuality);
+  });
+  $('#set-distance').addEventListener('input', (evt) => {
+    savedRenderDistance = Number(evt.target.value);
+    $('#set-distance-value').textContent = `${savedRenderDistance} ${savedRenderDistance === 1 ? 'level' : 'levels'}`;
+    try { localStorage.setItem('ia-render-distance', String(savedRenderDistance)); } catch { /* preference is optional */ }
+    gl?.setRenderDistance(savedRenderDistance);
+  });
+  $('#set-resolution').addEventListener('input', (evt) => {
+    savedResolutionScale = Number(evt.target.value) / 100;
+    $('#set-resolution-value').textContent = `${evt.target.value}%`;
+    try { localStorage.setItem('ia-resolution-scale', String(savedResolutionScale)); } catch { /* preference is optional */ }
+    gl?.setResolutionScale(savedResolutionScale);
+  });
+  $('#set-layout').addEventListener('change', (evt) => {
+    savedLayout = normalizeLayoutMode(evt.target.value);
+    document.body.dataset.layout = savedLayout;
+    try { localStorage.setItem('ia-layout', savedLayout); localStorage.removeItem('ia-panel'); } catch { /* preference is optional */ }
+    applyPanel(defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false));
+    syncSettings();
   });
   $('#set-look').addEventListener('input', (e) => { access.look = Number(e.target.value); saveAccess(); });
   $('#set-fov').addEventListener('input', (e) => { access.fov = Number(e.target.value); saveAccess(); });
@@ -907,9 +969,8 @@ export function boot() {
     updateCoach();
     // A blank free construction offers rooms first: the tool is Add room, and the plan says so.
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
-    document.body.dataset.view = viewMode; // the stylesheet shows each view's own tools
-    $('#plan-tools').hidden = viewMode === 'first';
-    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
+    $('#plan-tools').hidden = viewMode !== 'plan';
+    $('#plan-hint').textContent = session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     updateSpatialAudio();
     maybeQueueCard();
@@ -989,6 +1050,8 @@ export function boot() {
     $('#redo').title = forward ? `Redo (${forward} step${forward === 1 ? '' : 's'} forward)` : 'Nothing to redo';
     $('#hint').textContent = session.hintState && session.hintState.chapter === session.chapter?.id ? 'Show full hint' : 'Show hint';
     $('#redo').disabled = !session.history.canRedo;
+    $('#plan-redo').disabled = !session.history.canRedo;
+    $('#plan-undo').disabled = !session.history.canUndo;
     for (const btn of document.querySelectorAll('[data-tool]')) {
       btn.setAttribute('aria-pressed', String(btn.dataset.tool === session.tool));
     }
@@ -1042,8 +1105,7 @@ export function boot() {
     }
     $('#portal-actions').hidden = !(sel && sel.type === 'portal');
     syncChallengeBox();
-    // The blurb is already at the top of the column; say it twice and the page looks stuttering.
-    $('#feedback').textContent = session.feedback?.text === session.active?.blurb ? '' : session.feedback?.text ?? '';
+    $('#feedback').textContent = session.feedback?.text ?? '';
     syncViewOverlays();
     $('#feedback').dataset.kind = session.feedback?.kind ?? 'info';
     $('#next').hidden = !(session.chapter && session.progress.completed.includes(session.chapter.id) && session.nextChapterId());
@@ -1053,8 +1115,7 @@ export function boot() {
     $('#ending').hidden = !(session.isFinished() && !session.sandbox);
     $('#chapter-select').value = session.sandbox ? '__sandbox' : session.chapter.id;
     const at = session.chapter ? CHAPTERS.findIndex((c) => c.id === session.chapter.id) + 1 : 0;
-    $('#progress').textContent = `${session.progress.completed.length} of ${CHAPTERS.length} solved`;
-    $('#progress').title = `${session.progress.completed.length} of ${CHAPTERS.length} challenges complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · chapter ${session.chapter.discipline}, challenge ${session.chapter.inChapter}` : ''}`;
+    $('#progress').textContent = `${session.progress.completed.length} / ${CHAPTERS.length} challenges complete · ${session.progress.discoveries.length} ${session.progress.discoveries.length === 1 ? 'discovery' : 'discoveries'}${at ? ` · chapter ${session.chapter.discipline}, challenge ${session.chapter.inChapter}` : ''}`;
     persistProgress();
   }
 
@@ -1188,6 +1249,10 @@ export function boot() {
     });
   }
 
+  $('#plan-undo').addEventListener('click', () => { session.undo(); render(); });
+  $('#plan-redo').addEventListener('click', () => { session.redo(); render(); });
+  $('#plan-test').addEventListener('click', () => $('#test').click());
+  $('#plan-more').addEventListener('click', () => $('#panel-toggle').click());
   $('#undo').addEventListener('click', () => { session.undo(); render(); });
   $('#redo').addEventListener('click', () => { session.redo(); render(); });
   $('#delete').addEventListener('click', () => { session.deleteSelection(); render(); });
@@ -1666,7 +1731,12 @@ export function boot() {
     try { localStorage.setItem('ia-panel', hidden ? 'hidden' : 'shown'); } catch { /* not remembered */ }
   }
   $('#panel-toggle').addEventListener('click', () => applyPanel(!document.body.classList.contains('panel-hidden')));
-  try { if (localStorage.getItem('ia-panel') === 'hidden') applyPanel(true); } catch { /* default: shown */ }
+  document.body.dataset.layout = savedLayout;
+  try {
+    const storedPanel = localStorage.getItem('ia-panel');
+    applyPanel(storedPanel === 'hidden' ? true : storedPanel === 'shown' ? false
+      : defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false));
+  } catch { applyPanel(defaultPanelHidden(savedLayout, globalThis.matchMedia?.('(pointer: coarse)').matches ?? false)); }
 
   // Speed and view are remembered between visits.
   try {
@@ -1809,28 +1879,19 @@ function persistWork() {
   try {
     const text = encodeSave({ chapterId: s.sandbox ? null : s.chapter.id, structure: s.structure, progress: s.progress, challenge: s.challenge });
     if (text === lastWork) return;
-    lastWork = text;
     localStorage.setItem(WORK_KEY, text);
     localStorage.setItem(WORK_AT_KEY, String(Date.now()));
+    // Cache only after both writes succeed. If storage is full or blocked,
+    // the next render must retry rather than treating an unsaved snapshot as saved.
+    lastWork = text;
   } catch { /* storage may be full or blocked */ }
 }
 
 // Puts back the construction that was in progress when the page last closed.
 function restoreWork(session) {
-  let data;
-  try {
-    const raw = localStorage.getItem(WORK_KEY);
-    if (!raw) return;
-    data = decodeSave(raw);
-  } catch { return; }
-  if (data.chapterId === null) {
-    session.startSandbox();
-    session.loadStructure(data.structure, null, { challenge: data.challenge });
-  } else if (data.chapterId === session.chapter?.id) {
-    session.loadStructure(data.structure, data.chapterId);
-  } else {
-    return;
-  }
+  let raw;
+  try { raw = localStorage.getItem(WORK_KEY); } catch { return; }
+  if (!raw || !restoreSaveIntoSession(session, raw)) return;
   const at = Number(localStorage.getItem(WORK_AT_KEY));
   const when = Number.isFinite(at) && at > 0 ? ` from ${new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
   session.feedback = { kind: 'success', text: `Restored your last construction${when}.` };

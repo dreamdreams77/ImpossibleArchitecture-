@@ -33,6 +33,7 @@ const posInt = (n) => (Number.isInteger(n) && n > 0 ? n : null);
 export function normalizeChallenge(raw) {
   if (!raw || typeof raw !== 'object' || typeof raw.start !== 'string') return null;
   const out = emptyChallenge(raw.start);
+  const list = (value) => Array.isArray(value) ? value : [];
   if (raw.v === EDITOR_VERSION) {
     for (const g of list(raw.goals)) {
       if (g?.kind === 'reach' && typeof g.to === 'string') out.goals.push({ kind: 'reach', to: g.to, heading: heading(g.heading), maxSteps: posInt(g.maxSteps), lit: !!g.lit });

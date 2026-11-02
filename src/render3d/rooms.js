@@ -528,6 +528,8 @@ export function buildRoom(spec, lib) {
       depthWrite: false, opacity, fog: false,
     }));
     s.scale.set(scale, scale, 1);
+    s.userData.baseScale = scale;
+    s.userData.baseOpacity = opacity;
     s.position.set(x, y, z);
     s.userData.roof = y > H * 0.7;
     group.add(s);
@@ -547,6 +549,20 @@ export function buildRoom(spec, lib) {
   }
   lights.push({ x: 0, y: Math.min(1.4, H * 0.3), z: 0, color: style.accent, intensity: style.lampIntensity * 0.12 });
 
+  // Every light has a slightly different, deterministic breath. Powered rooms
+  // answer with a brighter pulse, so the atmosphere reacts without a harsh flicker.
+  const glowPhase = (hash(spec.id) % 6283) / 1000;
+  animated.push((t, state) => {
+    const energy = state.energy ?? 0;
+    for (let i = 0; i < lampSprites.length; i++) {
+      const sprite = lampSprites[i];
+      const pulse = 0.96 + 0.04 * Math.sin(t * (1.1 + i * 0.035) + glowPhase + i * 1.7);
+      sprite.material.opacity = sprite.userData.baseOpacity * pulse * (1 + energy * 0.18);
+      const scale = sprite.userData.baseScale * pulse * (1 + energy * 0.08);
+      sprite.scale.set(scale, scale, 1);
+    }
+  });
+
   if (has.has('pendants')) {
     const pg = new Builder(lib, H, hw);
     const pos = [[-hw * 0.5, -hw * 0.5], [hw * 0.5, -hw * 0.5], [-hw * 0.5, hw * 0.5], [hw * 0.5, hw * 0.5]];
@@ -561,17 +577,29 @@ export function buildRoom(spec, lib) {
     group.add(pm);
   }
 
-  // Sun shaft: an additive column from the light source to the floor.
+  // Sun shaft: an additive column from the light source to the floor. When a
+  // plate in this room is powered, the shaft gathers a little more definition,
+  // as if the building is routing energy through its own architecture.
   if (lw > 0 || has.has('oculus')) {
     const r = has.has('oculus') ? Math.min(2.4, hw * 0.45) : lw;
     const col = new Color(style.sun.color);
     const sh = new Group();
     const shaftH = H - 0.5;
+    const shaftLayers = [];
     for (let i = 0; i < 2; i++) {
-      const m = new Mesh(new CylinderGeometry(r * 0.92, r * 1.45, shaftH, 28, 1, true), shaftMaterial(col, has.has('oculus') ? 0.2 : 0.12));
+      const opacity = has.has('oculus') ? 0.2 : 0.12;
+      const material = shaftMaterial(col, opacity);
+      const m = new Mesh(new CylinderGeometry(r * 0.92, r * 1.45, shaftH, 28, 1, true), material);
       m.rotation.y = i * 0.5;
       sh.add(m);
+      shaftLayers.push({ material, opacity });
     }
+    animated.push((t, state) => {
+      const shimmer = 0.92 + 0.08 * Math.sin(t * 1.7);
+      for (const layer of shaftLayers) {
+        layer.material.opacity = layer.opacity * shimmer * (1 + state.energy * 0.42);
+      }
+    });
     sh.position.set(0, shaftH / 2, 0);
     sh.userData.roof = false;
     sh.renderOrder = 4;
@@ -597,14 +625,20 @@ export function buildRoom(spec, lib) {
     const points = new Points(geo, pm);
     points.frustumCulled = false;
     group.add(points);
+    const dustAccent = new Color(style.accent);
     animated.push((t, c) => {
       const a = geo.attributes.position;
+      const power = c.energy ?? 0;
+      pm.opacity = 0.48 + power * 0.2;
+      pm.size = 0.085 + power * 0.025;
+      pm.color.set(style.lamp).lerp(dustAccent, power * 0.28);
       for (let i = 0; i < dustN; i++) {
         const sx = seed[i * 3]; const sy = seed[i * 3 + 1]; const sz = seed[i * 3 + 2];
+        const drift = 0.5 + power * 0.35;
         a.setXYZ(i,
-          (sx * 2 - 1) * (hw - 0.4) + Math.sin(t * 0.13 + sx * 40) * 0.5,
-          ((sy + t * 0.012 * (0.4 + sz)) % 1) * (H - 0.3) + 0.15,
-          (sz * 2 - 1) * (hw - 0.4) + Math.cos(t * 0.11 + sz * 40) * 0.5);
+          (sx * 2 - 1) * (hw - 0.4) + Math.sin(t * 0.13 + sx * 40) * drift,
+          ((sy + t * (0.012 + power * 0.006) * (0.4 + sz)) % 1) * (H - 0.3) + 0.15,
+          (sz * 2 - 1) * (hw - 0.4) + Math.cos(t * 0.11 + sz * 40) * drift);
       }
       a.needsUpdate = true;
     });

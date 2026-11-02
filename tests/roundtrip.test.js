@@ -30,7 +30,7 @@ test('every challenge and demonstration survives save, load and share unchanged'
     const saved = decodeSave(encodeSave({ chapterId, structure: s, progress: { completed: ['threshold'], discoveries: ['atlas:self-room'] } }));
     assert.deepEqual(saved.structure.toJSON(), s.toJSON(), `${name}: save`);
     assert.deepEqual(behaviour(saved.structure), behaviour(s), `${name}: how the doorways behave after a save`);
-    assert.deepEqual(saved.progress, { completed: ['threshold'], discoveries: ['atlas:self-room'] });
+    assert.deepEqual([saved.progress.completed, saved.progress.discoveries], [['threshold'], ['atlas:self-room']]);
     const shared = decodeShare(encodeShare(s));
     assert.ok(!shared.error, `${name}: ${shared.error}`);
     assert.deepEqual(shared.structure.toJSON(), s.toJSON(), `${name}: share`);

@@ -299,7 +299,14 @@ const RAW = [
     plates: [{ room: 'lantern', heading: 'E' }],
     goal: { kind: 'machine', to: 'roof' },
     hint: 'Join the Court to the Lantern on the Lantern\'s west face. Strike it, step back out, cross the gate, then go south from the Stair to the Roof.',
-    optional: [],
+    optional: [
+      {
+        id: 'lantern-orbit',
+        title: 'The Lantern\'s orbit',
+        text: 'A second passage closes a circuit around the Lantern. The light has found its way home.',
+        check: (s) => findCycles(s).some((c) => c.rooms.includes('lantern')),
+      },
+    ],
   },
   {
     id: 'spiral-cellar',
@@ -559,6 +566,18 @@ const RAW = [
         title: 'The Closed Ring',
         text: 'Foundation, Well and Apex are joined in a single ring. Every room can be left and returned to.',
         check: (s) => findCycles(s).some((c) => c.rooms.length === 3),
+      },
+      {
+        id: 'reflected-ring',
+        title: 'A Ring of Reflections',
+        text: 'Make a walkable three-room circuit that returns you as your own reflection.',
+        check: (s) => findCycles(s).some((c) => c.rooms.length === 3 && c.reflected && c.walkable),
+      },
+      {
+        id: 'half-turn-circuit',
+        title: 'The Half-Turn Circuit',
+        text: 'Make a walkable three-room circuit whose accumulated turns leave you facing the opposite way.',
+        check: (s) => findCycles(s).some((c) => c.rooms.length === 3 && c.netTurns === 2 && c.walkable),
       },
     ],
   },

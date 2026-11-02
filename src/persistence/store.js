@@ -19,12 +19,11 @@ export function encodeSave({ chapterId, structure, progress, challenge = null })
     progress: {
       completed: [...(progress?.completed ?? [])],
       discoveries: [...(progress?.discoveries ?? [])],
+      attempts: { ...(progress?.attempts ?? {}) },
+      time: { ...(progress?.time ?? {}) },
     },
   }, null, 2);
 }
-
-// A list of strings from untrusted data; anything else is dropped rather than trusted.
-const strings = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
 
 export function decodeSave(text) {
   let data;
@@ -39,15 +38,63 @@ export function decodeSave(text) {
   if (data.saveVersion !== SAVE_VERSION) {
     throw new Error(`Unsupported save version ${data.saveVersion}`);
   }
+  if (data.chapterId !== null && typeof data.chapterId !== 'string') {
+    throw new Error('Save file has an invalid chapter id');
+  }
+  const progress = data.progress ?? {};
+  const isList = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
+  const isCounts = (value) => value && typeof value === 'object' && !Array.isArray(value)
+    && Object.values(value).every((count) => Number.isFinite(count) && count >= 0);
+  const completed = progress.completed ?? [];
+  const discoveries = progress.discoveries ?? [];
+  const attempts = progress.attempts ?? {};
+  const time = progress.time ?? {};
+  if (!isList(completed) || !isList(discoveries) || !isCounts(attempts) || !isCounts(time)) {
+    throw new Error('Save file contains invalid campaign progress');
+  }
   return {
     chapterId: data.chapterId,
     structure: Structure.fromJSON(data.structure),
     challenge: normalizeChallenge(data.challenge),
     progress: {
-      completed: strings(data.progress?.completed),
-      discoveries: strings(data.progress?.discoveries),
+      completed: [...new Set(completed)],
+      discoveries: [...new Set(discoveries)],
+      attempts: { ...attempts },
+      time: { ...time },
     },
   };
+}
+
+
+/**
+ * Restore the most recent autosaved construction into a live session.
+ * The autosave contains the progress snapshot written alongside that
+ * construction, so it is the recovery source of truth if the browser closed
+ * between the separate work/progress localStorage writes.
+ *
+ * Returns false when the save belongs to a different chapter or is invalid.
+ */
+export function restoreSaveIntoSession(session, raw) {
+  let data;
+  try {
+    data = decodeSave(raw);
+    if (data.chapterId !== null && data.chapterId !== session.chapter?.id) return false;
+    if (data.chapterId === null) session.startSandbox();
+    session.loadStructure(
+      data.structure,
+      data.chapterId,
+      { challenge: data.challenge },
+    );
+    session.progress = {
+      completed: [...data.progress.completed],
+      discoveries: [...data.progress.discoveries],
+      attempts: { ...data.progress.attempts },
+      time: { ...data.progress.time },
+    };
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // A sandbox challenge: the editor's current shape, or the first version's one goal, which is upgraded.
