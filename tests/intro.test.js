@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { introStep, introNeeded, INTRO_STEPS } from '../src/ui/intro.js';
+import { introStep, introNeeded, INTRO_STEPS, TUTORIAL_LESSONS } from '../src/ui/intro.js';
+import { DEMOS } from '../src/campaign/demos.js';
 
 const base = { active: true, chapterId: 'threshold', portals: 0, pending: false, steps: 0, view: 'plan', modelSeen: false };
 
@@ -38,4 +39,18 @@ test('it is shown only to someone who has never been through it and has not play
   assert.equal(introNeeded({ stored: 'done', hasPlayed: false }), false);
   assert.equal(introNeeded({ stored: 'skipped', hasPlayed: false }), false);
   assert.equal(introNeeded({ stored: null, hasPlayed: true }), false);
+});
+
+
+test('the guided learning path points to unique, real demonstrations', () => {
+  const demoIds = new Set(DEMOS.map((demo) => demo.id));
+  const lessonIds = TUTORIAL_LESSONS.map((lesson) => lesson.demoId);
+  assert.equal(new Set(lessonIds).size, TUTORIAL_LESSONS.length, 'no duplicate lessons');
+  assert.equal(TUTORIAL_LESSONS.length, 6);
+  for (const lesson of TUTORIAL_LESSONS) {
+    assert.ok(demoIds.has(lesson.demoId), `known demonstration: ${lesson.demoId}`);
+    assert.ok(lesson.title.length > 5);
+    assert.ok(lesson.concept.length > 20);
+    assert.ok(lesson.action.length > 20);
+  }
 });

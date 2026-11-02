@@ -11,7 +11,8 @@ import { drawPlan, drawGraph } from '../render/draw.js';
 import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, describeFirstPerson, fpZoneFor } from '../render/firstperson.js';
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
-import { introStep, introNeeded } from './intro.js';
+import { introStep, introNeeded, TUTORIAL_LESSONS } from './intro.js';
+import { isLandingMenuView } from './menu.js';
 import { ATLAS } from '../campaign/atlas.js';
 import { DEMOS } from '../campaign/demos.js';
 import { throughFaces } from '../topology/propagation.js';
@@ -407,7 +408,7 @@ export function boot() {
   let menuView = 'title';
   let menuParent = 'title';
   let menuReturnFocus = null;
-  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'demos', 'credits'];
+  const MENU_VIEWS = ['title', 'pause', 'chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'];
 
   function showMenu(view = 'title') {
     const menu = $('#menu');
@@ -418,8 +419,11 @@ export function boot() {
 
   function showView(view) {
     // Chapters, settings and credits return to whichever view opened them.
-    if (['chapters', 'settings', 'atlas', 'demos', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
+    if (['chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
+    const menuLanding = !$('#menu').hidden && isLandingMenuView(view, menuParent);
+    document.body.classList.toggle('menu-screen', menuLanding);
+    document.body.classList.toggle('title-screen', !$('#menu').hidden && view === 'title');
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
     if (view === 'chapters') fillChapterList();
     if (view === 'settings') syncSettings();
@@ -433,6 +437,7 @@ export function boot() {
     }
     if (view === 'atlas') fillAtlas();
     if (view === 'demos') fillDemos();
+    if (view === 'tutorial') fillTutorial();
     if (view === 'pause') for (const id of ['solution', 'easier', 'harder']) $(`#pause-gen-${id}`).hidden = !session.generated;
     $(`#menu-${view}`).querySelector('button, input')?.focus();
   }
@@ -448,6 +453,28 @@ export function boot() {
       b.textContent = d.view === 'first' ? 'Walk it' : 'See it in the model';
       b.addEventListener('click', () => { session.loadDemo(d.id); closeMenu(); setView(d.view); render(); });
       li.append(t, p, b);
+      return li;
+    }));
+  }
+
+  // The tutorial is a curated learning path through real, editable demo buildings.
+  // The short first-run coach teaches the controls; these lessons explain the deeper rules.
+  function fillTutorial() {
+    $('#tutorial-list').replaceChildren(...TUTORIAL_LESSONS.map((lesson, index) => {
+      const demo = DEMOS.find((d) => d.id === lesson.demoId);
+      const li = document.createElement('li');
+      const heading = document.createElement('strong'); heading.textContent = `${index + 1}. ${lesson.title}`;
+      const concept = document.createElement('span'); concept.textContent = lesson.concept;
+      const action = document.createElement('p'); action.textContent = lesson.action;
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'primary';
+      button.textContent = demo?.view === 'first' ? 'Walk this lesson' : 'Inspect this lesson';
+      button.addEventListener('click', () => {
+        session.loadDemo(lesson.demoId);
+        closeMenu();
+        setView(demo?.view ?? 'model');
+        render();
+      });
+      li.append(heading, concept, action, button);
       return li;
     }));
   }
@@ -517,13 +544,15 @@ export function boot() {
   setInterval(() => { if (introActive) updateCoach(); }, 120);
   $('#coach-skip').addEventListener('click', () => introEnd($('#coach-demos').hidden ? 'skipped' : 'done'));
   $('#coach-demos').addEventListener('click', () => { introEnd('done'); showMenu('title'); showView('demos'); });
-  $('#set-intro').addEventListener('click', () => {
+  function startIntroduction() {
     session.loadChapter(CHAPTERS[0].id);
     session.restartChapter();
     introActive = true; modelSeen = false;
     setView('plan');
     closeMenu(); render();
-  });
+  }
+  $('#set-intro').addEventListener('click', startIntroduction);
+  $('#tutorial-replay-intro').addEventListener('click', startIntroduction);
 
   // Whether there is anything to continue: some progress, a discovery, an attempt, or a chapter beyond the first.
   function hasPlayed() {
@@ -534,6 +563,7 @@ export function boot() {
 
   function closeMenu() {
     $('#menu').hidden = true;
+    document.body.classList.remove('title-screen', 'menu-screen');
     menuReturnFocus?.focus?.();
     menuReturnFocus = null;
   }
@@ -735,6 +765,9 @@ export function boot() {
   $('#menu-settings-open').addEventListener('click', () => showView('settings'));
   $('#menu-atlas-open').addEventListener('click', () => showView('atlas'));
   $('#menu-demos-open').addEventListener('click', () => showView('demos'));
+  $('#menu-tutorial-open').addEventListener('click', () => showView('tutorial'));
+  $('#pause-tutorial-open').addEventListener('click', () => showView('tutorial'));
+  $('#tutorial-back').addEventListener('click', () => showView(menuParent));
   $('#pause-demos-open').addEventListener('click', () => showView('demos'));
   $('#demos-back').addEventListener('click', () => showView(menuParent));
   $('#pause-atlas-open').addEventListener('click', () => showView('atlas'));
