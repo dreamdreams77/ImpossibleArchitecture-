@@ -42,3 +42,15 @@ export function introStep(c) {
 export function introNeeded({ stored, hasPlayed }) {
   return stored == null && !hasPlayed;
 }
+
+
+// Optional follow-on lessons. Each opens a real, editable demonstration so the
+// player can walk the phenomenon and inspect the same structure in the model.
+export const TUTORIAL_LESSONS = Object.freeze([
+  { demoId: 'distant-neighbours', title: 'Near is not connected', concept: 'A room drawn far away can be one doorway away; a room beside you can take several passages to reach.', action: 'Compare the Lodge → Observatory route with the Lodge → Annex route in the Model.' },
+  { demoId: 'endless-corridor', title: 'A room can lead to itself', concept: 'A doorway can connect two faces of the same room, making a loop without adding another room.', action: 'Walk east repeatedly, then check the Plan: the corridor is still one room.' },
+  { demoId: 'turning-tower', title: 'Passages can turn you', concept: 'A quarter-turn passage changes your heading as you cross it. A loop can bring you home facing another direction.', action: 'Walk the four-room ring, then trace its green arcs in the Model.' },
+  { demoId: 'hall-of-mirrors', title: 'Passages can reflect you', concept: 'A mirrored passage swaps left and right. Crossing it twice restores your original orientation.', action: 'Cross the mirrored doorway, turn, then cross again and watch your orientation return.' },
+  { demoId: 'one-way-spiral', title: 'A passage can be one-way', concept: 'Connections can have direction. You may be able to continue forward but not retrace your last step.', action: 'Try to walk backwards, then follow the amber arrows around the spiral in the Model.' },
+  { demoId: 'two-rooms-one-place', title: 'Two rooms can share a place', concept: 'Plan coordinates are only drawing positions. Two distinct rooms can occupy the same point.', action: 'Walk north and south from the Stair to enter two different rooms at identical coordinates.' },
+]);
