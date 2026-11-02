@@ -302,7 +302,7 @@ const RAW = [
     optional: [
       {
         id: 'lantern-orbit',
-        title: 'The Lantern\\'s orbit',
+        title: 'The Lantern\'s orbit',
         text: 'A second passage closes a circuit around the Lantern. The light has found its way home.',
         check: (s) => findCycles(s).some((c) => c.rooms.includes('lantern')),
       },
