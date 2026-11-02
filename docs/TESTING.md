@@ -34,10 +34,12 @@ Current coverage focus:
   validation and its use by the live session.
 - `render3d-frames.test.js`, `render3d-walker.test.js`: portal frame maths and
   the walker, including body mode.
+- `audit.test.js`: the route-first audit finds exactly the exhaustive solver's minimal solutions on six challenges.
+- `intro.test.js`, `phone.test.js`: the first-run steps (pure), touch-sized hit targets, small-room labels, and that every challenge fits a phone-shaped plan (Contradiction excepted, on purpose).
 - `bench.test.js`: benchmark statistics and preset recommendation.
 - `spatial-sound.test.js`: room acoustics, neighbour mix and a fake AudioContext.
 
-Total: 428 tests. Browser tools (need Playwright, server on port 8080):
+Total: 444 tests. Browser tools (need Playwright, server on port 8080):
 `npm run e2e` (drives the real UI and asserts WebGL initialised), `npm run fuzz`
 (random edits and views in every challenge), `npm run portalcheck` (analytic
 marker projections against the rendered portals, within 4 px).
@@ -54,3 +56,7 @@ This is not part of `npm test`, because it needs a browser.
 The browser UI was checked by driving headless Chromium through real pointer
 clicks: connecting the first chapter completes it, with no console errors. This
 is a manual check, not an automated suite, and is not part of `npm test`.
+
+Auditing the large challenges: `node tools/audit.mjs <id> [budget] [maxRoute] [seconds] [plain]` searches for
+unintended solutions by building passages only where a walker stands at a wall. Budget 3 on the larger
+challenges takes minutes to an hour and a few hundred MB; a result marked INCOMPLETE is not a proof.

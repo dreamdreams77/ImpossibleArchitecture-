@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.1 — release polish
+
+- First-run introduction: a coach bar teaches Plan, Walk and Model by doing, reads game state so it cannot be
+  failed, skips and replays (Settings). Title screen: no misleading Continue for new players, Demonstrations next
+  to New game, a short hint for newcomers.
+- Phone: the graph panel starts hidden, small rooms are named underneath with a halo, face dots and rooms have
+  fingertip-sized targets, each new building is framed on load and wide ones fit their own axis, a resize keeps the
+  view, and a message explains buildings too spread to draw whole (Contradiction).
+- `tools/audit.mjs` and an audit of the five largest challenges (see the README for results and limits).
+- Docs: honest limits rewritten; changelog and counts corrected.
+
+Tests: 444 pass.
+
 ## 1.1.0 — correct reflections, procedural challenges, the Atlas, demonstrations
 
 Rules (behaviour changes)

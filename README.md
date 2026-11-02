@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 428 tests over the engine, campaign, renderer maths and walker
+npm test       # 444 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -115,11 +115,22 @@ and [docs/TESTING.md](docs/TESTING.md).
 - Your own challenges (the editor) support several goals, plates, crates, pads, blocks, gates, rules and
   optional objectives, and are judged by the campaign's engine. The editor cannot yet author every field
   the campaign data can (for example forbidden faces are not editable).
-- Campaign challenges are checked by planted solutions and negative cases, and by `tools/solve.mjs`, an
-  exhaustive solver that proves 29 of the 39 solvable and reports their minimum builds. The remaining ten are
-  beyond brute force: five physical (crate-pushing) challenges are checked by a separate push-level solver, and
-  five larger ones (Machine, Spiral Cellar, Cupboard, Ring Hall, Last Construction) by planted solutions only, so
-  unintended shortcuts may exist there. Many early challenges are solvable by a single passage: they are tutorials.
+- Campaign challenges are checked by planted solutions and negative cases, and by two solvers. `tools/solve.mjs`
+  enumerates every set of passages and proves 29 of the 39 solvable. Five of the other ten are physical
+  (crate-pushing) challenges checked by a separate push-level solver. The remaining five (Machine, Spiral Cellar,
+  Cupboard, Ring Hall, Last Construction) are beyond enumeration, so they were audited with `tools/audit.mjs`,
+  a route-first search (the traveller walks and builds a passage only where they stand at a wall). On the six
+  challenges where both tools can run, the audit finds exactly the enumerator's solution counts. What it found:
+  - None of the five has a solution with 2 or fewer new passages (complete searches, routes up to 130 steps).
+  - A counting argument gives a lower bound equal to the intended size for the Machine (3), Spiral Cellar (3) and
+    Cupboard (4): every room that must be entered needs its own new passage, so no shorter solution can exist.
+  - Ring Hall needs at least 3 and has many 3-passage solutions (its hint says the ring is optional). A complete
+    search with plain, unturned passages finds none up to the 4 the rules allow, so its quarter-turn lesson
+    cannot be bypassed.
+  - Last Construction needs at least 3 and is intended to need 4. The search at 3 covered 509 million states and
+    found no solution, but did not finish, so a 3-passage shortcut is **not ruled out**.
+  - Alternative solutions at the intended size were not enumerated for the larger challenges. Many early challenges
+    are solvable by a single passage: they are tutorials.
 
 ## License
 
