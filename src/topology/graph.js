@@ -231,6 +231,9 @@ export class Structure {
       if (r.label != null && typeof r.label !== 'string') {
         throw new TopologyError(`Room ${r.id} has an invalid label`, 'BAD_LABEL');
       }
+      if (r.turn != null && (!Number.isInteger(r.turn) || r.turn < 0 || r.turn > 3)) {
+        throw new TopologyError(`Room ${r.id} has an invalid drawing turn`, 'BAD_TURN');
+      }
       if (r.objects != null && !Array.isArray(r.objects)) {
         throw new TopologyError(`Room ${r.id} has invalid objects`, 'BAD_OBJECTS');
       }
