@@ -113,14 +113,18 @@ export function boot() {
   // The WebGL walk and architect's model. Where WebGL is unavailable the 2D views below stay in use.
   let savedQuality = 'auto';
   try { savedQuality = localStorage.getItem('ia-quality') || 'auto'; } catch { /* default */ }
+  let savedRenderDistance = 2;
+  let savedResolutionScale = 1;
+  try { savedRenderDistance = Math.min(4, Math.max(1, Number(localStorage.getItem('ia-render-distance')) || 2)); } catch { /* default */ }
+  try { savedResolutionScale = Math.min(1, Math.max(0.5, Number(localStorage.getItem('ia-resolution-scale')) || 1)); } catch { /* default */ }
   let savedLayout = 'auto';
   try { savedLayout = normalizeLayoutMode(localStorage.getItem('ia-layout') || 'auto'); } catch { /* automatic layout */ }
   const gl = createGlView({
     canvas: glCanvas,
     session,
     hud: $('#gl-hud'),
-    
-    settings: { quality: savedQuality, reduceMotion, speed: () => walkSpeed, look: () => access.look, fov: () => access.fov, bob: () => access.bob, cinematic: () => access.cinematic !== false },
+    statsEl: $('#gl-performance'),
+    settings: { quality: savedQuality, renderDistance: savedRenderDistance, resolutionScale: savedResolutionScale, reduceMotion, speed: () => walkSpeed, look: () => access.look, fov: () => access.fov, bob: () => access.bob, cinematic: () => access.cinematic !== false },
     onWalkClick: (zone) => {
       session.fpStopPlay();
       if (zone === 'forward') walkForward();
@@ -598,6 +602,12 @@ export function boot() {
     $('#set-speed').value = $('#speed').value;
     $('#set-quality').value = savedQuality;
     $('#set-quality').disabled = !gl;
+    $('#set-distance').value = String(savedRenderDistance);
+    $('#set-distance-value').textContent = `${savedRenderDistance} ${savedRenderDistance === 1 ? 'level' : 'levels'}`;
+    $('#set-distance').disabled = !gl;
+    $('#set-resolution').value = String(Math.round(savedResolutionScale * 100));
+    $('#set-resolution-value').textContent = `${Math.round(savedResolutionScale * 100)}%`;
+    $('#set-resolution').disabled = !gl;
     $('#set-layout').value = savedLayout;
     $('#set-look').value = String(access.look);
     $('#set-fov').value = String(access.fov);
@@ -797,6 +807,18 @@ export function boot() {
     savedQuality = evt.target.value;
     try { localStorage.setItem('ia-quality', savedQuality); } catch { /* not remembered */ }
     gl?.setQuality(savedQuality);
+  });
+  $('#set-distance').addEventListener('input', (evt) => {
+    savedRenderDistance = Number(evt.target.value);
+    $('#set-distance-value').textContent = `${savedRenderDistance} ${savedRenderDistance === 1 ? 'level' : 'levels'}`;
+    try { localStorage.setItem('ia-render-distance', String(savedRenderDistance)); } catch { /* preference is optional */ }
+    gl?.setRenderDistance(savedRenderDistance);
+  });
+  $('#set-resolution').addEventListener('input', (evt) => {
+    savedResolutionScale = Number(evt.target.value) / 100;
+    $('#set-resolution-value').textContent = `${evt.target.value}%`;
+    try { localStorage.setItem('ia-resolution-scale', String(savedResolutionScale)); } catch { /* preference is optional */ }
+    gl?.setResolutionScale(savedResolutionScale);
   });
   $('#set-layout').addEventListener('change', (evt) => {
     savedLayout = normalizeLayoutMode(evt.target.value);

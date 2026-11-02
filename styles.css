@@ -426,3 +426,9 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
 @media (min-width: 961px) { #plan-more { display: none; } }
+
+
+/* Live renderer telemetry: unobtrusive, legible over both dark and bright rooms. */
+.gl-performance { position: absolute; top: 12px; right: 12px; z-index: 5; padding: 6px 9px; border: 1px solid rgba(214, 190, 145, .28); border-radius: 7px; color: rgba(246, 239, 222, .9); background: rgba(7, 10, 14, .68); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .035em; pointer-events: none; backdrop-filter: blur(8px); }
+.gl-performance[hidden] { display: none; }
+@media (max-width: 560px) { .gl-performance { top: 6px; right: 6px; padding: 5px 7px; font-size: 10px; } }

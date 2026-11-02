@@ -270,6 +270,10 @@
               </select>
             </label>
             <p class="muted setting-note">Auto chooses a device-appropriate quality and adjusts rendering resolution to keep the game smooth.</p>
+            <label class="field">Portal render distance <output id="set-distance-value">2 levels</output><input id="set-distance" type="range" min="1" max="4" step="1" value="2" aria-label="Portal render distance"></label>
+            <p class="muted setting-note">Controls how many connected rooms can be seen through successive doorways. Higher values cost more GPU time.</p>
+            <label class="field">Resolution scale <output id="set-resolution-value">100%</output><input id="set-resolution" type="range" min="50" max="100" step="5" value="100" aria-label="3D render resolution scale"></label>
+            <p class="muted setting-note">Lower values improve performance on demanding scenes. Auto quality can still adapt resolution while this stays at 100%.</p>
             <label class="field">Interface layout
               <select id="set-layout" aria-label="Interface layout">
                 <option value="auto">Auto · adapt to this device</option>
@@ -419,6 +423,7 @@
         </div>
       </div>
       <div id="gl-hud" class="gl-hud" hidden></div>
+      <div id="gl-performance" class="gl-performance" aria-live="off" hidden></div>
       <div id="gl-toast" class="gl-toast" role="status" aria-live="polite" hidden></div>
       <div id="gl-empty" class="gl-empty" hidden>
         <strong>No doorway in this room yet.</strong>
