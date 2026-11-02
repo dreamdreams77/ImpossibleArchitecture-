@@ -540,13 +540,15 @@ export function boot() {
   setInterval(() => { if (introActive) updateCoach(); }, 120);
   $('#coach-skip').addEventListener('click', () => introEnd($('#coach-demos').hidden ? 'skipped' : 'done'));
   $('#coach-demos').addEventListener('click', () => { introEnd('done'); showMenu('title'); showView('demos'); });
-  $('#set-intro').addEventListener('click', () => {
+  function startIntroduction() {
     session.loadChapter(CHAPTERS[0].id);
     session.restartChapter();
     introActive = true; modelSeen = false;
     setView('plan');
     closeMenu(); render();
-  });
+  }
+  $('#set-intro').addEventListener('click', startIntroduction);
+  $('#tutorial-replay-intro').addEventListener('click', startIntroduction);
 
   // Whether there is anything to continue: some progress, a discovery, an attempt, or a chapter beyond the first.
   function hasPlayed() {
