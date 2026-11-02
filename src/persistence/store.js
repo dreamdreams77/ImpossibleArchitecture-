@@ -38,15 +38,29 @@ export function decodeSave(text) {
   if (data.saveVersion !== SAVE_VERSION) {
     throw new Error(`Unsupported save version ${data.saveVersion}`);
   }
+  if (data.chapterId !== null && typeof data.chapterId !== 'string') {
+    throw new Error('Save file has an invalid chapter id');
+  }
+  const progress = data.progress ?? {};
+  const isList = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
+  const isCounts = (value) => value && typeof value === 'object' && !Array.isArray(value)
+    && Object.values(value).every((count) => Number.isFinite(count) && count >= 0);
+  const completed = progress.completed ?? [];
+  const discoveries = progress.discoveries ?? [];
+  const attempts = progress.attempts ?? {};
+  const time = progress.time ?? {};
+  if (!isList(completed) || !isList(discoveries) || !isCounts(attempts) || !isCounts(time)) {
+    throw new Error('Save file contains invalid campaign progress');
+  }
   return {
     chapterId: data.chapterId,
     structure: Structure.fromJSON(data.structure),
     challenge: normalizeChallenge(data.challenge),
     progress: {
-      completed: data.progress?.completed ?? [],
-      discoveries: data.progress?.discoveries ?? [],
-      attempts: { ...(data.progress?.attempts ?? {}) },
-      time: { ...(data.progress?.time ?? {}) },
+      completed: [...new Set(completed)],
+      discoveries: [...new Set(discoveries)],
+      attempts: { ...attempts },
+      time: { ...time },
     },
   };
 }
