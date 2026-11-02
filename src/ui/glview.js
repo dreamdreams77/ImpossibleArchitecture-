@@ -41,6 +41,7 @@ export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkCli
   }
   let renderDistance = Math.min(4, Math.max(1, Number(settings.renderDistance) || 2));
   let resolutionScale = Math.min(1, Math.max(0.5, Number(settings.resolutionScale) || 1));
+  if (resolutionScale < 1) autoQuality = false;
   world.q = { ...world.q, maxDepth: renderDistance };
   world.setResolutionScale(resolutionScale);
   const walker = new Walker();
@@ -66,7 +67,7 @@ export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkCli
   let fpsValue = 0;
   let slow = 0;
   let fast = 0;
-  let resScale = 1;
+  let resScale = resolutionScale;
   let debugOn = world.debug;
   const pinch = createPinch();
   let lost = false;
@@ -183,6 +184,7 @@ export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkCli
   function setVisible(v) {
     visible = v;
     canvas.hidden = !v;
+    if (statsEl) statsEl.hidden = !v;
     if (v) {
       resize();
       lastStructure = null; // resync on show: the structure may have changed in the plan
@@ -414,8 +416,8 @@ export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkCli
         params.delete('quality');
         const info = deviceInfo(document.createElement('canvas'));
         quality = recommendPreset({ renderer: info.renderer, mobile: info.mobile, memoryGB: info.memoryGB, cores: info.cores, dpr: info.dpr });
-        autoQuality = true;
-        resScale = 1;
+        autoQuality = resolutionScale >= 1;
+        resScale = resolutionScale;
         world.setQuality(quality);
         world.q = { ...world.q, maxDepth: renderDistance };
         world.setResolutionScale(resolutionScale);
