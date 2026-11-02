@@ -12,6 +12,7 @@ import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, descr
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
 import { Sound } from './sound.js';
 import { introStep, introNeeded, TUTORIAL_LESSONS } from './intro.js';
+import { isLandingMenuView } from './menu.js';
 import { ATLAS } from '../campaign/atlas.js';
 import { DEMOS } from '../campaign/demos.js';
 import { throughFaces } from '../topology/propagation.js';
@@ -420,7 +421,7 @@ export function boot() {
     // Chapters, settings and credits return to whichever view opened them.
     if (['chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
-    const menuLanding = !$('#menu').hidden && (view === 'title' || (view !== 'pause' && menuParent === 'title'));
+    const menuLanding = !$('#menu').hidden && isLandingMenuView(view, menuParent);
     document.body.classList.toggle('menu-screen', menuLanding);
     document.body.classList.toggle('title-screen', !$('#menu').hidden && view === 'title');
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
