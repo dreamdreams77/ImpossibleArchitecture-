@@ -420,7 +420,7 @@ export function boot() {
     // Chapters, settings and credits return to whichever view opened them.
     if (['chapters', 'settings', 'atlas', 'demos', 'tutorial', 'credits'].includes(view) && menuView !== view) menuParent = menuView;
     menuView = view;
-    const menuLanding = !$('#menu').hidden && (view === 'title' || menuParent === 'title');
+    const menuLanding = !$('#menu').hidden && (view === 'title' || (view !== 'pause' && menuParent === 'title'));
     document.body.classList.toggle('menu-screen', menuLanding);
     document.body.classList.toggle('title-screen', !$('#menu').hidden && view === 'title');
     for (const v of MENU_VIEWS) $(`#menu-${v}`).hidden = v !== view;
