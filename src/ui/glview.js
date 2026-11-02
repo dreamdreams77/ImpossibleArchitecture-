@@ -410,7 +410,7 @@ export function createGlView({ canvas, session, hud, debugEl, onWalkClick, onSel
       }
       slow = 0; fast = 0;
     },
-    setAdaptive(on) { autoQuality = !!on && !params.has('quality'); slow = 0; fast = 0; },
+    setAdaptive(on) { autoQuality = !!on && !params.has('quality') && (settings.quality ?? 'auto') === 'auto'; slow = 0; fast = 0; },
     setResolutionScale(k) { resScale = k; world.setResolutionScale(k); },
     get resolutionScale() { return resScale; },
     // Debug tint: passes are coloured by recursion depth so the portal budget is visible.
