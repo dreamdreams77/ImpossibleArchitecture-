@@ -874,10 +874,14 @@ export function boot() {
     const first = on && viewMode === 'first';
     $('#gl-pad').hidden = !first;
     $('#pad-back').hidden = !session.physical;
-    $('#gl-test').hidden = !on;
+    // On a phone the controls column is below the drawing, so the drawing carries its own Test button and says
+    // what happened (a refused passage, a failed test) in the Plan view as well as in the 3D views.
+    const phone = !!globalThis.matchMedia?.('(max-width: 800px)').matches;
+    const show = on || phone;
+    $('#gl-test').hidden = !show;
     const fb = session.feedback;
     const toast = $('#gl-toast');
-    if (!on || !fb?.text) { toast.hidden = true; toastText = ''; }
+    if (!show || !fb?.text || fb.text === session.active?.blurb) { toast.hidden = true; toastText = ''; }
     else if (fb.text !== toastText) {
       toastText = fb.text;
       toast.textContent = fb.text;

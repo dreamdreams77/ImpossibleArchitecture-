@@ -326,6 +326,9 @@ body.panel-hidden .ending-screen { inset: 0; }
 .toolgroup button[aria-pressed="true"] { background: rgba(232, 180, 90, 0.95); color: #1a1408; font-weight: 600; }
 .toolgroup button:disabled { opacity: 0.32; }
 body[data-view="model"] .planonly { display: none; }
+/* A selected passage's buttons sit on the drawing, in a row of their own above the tools, where a thumb reaches them. */
+.portalgroup { flex-basis: 100%; flex-wrap: wrap; align-items: center; justify-content: flex-start; width: fit-content; max-width: 100%; border-color: rgba(232, 180, 90, 0.55); }
+.portallabel { padding: 0 8px 0 6px; font: 600 10px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
 /* The model view has three things along its foot: its help line, the tools, and the cutaway. Each gets a lane. */
 body[data-view="model"] .plan-tools { bottom: 14px; }
 body[data-view="model"] .gl-hud { bottom: 70px; }
@@ -425,7 +428,6 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
   body[data-view="model"] .modelchip .field { flex: 1; min-width: 0; }
   /* A message here is a note, not a paragraph: two lines, then it fades out as it already does. */
   body[data-view="model"] .gl-toast { max-width: calc(100% - 20px); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  body[data-view="model"] .gl-test { display: none; }
 }
 
 /* The frame-rate readout takes the top-right corner. On a phone the walk view's Test button is there, so it drops
@@ -434,4 +436,11 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
   .gl-performance { top: 10px; right: 10px; padding: 4px 6px; font-size: 9.5px; letter-spacing: -0.01em; white-space: nowrap; }
   body[data-view="first"] .gl-performance { top: 52px; }
 }
-@media (max-width: 420px) { body[data-view="model"] .gl-performance { display: none; } }
+@media (max-width: 800px) { body[data-view="model"] .gl-performance { display: none; } }
+
+/* Phone: keep the passage actions to one slim row so they never cover the rooms */
+@media (max-width: 800px) {
+  .portalgroup { flex-wrap: nowrap; overflow-x: auto; width: 100%; scrollbar-width: none; gap: 2px; }
+  .portalgroup button { flex: 0 0 auto; padding-inline: 9px; white-space: nowrap; }
+  .portallabel { display: none; }
+}

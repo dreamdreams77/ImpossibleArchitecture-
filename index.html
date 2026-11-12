@@ -68,17 +68,6 @@
         </div>
       </section>
 
-      <section id="portal-actions-section" class="context">
-        <div id="portal-actions" class="toolrow" hidden>
-          <h3>This passage</h3>
-          <button id="rotate" type="button" class="ghost" title="R">Turn ¼</button>
-          <button id="mirror" type="button" class="ghost" title="M">Mirror</button>
-          <button id="move-end" type="button" class="ghost" title="Re-attach the end of this portal">Move end</button>
-          <button id="oneway" type="button" class="ghost" title="O">One way</button>
-          <button id="reverse" type="button" class="ghost" title="Flip the direction of a one-way passage">Reverse</button>
-        </div>
-      </section>
-
       <section id="room-section" class="context" hidden>
         <h3>This room</h3>
         <label class="field">Label <input id="room-label" type="text" maxlength="24" autocomplete="off"></label>
@@ -404,6 +393,14 @@
       </div>
       <div id="plan-tools" class="plan-tools" role="toolbar" aria-label="Tools">
         <span id="plan-hint" class="plan-hint"></span>
+        <div id="portal-actions" class="toolgroup portalgroup" role="group" aria-label="This passage" hidden>
+          <span class="portallabel">Passage</span>
+          <button id="rotate" type="button" title="R">Turn ¼</button>
+          <button id="mirror" type="button" title="M">Mirror</button>
+          <button id="oneway" type="button" title="O">One way</button>
+          <button id="reverse" type="button" title="Flip the direction of a one-way passage">Reverse</button>
+          <button id="move-end" type="button" title="Re-attach the end of this passage">Move end</button>
+        </div>
         <div class="toolgroup">
           <button type="button" data-tool="select" aria-pressed="true" title="Select a room or passage; drag a room to move it">Select</button>
           <button type="button" data-tool="add" title="Tap empty grid to place a room">Add room</button>
