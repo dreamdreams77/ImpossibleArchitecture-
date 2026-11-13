@@ -465,3 +465,6 @@ body[data-view="model"] .tooldock .toolgroup.planonly { display: none; }
 
 /* The hint is a caption on the drawing; taps go through it to the plan. */
 .plan-hint { pointer-events: none; }
+
+/* A phone has no keyboard to take shortcuts from. */
+@media (pointer: coarse) and (max-width: 800px) { #keys-btn { display: none; } }

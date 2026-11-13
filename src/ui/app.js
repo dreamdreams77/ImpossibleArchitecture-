@@ -26,6 +26,7 @@ import { createPinch } from './pinch.js';
 import { createGlView } from './glview.js';
 import { styleFor } from '../render3d/styles.js';
 import { debugReport } from './debugreport.js';
+import { feedbackReport, recordErrors, describeDevice } from './feedback.js';
 import { createEditorPanel } from './editorpanel.js';
 import { runBenchmark, formatReport } from './bench.js';
 import { ACTIONS, loadBindings, saveBindings, rebind, translate } from './keybindings.js';
@@ -39,6 +40,9 @@ const PAN_STEP = 40;      // screen pixels per arrow press when panning the plan
 const MODEL_TURN = 0.15;  // radians per arrow press when turning the 3D model
 
 
+
+// Recorded from the moment the module loads, so a failure during start-up still reaches a feedback note.
+const pageErrors = recordErrors(globalThis.window);
 
 export function boot() {
   const plan = $('#plan');
@@ -1325,6 +1329,30 @@ export function boot() {
   $('#view-plan').addEventListener('click', () => setView('plan'));
   $('#fit').addEventListener('click', () => fitPlan());
   $('#save-image').addEventListener('click', () => saveImage());
+  // Send feedback: on a phone, the share sheet (straight into a message); elsewhere, the clipboard.
+  $('#send-feedback').addEventListener('click', async () => {
+    const code = session.structure.rooms.size ? encodeShare(session.structure) : '';
+    const text = feedbackReport({
+      chapterTitle: session.chapter?.title, chapterId: session.chapter?.id, sandbox: session.sandbox,
+      view: { plan: 'Plan', first: 'Walk', model: 'Model' }[viewMode] ?? viewMode,
+      solved: session.progress.completed.length, total: CHAPTERS.length,
+      rooms: session.structure.rooms.size, passages: session.structure.portals.size,
+      lastMessage: session.feedback?.text,
+      buildLink: code && code.length <= SHARE_LIMIT ? `${location.origin}${location.pathname}#c=${code}` : '',
+      device: describeDevice(), errors: pageErrors.errors,
+    });
+    let done = false;
+    if (navigator.share && globalThis.matchMedia?.('(pointer: coarse)').matches) {
+      try { await navigator.share({ title: 'Impossible Architecture feedback', text }); done = true; } catch { /* cancelled, or refused: fall back */ }
+    }
+    if (!done) {
+      const copied = await copyText(text);
+      session.feedback = copied
+        ? { kind: 'success', text: 'Feedback note copied. Paste it into a message and add what happened at the top.' }
+        : { kind: 'error', text: 'The browser would not copy the note. Take a screenshot instead.' };
+    }
+    render();
+  });
   $('#keys-btn').addEventListener('click', () => toggleKeys());
   $('#snap').addEventListener('click', () => toggleSnap());
   $('#theme').addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));

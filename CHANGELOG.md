@@ -15,6 +15,11 @@
   mid-step; a pinch that starts on a face dot no longer leaves a half-made passage; a tap on an edge dot (or on a
   zoomed-out room) selects the room instead of building a self-loop; a pending Move end no longer captures the
   next drag-join; keyboard joins select the new passage; the plan hint no longer swallows taps.
+- Link previews: sharing the address in a message shows the title, a line about the game and a drawing of the
+  premise (share.png, 1200x630).
+- More, Send feedback: a short note saying where the player was, what they had built (as a link that rebuilds
+  it), the device and any recent errors, with a space at the top for what happened. On a phone it opens the share
+  sheet; elsewhere it is copied. Nothing personal is included.
 - Tried in a phone-sized browser only; not yet on a real device.
 
 ## 1.2.0 — a deliberate layout, one door to the menu
