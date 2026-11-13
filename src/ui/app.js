@@ -989,7 +989,8 @@ export function boot() {
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
     document.body.dataset.view = viewMode; // the stylesheet shows each view's own tools
     $('#plan-tools').hidden = viewMode === 'first';
-    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap one room, then another, to join them.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : !session.selection ? 'Tap the grid to add a room · drag from a room\'s edge dot to another room to join.' : '';
+    const tapWord = globalThis.matchMedia?.('(pointer: coarse)').matches ? 'Tap' : 'Click';
+    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? `${tapWord} the grid to place a room.` : session.tool === 'connect' ? `${tapWord} one room, then another, to join them.` : session.tool === 'add' ? `${tapWord} empty grid to add a room.` : !session.selection ? (session.structure.rooms.size < (session.ruleset.maxRooms ?? Infinity) ? `${tapWord} the grid to add a room · drag from a room's edge dot to another room to join.` : `Drag from a room's edge dot to another room to join them.`) : '';
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     updateSpatialAudio();
     maybeQueueCard();
@@ -1193,7 +1194,7 @@ export function boot() {
       session.selectPortal(portal.id);
     } else {
       // a plain tap on empty grid with nothing selected adds a room; with something selected it just deselects
-      drag = { pan: true, sx: w.sx, sy: w.sy, ox: view.offsetX, oy: view.offsetY, moved: false, addOnTap: session.sandbox || !session.selection };
+      drag = { pan: true, sx: w.sx, sy: w.sy, ox: view.offsetX, oy: view.offsetY, moved: false, addOnTap: (session.sandbox || !session.selection) && session.structure.rooms.size < (session.ruleset.maxRooms ?? Infinity) };
       session.selection = null;
     }
     render();

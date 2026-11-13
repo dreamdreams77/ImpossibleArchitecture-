@@ -444,3 +444,21 @@ body.panel-hidden .layout { grid-template-columns: minmax(0, 1fr) !important; }
   .portalgroup button { flex: 0 0 auto; padding-inline: 9px; white-space: nowrap; }
   .portallabel { display: none; }
 }
+
+/* ---- one tool dock: the construction tools read as a single bar, not three floating boxes ---- */
+.tooldock { display: flex; align-items: stretch; gap: 0; padding: 3px; background: rgba(15, 17, 20, 0.86); border: 1px solid rgba(235, 230, 218, 0.2); border-radius: 10px; backdrop-filter: blur(6px); max-width: 100%; }
+.tooldock .toolgroup { background: none; border: 0; border-radius: 0; padding: 0 3px; backdrop-filter: none; }
+.tooldock .toolgroup + .toolgroup { border-left: 1px solid rgba(235, 230, 218, 0.16); }
+.tooldock .toolgroup:first-child { padding-left: 0; }
+.tooldock .toolgroup:last-child { padding-right: 0; }
+body[data-view="model"] .tooldock .toolgroup.planonly { display: none; }
+@media (prefers-contrast: more) { .tooldock { border-width: 2px; } }
+.tooldock .ico { display: none; }
+@media (max-width: 800px) {
+  .tooldock { overflow-x: auto; scrollbar-width: none; }
+  .tooldock .long, .tooldock .lbl { display: none; }
+  .tooldock .ico { display: inline; font-size: 17px; line-height: 1; }
+  .tooldock .toolgroup button { padding: 7px 6.5px; font-size: 13px; white-space: nowrap; }
+  .tooldock .toolgroup { padding: 0 2px; }
+  .plan-hint { font-size: 12px; }
+}

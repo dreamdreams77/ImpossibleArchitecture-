@@ -76,7 +76,8 @@ function drawDrafting(ctx, view, session, width, height, T) {
   ctx.lineWidth = 1;
   ctx.font = '10px ui-monospace, Menlo, monospace';
   // North arrow, top right.
-  const nx = width - 28; const ny = 38;
+  // On a narrow sheet the top-right corner carries the Test button, so the arrow sits just below it.
+  const nx = width - 28; const ny = narrow ? 78 : 38;
   ctx.beginPath(); ctx.arc(nx, ny, 14, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(nx, ny - 12); ctx.lineTo(nx - 5, ny + 8); ctx.lineTo(nx, ny + 4); ctx.lineTo(nx + 5, ny + 8); ctx.closePath(); ctx.fill();
   ctx.textAlign = 'center'; ctx.fillText('N', nx, ny - 18);

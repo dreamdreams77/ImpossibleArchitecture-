@@ -401,19 +401,21 @@
           <button id="reverse" type="button" title="Flip the direction of a one-way passage">Reverse</button>
           <button id="move-end" type="button" title="Re-attach the end of this passage">Move end</button>
         </div>
-        <div class="toolgroup">
-          <button type="button" data-tool="select" aria-pressed="true" title="Select a room or passage; drag a room to move it">Select</button>
-          <button type="button" data-tool="add" title="Tap empty grid to place a room">Add room</button>
-          <button type="button" data-tool="connect" title="Tap one room, then another, to join them">Connect</button>
-        </div>
-        <div class="toolgroup">
-          <button id="undo" type="button" title="Ctrl/Cmd-Z">Undo</button>
-          <button id="redo" type="button" title="Ctrl/Cmd-Shift-Z">Redo</button>
-          <button id="delete" type="button" title="Delete">Delete</button>
-        </div>
-        <div class="toolgroup planonly">
-          <button id="fit" type="button" title="F">Fit</button>
-          <button id="snap" type="button" aria-pressed="true" title="G">Snap</button>
+        <div class="tooldock">
+          <div class="toolgroup">
+            <button type="button" data-tool="select" aria-pressed="true" title="Select a room or passage; drag a room to move it">Select</button>
+            <button type="button" data-tool="add" title="Tap empty grid to place a room">Add<span class="long"> room</span></button>
+            <button type="button" data-tool="connect" title="Tap one room, then another, to join them">Connect</button>
+          </div>
+          <div class="toolgroup">
+            <button id="undo" type="button" title="Ctrl/Cmd-Z" aria-label="Undo"><span class="ico" aria-hidden="true">↶</span><span class="lbl">Undo</span></button>
+            <button id="redo" type="button" title="Ctrl/Cmd-Shift-Z" aria-label="Redo"><span class="ico" aria-hidden="true">↷</span><span class="lbl">Redo</span></button>
+            <button id="delete" type="button" title="Delete">Delete</button>
+          </div>
+          <div class="toolgroup planonly">
+            <button id="fit" type="button" title="F">Fit</button>
+            <button id="snap" type="button" aria-pressed="true" title="G">Snap</button>
+          </div>
         </div>
       </div>
       <div id="gl-model-controls" class="modelchip" hidden>
