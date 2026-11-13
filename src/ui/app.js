@@ -131,6 +131,13 @@ export function boot() {
       else session.fpTurn(zone);
       render();
     },
+    // Tap a doorway: the first tap turns to it, the next walks through.
+    onWalkDoor: (face) => {
+      session.fpStopPlay();
+      if (session.fp?.heading === face) walkForward();
+      else session.fpFace(face);
+      render();
+    },
     onSelectRoom: (id) => { session.selectRoom(id); render(); },
     onPickFace: (room, face) => { session.pickFace(room, face); sound.play(session.pendingFace ? 'step' : 'goal'); render(); },
     onCross: (ev) => sound.play(ev.mirror ? 'mirror' : 'cross'),

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1 — easier on a phone
+
+- Plan view: passage actions (Turn, Mirror, One way, Reverse, Move end) and the Test button sit on the drawing, and
+  the result of Test appears over it, instead of below the fold.
+- Building in one flow: tap empty grid to add a room, drag from a room's edge dot onto another room to join them, and
+  the new passage is selected for editing. In Connect mode a tap anywhere on a room picks its nearest face. The
+  Select, Add and Connect buttons still work; chapter rules still apply.
+- Walk view: tap a doorway in the room to turn to it, tap it again to walk through.
+- Tried in a phone-sized browser only; not yet on a real device.
+
 ## 1.2.0 — a deliberate layout, one door to the menu
 
 - Layout: the header holds the name, the chapter and progress, then More and Menu. The view switch and the building

@@ -22,7 +22,7 @@ export function glSupported() {
 }
 
 // Creates the view, or returns null where WebGL is unavailable (the app then keeps its 2D views).
-export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkClick, onSelectRoom, onPickFace, onCross, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
+export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkClick, onWalkDoor, onSelectRoom, onPickFace, onCross, onSelectPortal, onAddRoom, onMoveRoom, onLost, onRestored, settings = {} }) {
   if (!glSupported()) return null;
   const params = new URLSearchParams(globalThis.location?.search ?? '');
   let quality = params.get('quality') ?? settings.quality ?? 'auto';
@@ -211,7 +211,7 @@ export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkCli
     if (mode === 'first') {
       hud.innerHTML = `<div class="gl-place"><strong>${esc(room?.label || walkerState?.room || '')}</strong><span>facing ${walkerState?.heading ?? ''}</span>${walkerState?.mirrored ? '<span class="reflected" title="An odd number of mirrored passages: your left and right are exchanged. Another mirror restores you.">reflected</span>' : ''}${walkerState?.carry >= 0 ? `<span class="carry">carrying crate ${walkerState.carry + 1}</span>` : ''}</div>`
         + `<div class="gl-legend">${chips}</div>`
-        + `<div class="gl-hint">${session.physical ? 'push blocks, never pull · ▲ walk · ▼ step back · ◀ ▶ turn · a lit plate holds its gate open' : 'drag to look · arrows or click the edges to turn · up or click the middle to walk'}</div>`;
+        + `<div class="gl-hint">${session.physical ? 'push blocks, never pull · ▲ walk · ▼ step back · ◀ ▶ turn · a lit plate holds its gate open' : 'drag to look · tap a doorway to turn to it, tap again to walk through · arrows turn · up walks'}</div>`;
     } else {
       hud.innerHTML = '<div class="gl-place"><strong>Architect’s model</strong><span>rooms at their plan positions · arcs are the real connections</span></div>'
         + `<div class="gl-legend">${chips}</div>`
@@ -357,7 +357,13 @@ export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkCli
     if (drag?.id === evt.pointerId && drag.room && drag.moved) onMoveRoom?.(drag.room.id, 0, 0, 'end');
     if (drag?.id === evt.pointerId && !drag.moved && evt.type === 'pointerup') {
       const r = canvas.getBoundingClientRect();
-      if (mode === 'first') onWalkClick?.(fpZoneFor(evt.clientX - r.left, r.width));
+      if (mode === 'first') {
+        const door = !session.physical && onWalkDoor
+          ? world.pickDoor(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1), session.fp?.room)
+          : null;
+        if (door) onWalkDoor(door.face);
+        else onWalkClick?.(fpZoneFor(evt.clientX - r.left, r.width));
+      }
       else {
         const face = world.pickMarker(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1));
         if (face) { onPickFace?.(face.room, face.face); previewKey = ''; world.setPreview(null, null); drag = null; return; }

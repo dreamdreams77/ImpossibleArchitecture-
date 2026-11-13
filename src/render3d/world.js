@@ -784,6 +784,19 @@ export class WorldRenderer {
     this._paintMarkers();
   }
 
+  // The doorway in `room` under a screen point (first-person: tap a door to turn to it, tap again to walk through).
+  pickDoor(ndcX, ndcY, room) {
+    const meshes = [];
+    for (const d of this.doors.values()) if (d.room === room) { d.mesh.updateWorldMatrix(true, false); meshes.push(d.mesh); }
+    if (!meshes.length) return null;
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const hit = ray.intersectObjects(meshes, false)[0];
+    if (!hit) return null;
+    const d = [...this.doors.values()].find((x) => x.mesh === hit.object);
+    return d ? { room: d.room, face: d.face } : null;
+  }
+
   pickMarker(ndcX, ndcY) {
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);

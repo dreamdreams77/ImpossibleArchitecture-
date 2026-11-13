@@ -110,3 +110,16 @@ test('session: cycling a player passage through one-way and back to two-way', ()
   session.cycleOneWay();
   assert.equal(session.structure.portals.get(pid).oneWay, null);
 });
+
+test('fpFace turns to a named wall regardless of mirror parity, and rejects nonsense', () => {
+  const session = new Session();
+  session.loadChapter('the-two-doors');
+  session.fpEnsure();
+  assert.equal(session.fpFace('E'), true);
+  assert.equal(session.fp.heading, 'E');
+  session.fp = { ...session.fp, mirrored: true };
+  assert.equal(session.fpFace('S'), true);
+  assert.equal(session.fp.heading, 'S');
+  assert.equal(session.fpFace('up'), false);
+  assert.equal(session.fp.heading, 'S');
+});

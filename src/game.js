@@ -494,6 +494,13 @@ export class Session {
     return true;
   }
 
+  // Turn to face a given wall (the walker's own compass, whatever the mirror parity).
+  fpFace(face) {
+    if (!this.fpEnsure() || !['N', 'E', 'S', 'W'].includes(face)) return false;
+    this.fp = { ...this.fp, heading: face };
+    return true;
+  }
+
   // Walk forward through the wall ahead. Returns true if the walker moved.
   fpForward() {
     if (!this.fpEnsure()) return false;
