@@ -68,3 +68,24 @@ test('every challenge fits a phone-shaped canvas with all its rooms visible', as
     }
   }
 });
+
+test('nearestFace lets a tap anywhere on a room choose its face', async () => {
+  const { nearestFace, faceAnchor } = await import('../src/render/geometry.js');
+  const room = { id: 'r', x: 4, y: 4, size: 1 };
+  for (const face of ['N', 'E', 'S', 'W']) {
+    const a = faceAnchor(room, face);
+    // a point a little inside the room towards that face picks it
+    const px = room.x + (a.x - room.x) * 0.5;
+    const py = room.y + (a.y - room.y) * 0.5;
+    assert.equal(nearestFace(room, px, py), face);
+  }
+});
+
+test('nearestFace follows a rotated room', async () => {
+  const { nearestFace, faceAnchor } = await import('../src/render/geometry.js');
+  const room = { id: 'r', x: 0, y: 0, size: 1, turn: 1 };
+  for (const face of ['N', 'E', 'S', 'W']) {
+    const a = faceAnchor(room, face);
+    assert.equal(nearestFace(room, a.x * 0.5, a.y * 0.5), face);
+  }
+});

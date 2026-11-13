@@ -58,6 +58,19 @@ export function hitTest(structure, wx, wy, { faceRadius = 0.22, roomSlack = 0 } 
   return null;
 }
 
+// The face of a room closest to a point inside (or near) it: lets a fingertip anywhere on the room pick a
+// face, instead of needing to land on the small dot at the edge.
+export function nearestFace(room, wx, wy) {
+  let best = 'N';
+  let bestDot = -Infinity;
+  for (const face of ['N', 'E', 'S', 'W']) {
+    const d = faceDir(room, face); // honours a rotated room
+    const dot = (wx - room.x) * d.x + (wy - room.y) * d.y;
+    if (dot > bestDot) { bestDot = dot; best = face; }
+  }
+  return best;
+}
+
 // Hit-test a portal by distance to its quadratic curve, sampled coarsely.
 export function portalHit(structure, wx, wy, tolerance = 0.12) {
   for (const p of structure.portals.values()) {

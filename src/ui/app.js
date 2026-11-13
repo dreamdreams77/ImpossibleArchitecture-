@@ -6,7 +6,7 @@ import { Session } from '../game.js';
 import { CHAPTERS, chapterById } from '../campaign/chapters.js';
 import { DISCIPLINES, PREMISE, placeInChapter, isFirstOfChapter, isLastOfChapter, endingFor } from '../campaign/campaign.js';
 import { encodeShare, decodeShare } from '../persistence/share.js';
-import { hitTest, portalHit } from '../render/geometry.js';
+import { hitTest, portalHit, nearestFace } from '../render/geometry.js';
 import { drawPlan, drawGraph } from '../render/draw.js';
 import { transitionKind, turnDirection, drawFirstPerson, firstPersonModel, describeFirstPerson, fpZoneFor } from '../render/firstperson.js';
 import { drawModel, modelLayout, DEFAULT_ANGLE, coastAngle, describeModel } from '../render/model3d.js';
@@ -982,7 +982,7 @@ export function boot() {
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
     document.body.dataset.view = viewMode; // the stylesheet shows each view's own tools
     $('#plan-tools').hidden = viewMode === 'first';
-    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap a face dot on one room, then one on another.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
+    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap one room, then another, to join them.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     updateSpatialAudio();
     maybeQueueCard();
@@ -1159,7 +1159,10 @@ export function boot() {
     }
     if (session.tool === 'connect') {
       if (hit?.type === 'face') session.pickFace(hit.room, hit.face);
-      else session.feedback = { kind: 'info', text: 'Click a face (the small dots on a room edge) to connect.' };
+      else if (hit?.type === 'room') {
+        const room = session.structure.rooms.get(hit.id);
+        session.pickFace(hit.id, nearestFace(room, w.x, w.y));
+      } else session.feedback = { kind: 'info', text: 'Tap a room (or a dot on its edge) to connect.' };
       render();
       return;
     }
@@ -1761,7 +1764,7 @@ export function boot() {
   showMenu('title');
   booted = true;
   window.__session = session; // exposed for manual inspection in devtools
-  window.__ia = { showEnding, render, setView, gl, session }; // and for the end-to-end checks in tools/e2e.mjs
+  window.__ia = { showEnding, render, setView, gl, session, view }; // and for the end-to-end checks in tools/e2e.mjs
 }
 
 function populateChapters() {
