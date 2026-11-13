@@ -477,4 +477,83 @@ export const EXTRA = [
       },
     ],
   },
+  // Added after the depth review: sequenced plates with a self-loop, plate parity, and one-way with parity.
+  {
+    id: 'the-carillon',
+    theme: 'copper',
+    title: 'The Carillon',
+    blurb: 'Three bells hang in one Belfry: east, then south, then west, and each sounds only after the one before it. The Porch has a single door in, and it always brings you in facing south.',
+    rooms: [
+      { id: 'porch', x: 0, y: 0, label: 'Porch' },
+      { id: 'belfry', x: 3, y: 0, label: 'Belfry' },
+      { id: 'vault', x: 0, y: 3, label: 'Vault' },
+    ],
+    fixed: [
+      { a: { room: 'porch', face: 'E' }, b: { room: 'belfry', face: 'N' } },
+      { a: { room: 'porch', face: 'S' }, b: { room: 'vault', face: 'N' }, gate: 2 },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 3, sealedFaces: sealed(['porch', 'N'], ['porch', 'W'], ['vault', 'E'], ['vault', 'S'], ['vault', 'W']) },
+    start: 'porch',
+    plates: [
+      { room: 'belfry', heading: 'E' },
+      { room: 'belfry', heading: 'S', after: 0 },
+      { room: 'belfry', heading: 'W', after: 1 },
+    ],
+    goal: { kind: 'machine', to: 'vault' },
+    hint: 'Every wall you are free to build on belongs to the Belfry, so the Belfry must be its own approach. A passage from a room back into itself brings you in two ways, one for each direction you cross it. Join its east face to its west face: cross it for the east bell, step out to the Porch and back in for the south bell, then cross it the other way for the west.',
+    optional: [],
+  },
+  {
+    id: 'the-double-reading',
+    theme: 'verdigris',
+    title: 'The Double Reading',
+    blurb: 'The Glass Hall holds two plates on the same spot, facing the same way. One answers you; the other answers only your reflection. The Vault opens for both, and admits only the original.',
+    rooms: [
+      { id: 'porch', x: 0, y: 0, label: 'Porch' },
+      { id: 'glass', x: 3, y: 0, label: 'Glass Hall' },
+      { id: 'vault', x: 0, y: 3, label: 'Vault' },
+    ],
+    fixed: [
+      { a: { room: 'porch', face: 'E' }, b: { room: 'glass', face: 'W' } },
+      { a: { room: 'porch', face: 'S' }, b: { room: 'vault', face: 'N' }, gate: 0, also: [1] },
+    ],
+    ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 3, sealedFaces: sealed(['porch', 'N'], ['porch', 'W'], ['vault', 'E'], ['vault', 'S'], ['vault', 'W']) },
+    start: 'porch',
+    plates: [
+      { room: 'glass', heading: 'E', mirrored: false },
+      { room: 'glass', heading: 'E', mirrored: true },
+    ],
+    goal: { kind: 'machine', to: 'vault', mirrored: false },
+    hint: 'Both plates want you facing east in the Glass Hall; they differ only in which of you is standing there. Only a mirror changes that, and the only free walls are the Glass Hall\'s own. Join two of its faces with a mirrored passage that brings you in facing east, and cross it a second time before you leave: two reflections cancel.',
+    optional: [],
+  },
+  {
+    id: 'the-silvered-stair',
+    theme: 'verdigris',
+    title: 'The Silvered Stair',
+    blurb: 'The stair down to the Well is one way, and silvered: whoever falls through arrives as their own reflection, which is what the Well\'s plate wants. The Stair\'s plate wants you back, facing east, as yourself, and only after the fall.',
+    rooms: [
+      { id: 'stair', x: 0, y: 0, label: 'Stair' },
+      { id: 'well', x: 0, y: 3, label: 'Well', kind: 'cellar' },
+      { id: 'gallery', x: 3, y: 3, label: 'Gallery' },
+      { id: 'crown', x: 3, y: 0, label: 'Crown' },
+    ],
+    fixed: [
+      { a: { room: 'stair', face: 'S' }, b: { room: 'well', face: 'N' }, oneWay: 'a', transform: { mirror: true } },
+      { a: { room: 'gallery', face: 'N' }, b: { room: 'crown', face: 'S' }, gate: 1 },
+    ],
+    ruleset: {
+      ...UNRESTRICTED, maxRooms: 4, maxPortals: 4,
+      sealedFaces: sealed(['stair', 'N'], ['stair', 'E'], ['crown', 'N'], ['crown', 'E'], ['crown', 'W']),
+      forbiddenLinks: [{ a: 'well', b: 'stair' }],
+    },
+    start: 'stair',
+    plates: [
+      { room: 'well', heading: 'S', mirrored: true },
+      { room: 'stair', heading: 'E', mirrored: false, after: 0 },
+    ],
+    goal: { kind: 'machine', to: 'crown' },
+    hint: 'A reflection is undone by one more mirror, or by the same mirror twice. You cannot climb back up the silvered stair and the Well may not be joined to the Stair, so come back through the Gallery, into the Stair\'s west face with no turn. Put a mirror on one of your two passages; or leave both plain and fall through the stair a second time.',
+    optional: [],
+  },
 ];

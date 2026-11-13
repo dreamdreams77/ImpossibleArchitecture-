@@ -166,7 +166,7 @@ const RAW = [
     ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 4 },
     start: 'cellar',
     goal: { kind: 'reach', to: 'upper' },
-    hint: 'Connect the stair to the upper floor. The house is larger than its plan.',
+    hint: 'Nothing says you must climb the Stair: the Cellar can open straight onto the Upper floor. The house is larger than its plan, and a loop that turns you half-way round shows how much.',
     optional: [
       {
         id: 'half-turn-loop',
@@ -189,13 +189,13 @@ const RAW = [
     fixed: [
       { a: { room: 'drum', face: 'E' }, b: { room: 'stage', face: 'W' }, gate: 0 },
     ],
-    ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 2 },
+    ruleset: { ...UNRESTRICTED, maxRooms: 3, maxPortals: 2, sealedFaces: [{ room: 'drum', face: 'S' }, { room: 'drum', face: 'W' }], forbiddenLinks: [{ a: 'lobby', b: 'stage' }] },
     start: 'lobby',
     // A toggle: it starts lit, and every arrival from the north flips it. Entering
     // once turns it off; going back out and in again turns it on.
     plates: [{ room: 'drum', heading: 'S', mode: 'toggle', startsLit: true }],
     goal: { kind: 'reach', to: 'stage' },
-    hint: 'Connect the Lobby to the Drum from the south. Entering the Drum flips it, so walk through the passage and back to change its state.',
+    hint: 'The Drum is lit when you arrive, and every arrival facing south flips it. Walk in, out and in again; or put a turn on your passage and walk in facing another way, so the Drum never notices you.',
     optional: [],
   },
   {
@@ -240,7 +240,7 @@ const RAW = [
     start: 'surface',
     plates: [{ room: 'lever', heading: 'W' }],
     goal: { kind: 'reach', to: 'cistern' },
-    hint: 'The lever lights when you enter it from the east. Reach it from the surface, then take a passage from the lever down to the Cistern.',
+    hint: 'The lever lights when you enter it from the east. Reach it from the Surface, light it and come back: the shaft was always there, only shut.',
     optional: [
       {
         id: 'six-fathoms',
@@ -463,11 +463,12 @@ const RAW = [
     fixed: [
       { a: { room: 'turn', face: 'S' }, b: { room: 'far', face: 'N' }, oneWay: 'a' },
     ],
-    ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 3 },
+    // Start may not reach End or Far directly, nor Turn reach End: every route has to take the drop.
+    ruleset: { ...UNRESTRICTED, maxRooms: 4, maxPortals: 3, forbiddenLinks: [{ a: 'start', b: 'end' }, { a: 'start', b: 'far' }, { a: 'turn', b: 'end' }] },
     start: 'start',
     plates: [],
     goal: { kind: 'machine', to: 'end', heading: 'E', mirrored: true },
-    hint: 'Connect Start to Turn on Start\'s east side, then Far to End\'s west face with a mirror: you walk in facing east, reflected.',
+    hint: 'The only way down is the drop, so the question is how to reach Turn and how to leave Far. Connect Start to Turn on Start\'s east side, then Far to End\'s west face with a mirror: you walk in facing east, reflected.',
     optional: [],
   },
   {
@@ -544,7 +545,7 @@ const RAW = [
     id: 'final-construction',
     theme: 'dusk',
     title: 'XXIV. Closing Construction',
-    blurb: 'Every mechanic at once. Strike the Well plate, then reach the Apex facing north.',
+    blurb: 'The first building, closed into a ring. Strike the Well plate, then reach the Apex facing north: the gate brings you in facing the wrong way.',
     rooms: [
       { id: 'foundation', x: 0, y: 0, label: 'Foundation' },
       { id: 'well', x: 2, y: 2, label: 'Well' },
@@ -585,7 +586,7 @@ const RAW = [
 
 // The campaign order and chapter grouping come from campaign.js. Each challenge
 // takes its chapter's look (theme), its chapter number and a numeral in play order.
-const ROMANS = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV','XXV','XXVI','XXVII','XXVIII','XXIX','XXX','XXXI','XXXII','XXXIII','XXXIV','XXXV','XXXVI','XXXVII','XXXVIII','XXXIX','XL'];
+const ROMANS = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV','XXV','XXVI','XXVII','XXVIII','XXIX','XXX','XXXI','XXXII','XXXIII','XXXIV','XXXV','XXXVI','XXXVII','XXXVIII','XXXIX','XL','XLI','XLII','XLIII','XLIV','XLV'];
 const BY_ID = new Map([...RAW, ...EXTRA].map((c) => [c.id, c]));
 export const CHAPTERS = Object.freeze(ORDER.map((id, i) => {
   const raw = BY_ID.get(id);

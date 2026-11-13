@@ -14,7 +14,7 @@ for (const id of ['mirrored-gallery', 'the-long-corridor', 'the-stillwater', 'th
     assert.ok(ex && !ex.skipped, 'the enumerator can handle it');
     const below = ex.size > 0 ? audit(c, { budget: ex.size - 1, maxRoute: 14, seconds: 60 }) : null;
     if (below) { assert.ok(below.complete); assert.equal(below.solutions, 0, 'nothing smaller than the minimum'); }
-    const at = audit(c, { budget: ex.size, maxRoute: 14, seconds: 60 });
+    const at = audit(c, { budget: ex.size, maxRoute: 14, seconds: 60, maxSolutions: 5000 });
     assert.ok(at.complete);
     assert.equal(at.bySize[ex.size] ?? 0, ex.count, `${id}: audit found ${at.bySize[ex.size] ?? 0} minimal solutions, the enumerator ${ex.count}`);
   });

@@ -15,7 +15,7 @@ Needs Node 18 or later. No install, no build step (three.js is vendored).
 
 ```
 npm start      # then open http://localhost:8080
-npm test       # 471 tests over the engine, campaign, renderer maths and walker
+npm test       # 476 tests over the engine, campaign, renderer maths and walker
 npm run e2e    # optional: drives the real game in headless Chromium (needs Playwright)
 npm run portalcheck # optional: checks the portal projection maths against a real render
 npm run fuzz   # optional: random edits, views and walks in every challenge, failing on any error
@@ -23,7 +23,7 @@ npm run fuzz   # optional: random edits, views and walks in every challenge, fai
 
 ## What is in it
 
-- **A campaign of six chapters and 39 challenges (the original 31 plus four physical ones, a sequenced-plate puzzle, a two-lock gate, the three-lock Mirror Lock and the one-answer Weathervane)**, each chapter one discipline:
+- **A campaign of six chapters and 42 challenges (the original 31 plus four physical ones, a sequenced-plate puzzle, a two-lock gate, the three-lock Mirror Lock, the one-answer Weathervane, and three that combine mechanics: The Carillon, The Double Reading and The Silvered Stair)**, each chapter one discipline:
   The First Connection, The Architecture of Return, The Rooms That Should Not Fit,
   The Mechanical Interior, The Structure With Two Truths, The Last Construction.
   Every goal is checked by searching the real graph, not by triggers, and most have
@@ -118,8 +118,9 @@ and [docs/TESTING.md](docs/TESTING.md).
   optional objectives, and are judged by the campaign's engine. The editor cannot yet author every field
   the campaign data can (for example forbidden faces are not editable).
 - Campaign challenges are checked by planted solutions and negative cases, and by two solvers. `tools/solve.mjs`
-  enumerates every set of passages and proves 29 of the 39 solvable. Five of the other ten are physical
-  (crate-pushing) challenges checked by a separate push-level solver. The remaining five (Machine, Spiral Cellar,
+  enumerates every set of passages and proves 32 of the 42 solvable. Four of the other ten are physical
+  (crate-pushing) challenges checked by a separate push-level solver. The Wheel needs exactly 3: its counting
+  bound is 3 and its rules allow no more. The remaining five (Machine, Spiral Cellar,
   Cupboard, Ring Hall, Last Construction) are beyond enumeration, so they were audited with `tools/audit.mjs`,
   a route-first search (the traveller walks and builds a passage only where they stand at a wall). On the six
   challenges where both tools can run, the audit finds exactly the enumerator's solution counts. What it found:

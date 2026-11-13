@@ -45,7 +45,7 @@ export const DISCIPLINES = Object.freeze([
     theme: 'copper',
     intro: 'Some rooms do things. The building has hands now: plates that wait to be struck, gates that wait to be opened, crates that must be carried and set down.',
     outro: 'A mechanism is a route taken in the right order, facing the right way. Your constructions no longer only connect: they work.',
-    challenges: ['the-machine', 'sealed-wing', 'the-ordered-hall', 'the-two-lock-vault', 'the-first-push', 'revolving-house', 'the-wheel', 'the-weighted-gate', 'the-freight', 'the-pad-room'],
+    challenges: ['the-machine', 'sealed-wing', 'the-ordered-hall', 'the-carillon', 'the-two-lock-vault', 'the-first-push', 'revolving-house', 'the-wheel', 'the-weighted-gate', 'the-freight', 'the-pad-room'],
   },
   {
     no: 5,
@@ -55,7 +55,7 @@ export const DISCIPLINES = Object.freeze([
     theme: 'verdigris',
     intro: 'A building can hold two readings at once, and they may compete. Some passages never open back; some rooms must never touch. Choose how, and live with both.',
     outro: 'You have built structures that agree with themselves in two ways at once. Nothing is left to learn except how to use all of it together.',
-    challenges: ['lantern-court', 'two-keys', 'the-stillwater', 'the-drop', 'mirror-archive', 'the-long-push', 'the-seam'],
+    challenges: ['lantern-court', 'two-keys', 'the-stillwater', 'the-double-reading', 'the-drop', 'the-silvered-stair', 'mirror-archive', 'the-long-push', 'the-seam'],
   },
   {
     no: 6,
@@ -118,7 +118,7 @@ export function endingFor(structure, progress = { completed: [], discoveries: []
   if (turning) lines.push(`${turning} of them turn whoever crosses.`);
   if (mirrored) lines.push(`${mirrored} reflect them.`);
   if (selfLinks) lines.push(`${selfLinks} lead a room back into itself.`);
-  if (widestPair) lines.push(`${name(widestPair[0])} and ${name(widestPair[1])} are drawn ${widest.toFixed(1)} units apart on the plan. In the building they are neighbours of neighbours.`);
+  if (widestPair) lines.push(`${name(widestPair[0])} and ${name(widestPair[1])} are drawn ${widest.toFixed(1)} units apart on the plan. In the building, that distance was never measured.`);
   lines.push(`Across the Concordance you found ${progress.discoveries.length} hidden thing${progress.discoveries.length === 1 ? '' : 's'}, in about ${minutes} minute${minutes === 1 ? '' : 's'}.`);
   return {
     heading: 'It stands.',
