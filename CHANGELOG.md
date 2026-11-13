@@ -8,6 +8,13 @@
   the new passage is selected for editing. In Connect mode a tap anywhere on a room picks its nearest face. The
   Select, Add and Connect buttons still work; chapter rules still apply.
 - Walk view: tap a doorway in the room to turn to it, tap it again to walk through.
+- One tool dock instead of three floating boxes; on phones it fits one row (Undo and Redo as arrows).
+- Three new challenges that combine mechanics (The Carillon, The Double Reading, The Silvered Stair); The Long
+  Corridor and The Revolving House can no longer be solved without their mechanic; clearer blurbs and hints.
+- Fixes from a bug check: a tapped doorway is found correctly when the traveller is reflected and is ignored
+  mid-step; a pinch that starts on a face dot no longer leaves a half-made passage; a tap on an edge dot (or on a
+  zoomed-out room) selects the room instead of building a self-loop; a pending Move end no longer captures the
+  next drag-join; keyboard joins select the new passage; the plan hint no longer swallows taps.
 - Tried in a phone-sized browser only; not yet on a real device.
 
 ## 1.2.0 — a deliberate layout, one door to the menu

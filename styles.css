@@ -462,3 +462,6 @@ body[data-view="model"] .tooldock .toolgroup.planonly { display: none; }
   .tooldock .toolgroup { padding: 0 2px; }
   .plan-hint { font-size: 12px; }
 }
+
+/* The hint is a caption on the drawing; taps go through it to the plan. */
+.plan-hint { pointer-events: none; }

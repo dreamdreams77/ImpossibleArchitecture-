@@ -39,6 +39,8 @@ export function hitTest(structure, wx, wy, { faceRadius = 0.22, roomSlack = 0 } 
   let best = null;
   let bestD = Infinity;
   for (const room of structure.rooms.values()) {
+    const inner = roomHalf(room) * 0.5;
+    if (Math.abs(wx - room.x) <= inner && Math.abs(wy - room.y) <= inner) continue; // the middle belongs to the room
     for (const face of ['N', 'E', 'S', 'W']) {
       const a = faceAnchor(room, face);
       const d = Math.hypot(wx - a.x, wy - a.y);

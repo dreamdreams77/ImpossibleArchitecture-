@@ -358,8 +358,10 @@ export function createGlView({ canvas, session, hud, statsEl, debugEl, onWalkCli
     if (drag?.id === evt.pointerId && !drag.moved && evt.type === 'pointerup') {
       const r = canvas.getBoundingClientRect();
       if (mode === 'first') {
-        const door = !session.physical && onWalkDoor
-          ? world.pickDoor(((evt.clientX - r.left) / r.width) * 2 - 1, -(((evt.clientY - r.top) / r.height) * 2 - 1), session.fp?.room)
+        // The picture is flipped for a reflected traveller, so the tap is flipped back before it meets the scene;
+        // and while a step is still animating the camera is not yet in the session's room, so no door is picked.
+        const door = !session.physical && onWalkDoor && !walker.busy
+          ? world.pickDoor((walker.mirrored ? -1 : 1) * (((evt.clientX - r.left) / r.width) * 2 - 1), -(((evt.clientY - r.top) / r.height) * 2 - 1), session.fp?.room)
           : null;
         if (door) onWalkDoor(door.face);
         else onWalkClick?.(fpZoneFor(evt.clientX - r.left, r.width));

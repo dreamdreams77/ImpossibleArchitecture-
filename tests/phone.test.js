@@ -89,3 +89,14 @@ test('nearestFace follows a rotated room', async () => {
     assert.equal(nearestFace(room, a.x * 0.5, a.y * 0.5), face);
   }
 });
+
+test('zoomed out, a finger on the middle of a room is the room, not one of its face dots', async () => {
+  const { hitTest } = await import('../src/render/geometry.js');
+  const { Structure } = await import('../src/topology/graph.js');
+  const s = new Structure();
+  s.addRoom({ id: 'r', x: 0, y: 0 });
+  // at 40 px per unit the finger radius (0.5) reaches every face dot (0.42 away) from the centre
+  assert.deepEqual(hitTest(s, 0.05, 0.05, { faceRadius: 0.5 }), { type: 'room', id: 'r' });
+  // but a point out by an edge is still that edge's dot
+  assert.deepEqual(hitTest(s, 0.4, 0, { faceRadius: 0.5 }), { type: 'face', room: 'r', face: 'E' });
+});

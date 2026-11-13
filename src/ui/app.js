@@ -1160,6 +1160,7 @@ export function boot() {
     if (planPinch.down(evt.pointerId, w.sx, w.sy)) {
       // A second finger: stop any drag in progress and let the pinch take over.
       if (drag) session.endGesture();
+      if (drag?.connect) session.pendingFace = null;
       drag = null;
       render();
       return;
@@ -1184,8 +1185,9 @@ export function boot() {
     // select tool: one flow, no mode switching.
     if (hit?.type === 'face') {
       // drag from a face dot to another room to join them
+      session.retarget = null;
       session.pendingFace = { room: hit.room, face: hit.face };
-      drag = { connect: true };
+      drag = { connect: true, sx: w.sx, sy: w.sy, moved: false, room: hit.room };
     } else if (hit?.type === 'room') {
       session.selectRoom(hit.id);
       session.beginGesture();
@@ -1215,7 +1217,7 @@ export function boot() {
       return;
     }
     if (planPinch.active() || !drag) return;
-    if (drag.connect) { render(); return; }
+    if (drag.connect) { if (Math.hypot(w.sx - drag.sx, w.sy - drag.sy) > 8) drag.moved = true; render(); return; }
     if (drag.pan) {
       if (Math.hypot(w.sx - drag.sx, w.sy - drag.sy) > 6) drag.moved = true;
       view.offsetX = drag.ox + (w.sx - drag.sx);
@@ -1240,7 +1242,8 @@ export function boot() {
       const hit = hitTest(session.structure, w.x, w.y, touchHit());
       const from = session.pendingFace;
       session.pendingFace = null;
-      if (from && hit) {
+      if (!d.moved) session.selectRoom(d.room); // a tap on an edge dot is a tap on the room, not a self-loop
+      else if (from && hit) {
         const room = hit.type === 'face' ? hit.room : hit.id;
         const face = hit.type === 'face' ? hit.face : nearestFace(session.structure.rooms.get(hit.id), w.x, w.y);
         if (!(room === from.room && face === from.face)) {
@@ -1303,6 +1306,7 @@ export function boot() {
     btn.addEventListener('click', () => {
       session.tool = btn.dataset.tool;
       session.pendingFace = null;
+      session.retarget = null;
       render();
     });
   }
@@ -1623,7 +1627,7 @@ export function boot() {
     }
     if (roomSelected && /^[nesw]$/.test(k) && session.tool === 'connect') {
       evt.preventDefault();
-      session.pickFace(session.selection.id, k.toUpperCase());
+      joinFaces(session.selection.id, k.toUpperCase());
       render();
       return true;
     }
