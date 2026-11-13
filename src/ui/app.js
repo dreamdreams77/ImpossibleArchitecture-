@@ -982,7 +982,7 @@ export function boot() {
     if (session.sandbox && session.structure.rooms.size === 0 && session.tool === 'select') session.tool = 'add';
     document.body.dataset.view = viewMode; // the stylesheet shows each view's own tools
     $('#plan-tools').hidden = viewMode === 'first';
-    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap one room, then another, to join them.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : '';
+    $('#plan-hint').textContent = viewMode !== 'plan' ? '' : session.structure.rooms.size === 0 ? 'Tap the grid to place a room.' : session.tool === 'connect' ? 'Tap one room, then another, to join them.' : session.tool === 'add' ? 'Tap empty grid to add a room.' : !session.selection ? 'Tap the grid to add a room · drag from a room\'s edge dot to another room to join.' : '';
     sound.setAmbience(styleFor(session.themeName, session.chapter?.id ?? null, session.chapter?.discipline ?? null).key);
     updateSpatialAudio();
     maybeQueueCard();
@@ -1139,6 +1139,13 @@ export function boot() {
     return { faceRadius: Math.max(0.22, 20 / view.scale), roomSlack: Math.max(0, 14 / view.scale - 0.1) };
   }
 
+  // Join two faces, and leave the new passage selected so its actions (turn, mirror, one way) are right there.
+  function joinFaces(room, face) {
+    const before = session.structure.portals.size;
+    session.pickFace(room, face);
+    if (session.structure.portals.size > before) session.selectPortal([...session.structure.portals.keys()].pop());
+  }
+
   plan.addEventListener('pointerdown', (evt) => {
     plan.setPointerCapture(evt.pointerId);
     const w = toWorld(evt);
@@ -1158,24 +1165,29 @@ export function boot() {
       return;
     }
     if (session.tool === 'connect') {
-      if (hit?.type === 'face') session.pickFace(hit.room, hit.face);
+      if (hit?.type === 'face') joinFaces(hit.room, hit.face);
       else if (hit?.type === 'room') {
         const room = session.structure.rooms.get(hit.id);
-        session.pickFace(hit.id, nearestFace(room, w.x, w.y));
+        joinFaces(hit.id, nearestFace(room, w.x, w.y));
       } else session.feedback = { kind: 'info', text: 'Tap a room (or a dot on its edge) to connect.' };
       render();
       return;
     }
-    // select tool
-    if (hit?.type === 'room') {
+    // select tool: one flow, no mode switching.
+    if (hit?.type === 'face') {
+      // drag from a face dot to another room to join them
+      session.pendingFace = { room: hit.room, face: hit.face };
+      drag = { connect: true };
+    } else if (hit?.type === 'room') {
       session.selectRoom(hit.id);
       session.beginGesture();
       drag = { id: hit.id, offX: w.x - session.structure.rooms.get(hit.id).x, offY: w.y - session.structure.rooms.get(hit.id).y, moved: false };
     } else if (portal) {
       session.selectPortal(portal.id);
     } else {
+      // a plain tap on empty grid with nothing selected adds a room; with something selected it just deselects
+      drag = { pan: true, sx: w.sx, sy: w.sy, ox: view.offsetX, oy: view.offsetY, moved: false, addOnTap: session.sandbox || !session.selection };
       session.selection = null;
-      drag = { pan: true, sx: w.sx, sy: w.sy, ox: view.offsetX, oy: view.offsetY };
     }
     render();
   });
@@ -1195,7 +1207,9 @@ export function boot() {
       return;
     }
     if (planPinch.active() || !drag) return;
+    if (drag.connect) { render(); return; }
     if (drag.pan) {
+      if (Math.hypot(w.sx - drag.sx, w.sy - drag.sy) > 6) drag.moved = true;
       view.offsetX = drag.ox + (w.sx - drag.sx);
       view.offsetY = drag.oy + (w.sy - drag.sy);
     } else if (drag.id) {
@@ -1211,8 +1225,29 @@ export function boot() {
   });
 
   const endDrag = (evt) => { planPinch.up(evt.pointerId); drag = null; session.endGesture(); };
-  plan.addEventListener('pointerup', endDrag);
-  plan.addEventListener('pointercancel', endDrag);
+  plan.addEventListener('pointerup', (evt) => {
+    const d = drag;
+    if (d?.connect) {
+      const w = toWorld(evt);
+      const hit = hitTest(session.structure, w.x, w.y, touchHit());
+      const from = session.pendingFace;
+      session.pendingFace = null;
+      if (from && hit) {
+        const room = hit.type === 'face' ? hit.room : hit.id;
+        const face = hit.type === 'face' ? hit.face : nearestFace(session.structure.rooms.get(hit.id), w.x, w.y);
+        if (!(room === from.room && face === from.face)) {
+          session.pendingFace = from; // joinFaces completes the pending pair
+          joinFaces(room, face);
+        }
+      }
+    } else if (d?.pan && !d.moved && d.addOnTap && evt.type === 'pointerup') {
+      const w = toWorld(evt);
+      session.addRoomAt(snapTo(w.x, 0.5), snapTo(w.y, 0.5));
+    }
+    endDrag(evt);
+    render();
+  });
+  plan.addEventListener('pointercancel', (evt) => { if (drag?.connect) session.pendingFace = null; endDrag(evt); render(); });
 
   // What a click will do here, shown as the cursor.
   function cursorFor(w) {
